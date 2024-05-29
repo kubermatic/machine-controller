@@ -503,8 +503,8 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 		r.recorder.Event(machine, corev1.EventTypeNormal, "ProviderIDUpdated", "Successfully updated providerID on node")
 		nodeLog.Info("Added ProviderID to the node")
 	}
-	// case 3.4: if the node exists make sure if it has labels and taints attached to it.
-	return nil, r.ensureNodeLabelsAnnotationsAndTaints(ctx, nodeLog, node, machine)
+	// case 3.4: if the node exists make sure if it has labels and annotations attached to it.
+	return nil, r.ensureNodeLabelsAndAnnotations(ctx, nodeLog, node, machine)
 }
 
 func (r *Reconciler) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1.Machine) error {
@@ -1042,7 +1042,7 @@ func ownerReferencesHasMachineSetKind(ownerReferences []metav1.OwnerReference) b
 	return false
 }
 
-func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(ctx context.Context, nodeLog *zap.SugaredLogger, node *corev1.Node, machine *clusterv1alpha1.Machine) error {
+func (r *Reconciler) ensureNodeLabelsAndAnnotations(ctx context.Context, nodeLog *zap.SugaredLogger, node *corev1.Node, machine *clusterv1alpha1.Machine) error {
 	providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get provider config: %v", err)
@@ -1099,23 +1099,12 @@ func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(ctx context.Context, n
 		modifiers = append(modifiers, f(AnnotationAutoscalerIdentifier, autoscalerAnnotationValue))
 	}
 
-	for _, t := range machine.Spec.Taints {
-		if !taintExists(node, t) {
-			f := func(t corev1.Taint) func(*corev1.Node) {
-				return func(n *corev1.Node) {
-					n.Spec.Taints = append(node.Spec.Taints, t)
-				}
-			}
-			modifiers = append(modifiers, f(t))
-		}
-	}
-
 	if len(modifiers) > 0 {
 		if err := r.updateNode(ctx, node, modifiers...); err != nil {
 			return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %w", node.Name, err)
 		}
-		r.recorder.Event(machine, corev1.EventTypeNormal, "LabelsAnnotationsTaintsUpdated", "Successfully updated labels/annotations/taints")
-		nodeLog.Info("Added labels/annotations/taints")
+		r.recorder.Event(machine, corev1.EventTypeNormal, "LabelsAnnotationsUpdated", "Successfully updated labels/annotations")
+		nodeLog.Info("Added labels/annotations")
 	}
 
 	return nil
