@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Machine Controller Authors.
+Copyright 2024 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,6 +58,23 @@ func (h *HardwareClient) SelectAvailableHardware(ctx context.Context, hardwareRe
 	return nil, fmt.Errorf("failed to get available hardware to provision")
 }
 
+// GetHardware selects an available hardware from the given list of hardware references
+// that has an empty ID.
+func (h *HardwareClient) GetHardware(ctx context.Context, hardwareRef types.NamespacedName) (*tinkv1alpha1.Hardware, error) {
+
+	var hardware tinkv1alpha1.Hardware
+	if err := h.KubeClient.Get(ctx, client.ObjectKey{Namespace: hardwareRef.Namespace, Name: hardwareRef.Name}, &hardware); err != nil {
+		return nil, fmt.Errorf("failed to get hardware '%s' in namespace '%s': %w", hardwareRef.Name, hardwareRef.Namespace, err)
+	}
+
+	// Check if the ID is empty and return the hardware if it is
+	if hardware.Spec.Metadata.Instance.ID == "" {
+		return &hardware, nil // Found an unclaimed hardware
+	}
+
+	return nil, fmt.Errorf("failed to get available hardware to provision")
+}
+
 // SetHardwareID sets the ID of a specified Hardware object.
 func (h *HardwareClient) SetHardwareID(ctx context.Context, hardware *tinkv1alpha1.Hardware, newID string) error {
 	// Set the new ID
@@ -104,4 +121,17 @@ func (h *HardwareClient) GetHardwareWithID(ctx context.Context, uid string) (*ti
 	}
 
 	return nil, errors.ErrInstanceNotFound
+}
+
+// SetHardwareUserData sets the User Data (cloud-init) of a specified Hardware object.
+func (h *HardwareClient) SetHardwareUserData(ctx context.Context, hardware *tinkv1alpha1.Hardware, userdata string) error {
+	// Set the new ID
+	hardware.Spec.UserData = &userdata
+
+	// Update the hardware object in the cluster
+	if err := h.KubeClient.Update(ctx, hardware); err != nil {
+		return fmt.Errorf("failed to update hardware UserData for '%s': %w", hardware.Name, err)
+	}
+
+	return nil
 }

@@ -29,7 +29,9 @@ import (
 	tinktypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubectl/pkg/scheme"
@@ -39,9 +41,11 @@ import (
 
 type driver struct {
 	ClusterName    string
+	OSImageURL     string
+	HegelURL       string
 	TinkClient     ctrlruntimeclient.Client
 	KubeClient     ctrlruntimeclient.Client
-	HardwareRefs   []types.NamespacedName
+	HardwareRef    types.NamespacedName
 	MetadataClient metadataclient.Client
 	HardwareClient client.HardwareClient
 	WorkflowClient client.WorkflowClient
@@ -88,19 +92,21 @@ func NewTinkerbellDriver(mdConfig *metadataclient.Config, tinkConfig tinktypes.C
 	d := driver{
 		ClusterName:    tinkSpec.ClusterName.Value,
 		TinkClient:     tinkClient,
-		HardwareRefs:   tinkSpec.HardwareRefs,
+		HardwareRef:    tinkSpec.HardwareRef,
 		KubeClient:     k8sClient,
 		MetadataClient: mdClient,
 		HardwareClient: *hwClient,
 		WorkflowClient: *wkClient,
 		TemplateClient: *tmplClient,
+		OSImageURL:     tinkSpec.OSImageURL.Value,
+		HegelURL:       tinkSpec.HegelURL.Value,
 	}
 
 	return &d, nil
 }
 
-func (d *driver) GetServer(ctx context.Context, uid types.UID, _ runtime.RawExtension) (plugins.Server, error) {
-	targetHardware, err := d.HardwareClient.GetHardwareWithID(ctx, string(uid))
+func (d *driver) GetServer(ctx context.Context, meta metav1.ObjectMeta, _ runtime.RawExtension) (plugins.Server, error) {
+	targetHardware, err := d.HardwareClient.GetHardwareWithID(ctx, string(meta.UID))
 
 	if err != nil {
 		return nil, err
@@ -109,13 +115,19 @@ func (d *driver) GetServer(ctx context.Context, uid types.UID, _ runtime.RawExte
 	return &server, nil
 }
 
-func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, _ *plugins.CloudConfigSettings, _ runtime.RawExtension) (plugins.Server, error) {
-	hardware, err := d.HardwareClient.SelectAvailableHardware(ctx, d.HardwareRefs)
+func (d *driver) ProvisionServer(ctx context.Context, meta metav1.ObjectMeta, _ runtime.RawExtension, userdata string) (plugins.Server, error) {
+	hardware, err := d.HardwareClient.GetHardware(ctx, d.HardwareRef)
 	if err != nil {
 		return nil, err
 	}
 
-	err = d.HardwareClient.SetHardwareID(ctx, hardware, string(uid))
+	err = d.HardwareClient.SetHardwareID(ctx, hardware, string(meta.UID))
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = d.HardwareClient.SetHardwareUserData(ctx, hardware, userdata)
 
 	if err != nil {
 		return nil, err
@@ -127,20 +139,22 @@ func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, _ *plugins.
 		return nil, err
 	}
 
-	tmpl := &tinkv1alpha1.Template{}
-	if err := d.TinkClient.Get(ctx, ctrlruntimeclient.ObjectKey{Name: "ubuntu", Namespace: "default"}, tmpl); err != nil {
+	template := &tinkv1alpha1.Template{}
+
+	tmplNamespacedName := types.NamespacedName{Name: meta.Name, Namespace: "tink-stack"}
+	if err := d.TinkClient.Get(ctx, tmplNamespacedName, template); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get template: %w", err)
 		}
 		// Create template if not exists
-		tmpl, err = d.TemplateClient.CreateTemplate(ctx)
+		template, err = d.TemplateClient.CreateTemplate(ctx, tmplNamespacedName, d.OSImageURL, d.HegelURL)
 		if err != nil {
 			return nil, err
 		}
 	}
 	server := tinktypes.Hardware{Hardware: hardware}
 
-	err = d.WorkflowClient.CreateWorkflow(ctx, server.Name, tmpl.Name, server)
+	err = d.WorkflowClient.CreateWorkflow(ctx, server.Name, template.Name, server)
 	if err != nil {
 		return nil, err
 	}
@@ -148,27 +162,12 @@ func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, _ *plugins.
 }
 
 func (d *driver) Validate(_ runtime.RawExtension) error {
-	// hw := HardwareSpec{}
-	// if err := json.Unmarshal(hwSpec.Raw, &hw); err != nil {
-	// 	return fmt.Errorf("failed to unmarshal tinkerbell hardware spec: %w", err)
-	// }
 
-	// if hw.Hardware.Hardware == nil {
-	// 	return fmt.Errorf("tinkerbell hardware data can not be empty")
-	// }
-
-	// if hw.Hardware.Network == nil {
-	// 	return fmt.Errorf("tinkerbell hardware network configs can not be empty")
-	// }
-
-	// if hw.Hardware.Metadata == "" {
-	// 	return fmt.Errorf("tinkerbell hardware metadata can not be empty")
-	// }
 	return nil
 }
 
-func (d *driver) DeprovisionServer(ctx context.Context, uid types.UID) error {
-	targetHardware, err := d.HardwareClient.GetHardwareWithID(ctx, string(uid))
+func (d *driver) DeprovisionServer(ctx context.Context, meta metav1.ObjectMeta) error {
+	targetHardware, err := d.HardwareClient.GetHardwareWithID(ctx, string(meta.UID))
 
 	if err != nil {
 		return err
@@ -190,6 +189,11 @@ func (d *driver) DeprovisionServer(ctx context.Context, uid types.UID) error {
 		return fmt.Errorf("failed to reset hardware ID for %s: %w", targetHardware.Name, err)
 	}
 
+	// Step 6: Delete the Template object
+	tmplNamespacedName := types.NamespacedName{Name: meta.Name, Namespace: "tink-stack"}
+	if err := d.TemplateClient.Delete(ctx, tmplNamespacedName); err != nil {
+		return fmt.Errorf("failed to reset hardware ID for %s: %w", targetHardware.Name, err)
+	}
 	return nil
 }
 
@@ -212,18 +216,22 @@ func GetConfig(driverConfig tinktypes.TinkerbellPluginSpec, aa func(configVar pr
 		if err != nil {
 			return nil, fmt.Errorf(`failed to get value of "kubeconfig" field: %w`, err)
 		}
-		val, err := base64.StdEncoding.DecodeString(config.Kubeconfig)
-		// We intentionally ignore errors here with an assumption that an unencoded YAML or JSON must have been passed on
-		// in this case.
-		if err == nil {
-			config.Kubeconfig = string(val)
-		}
 	}
-
 	config.ClusterName, err = aa(driverConfig.ClusterName, "CLUSTER_NAME")
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "clusterName" field: %w`, err)
 	}
+
+	config.OSImageURL, err = aa(driverConfig.OSImageURL, "OS_IMAGE_URL")
+	if err != nil {
+		return nil, fmt.Errorf(`failed to get value of "OSImageURL" field: %w`, err)
+	}
+
+	config.HegelURL, err = aa(driverConfig.HegelURL, "HEGEL_URL")
+	if err != nil {
+		return nil, fmt.Errorf(`failed to get value of "HegelURL" field: %w`, err)
+	}
+
 	config.RestConfig, err = clientcmd.RESTConfigFromKubeConfig([]byte(config.Kubeconfig))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode kubeconfig: %w", err)

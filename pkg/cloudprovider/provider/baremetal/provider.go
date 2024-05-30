@@ -138,7 +138,6 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 			Token:      token,
 		},
 	}
-
 	driverName, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.Driver)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get baremetal provider's driver name: %w", err)
@@ -203,7 +202,7 @@ func (p provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *cluste
 		}
 	}
 
-	server, err := c.driver.GetServer(ctx, machine.UID, c.driverSpec)
+	server, err := c.driver.GetServer(ctx, machine.ObjectMeta, c.driverSpec)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
@@ -230,23 +229,7 @@ func (p provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *clu
 		}
 	}
 
-	if err := util.CreateMachineCloudInitSecret(ctx, userdata, machine.Name, data.Client); err != nil {
-		return nil, fmt.Errorf("failed to create cloud-init secret for machine %s: %w", machine.Name, err)
-	}
-
-	token, apiServer, err := util.ExtractTokenAndAPIServer(ctx, userdata, data.Client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extarct token and api server address: %w", err)
-	}
-
-	cfg := &plugins.CloudConfigSettings{
-		Token:       token,
-		Namespace:   util.CloudInitNamespace,
-		SecretName:  machine.Name,
-		ClusterHost: apiServer,
-	}
-
-	server, err := c.driver.ProvisionServer(ctx, machine.UID, cfg, c.driverSpec)
+	server, err := c.driver.ProvisionServer(ctx, machine.ObjectMeta, c.driverSpec, userdata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to provision server: %w", err)
 	}
@@ -265,7 +248,7 @@ func (p provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 		}
 	}
 
-	if err := c.driver.DeprovisionServer(ctx, machine.UID); err != nil {
+	if err := c.driver.DeprovisionServer(ctx, machine.ObjectMeta); err != nil {
 		return false, fmt.Errorf("failed to de-provision server: %w", err)
 	}
 

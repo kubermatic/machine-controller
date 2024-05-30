@@ -4,7 +4,7 @@ metadata:
   name: << MACHINE_NAME >>
   namespace: kube-system
 spec:
-  replicas: 2
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -53,14 +53,14 @@ spec:
                   key: token
             driverSpec:
               clusterName: "<< CLUSTER_NAME >>"
+              osImageUrl: "<< OS_IMAGE_URL >>"
+              hegelUrl: "<< HEGEL_URL >>"
               auth:
                 kubeconfig:
                   value: "<< KUBECONFIG_BASE64 >>"
-              hardwareRefs:
-                - name: hardware-1
-                  namespace: "default"
-                - name: hardware-2
-                  namespace: "default"
+              hardwareRef:
+                name: hardware-1
+                namespace: "default"
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: false
