@@ -70,12 +70,6 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 	}
 
 	switch os {
-	case types.OperatingSystemAmazonLinux2:
-		err := containerdAmzn2Template.Execute(&buf, args)
-		return buf.String(), err
-	case types.OperatingSystemCentOS, types.OperatingSystemRHEL, types.OperatingSystemRockyLinux:
-		err := containerdYumTemplate.Execute(&buf, args)
-		return buf.String(), err
 	case types.OperatingSystemUbuntu:
 		err := containerdAptTemplate.Execute(&buf, args)
 		return buf.String(), err
@@ -101,55 +95,6 @@ EOF
 
 systemctl daemon-reload
 systemctl restart containerd
-`))
-
-	containerdAmzn2Template = template.Must(template.New("containerd-yum-amzn2").Parse(`
-mkdir -p /etc/systemd/system/containerd.service.d
-
-cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
-[Service]
-Restart=always
-EnvironmentFile=-/etc/environment
-EOF
-
-cat <<EOF | tee /etc/crictl.yaml
-runtime-endpoint: unix:///run/containerd/containerd.sock
-EOF
-
-yum install -y \
-	containerd-{{ .ContainerdVersion }} \
-	yum-plugin-versionlock
-yum versionlock add containerd
-
-systemctl daemon-reload
-systemctl enable --now containerd
-`))
-
-	containerdYumTemplate = template.Must(template.New("containerd-yum").Parse(`
-yum install -y yum-utils
-yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-{{- /*
-    Due to DNF modules we have to do this on docker-ce repo
-    More info at: https://bugzilla.redhat.com/show_bug.cgi?id=1756473
-*/}}
-yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
-
-cat <<EOF | tee /etc/crictl.yaml
-runtime-endpoint: unix:///run/containerd/containerd.sock
-EOF
-
-mkdir -p /etc/systemd/system/containerd.service.d
-cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
-[Service]
-Restart=always
-EnvironmentFile=-/etc/environment
-EOF
-
-yum install -y containerd.io-{{ .ContainerdVersion }} yum-plugin-versionlock
-yum versionlock add containerd.io
-
-systemctl daemon-reload
-systemctl enable --now containerd
 `))
 
 	containerdAptTemplate = template.Must(template.New("containerd-apt").Parse(`

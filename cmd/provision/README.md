@@ -5,7 +5,6 @@ This command offers all required functionality to provision an host to join a Ku
 The following operating systems are supported
 
 - Ubuntu 18.04
-- CentOS 7
 - Flatcar
 
 ## Requirements

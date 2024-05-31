@@ -278,7 +278,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
-	selector := OsSelector("ubuntu", "centos", "flatcar", "rockylinux")
+	selector := OsSelector("ubuntu", "flatcar")
 
 	params := []string{
 		fmt.Sprintf("<< KUBECONFIG_BASE64 >>=%s", safeBase64Encoding(kubevirtKubeconfig)),
@@ -324,7 +324,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 	}
 
 	// In-tree cloud provider is not supported from Kubernetes v1.26.
-	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.27.11", "1.28.7", "1.29.2")))
+	selector := And(Not(VersionSelector("1.27.11", "1.28.7", "1.29.2")))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -378,7 +378,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, DO_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
-	selector := OsSelector("ubuntu", "centos", "rockylinux")
+	selector := OsSelector("ubuntu")
 
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
@@ -508,29 +508,6 @@ func TestAWSFlatcarCoreOSCloudInit8ProvisioningE2E(t *testing.T) {
 
 	// We would like to test flatcar with CoreOS-cloud-init
 	selector := OsSelector("flatcar")
-	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
-}
-
-func TestAWSCentOS8ProvisioningE2E(t *testing.T) {
-	t.Parallel()
-
-	// test data
-	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
-	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
-	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
-		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
-	}
-
-	amiID := "ami-032025b3afcbb6b34" // official "CentOS 8.2.2004 x86_64"
-
-	params := []string{
-		fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
-		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
-		fmt.Sprintf("<< AMI >>=%s", amiID),
-	}
-
-	// We would like to test CentOS8 image only in this test as the other images are tested in TestAWSProvisioningE2E
-	selector := OsSelector("centos")
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 

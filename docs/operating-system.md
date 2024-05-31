@@ -4,21 +4,17 @@
 
 ### Cloud provider
 
-|   | Ubuntu | CentOS | Flatcar | RHEL | Amazon Linux 2 | Rocky Linux |
-|---|---|---|---|---|---|---|
-| AWS | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Openstack | ✓ | ✓ | ✓ | ✓ | x | ✓ |
+|   | Ubuntu | Flatcar |
+|---|---|---|
+| AWS | ✓ | ✓ |
+| Openstack | ✓ | ✓ |
 
 ## Configuring a operating system
 
 The operating system to use can be set via `machine.spec.providerConfig.operatingSystem`.
 Allowed values:
 
-- `amzn2`
-- `centos`
 - `flatcar`
-- `rhel`
-- `rockylinux`
 - `ubuntu`
 
 OS specific settings can be set via `machine.spec.providerConfig.operatingSystemSpec`.
@@ -30,8 +26,4 @@ Machine controller may work with other OS versions that are not listed in the ta
 
 |   | Versions |
 |---|---|
-| AmazonLinux2 | 2.x |
-| CentOS | 7.4.x, 7.6.x, 7.7.x |
-| RHEL | 8.x |
-| Rocky Linux | 8.5 |
 | Ubuntu | 20.04 LTS, 22.04 LTS |
