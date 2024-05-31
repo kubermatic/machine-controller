@@ -35,12 +35,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	certificatesv1client "k8s.io/client-go/kubernetes/typed/certificates/v1"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -81,20 +80,19 @@ func Add(mgr manager.Manager, log *zap.SugaredLogger) error {
 		log:        log.Named(ControllerName),
 		certClient: certClient.CertificateSigningRequests(),
 	}
-	watchType := &certificatesv1.CertificateSigningRequest{}
 
-	cntrl, err := controller.New(ControllerName, mgr, controller.Options{
-		Reconciler: rec,
-		LogConstructor: func(*reconcile.Request) logr.Logger {
-			// we log ourselves
-			return zapr.NewLogger(zap.NewNop())
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to construct controller: %w", err)
-	}
+	_, err = builder.ControllerManagedBy(mgr).
+		Named(ControllerName).
+		WithOptions(controller.Options{
+			LogConstructor: func(*reconcile.Request) logr.Logger {
+				// we log ourselves
+				return zapr.NewLogger(zap.NewNop())
+			},
+		}).
+		For(&certificatesv1.CertificateSigningRequest{}).
+		Build(rec)
 
-	return cntrl.Watch(source.Kind(mgr.GetCache(), watchType), &handler.EnqueueRequestForObject{})
+	return err
 }
 
 func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {

@@ -38,12 +38,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
 	ctrlruntime "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // controllerName is the name of this controller.
@@ -80,43 +80,25 @@ func newReconciler(mgr manager.Manager, log *zap.SugaredLogger) *ReconcileMachin
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler.
 func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) error {
-	// Create a new controller.
-	c, err := controller.New(controllerName, mgr, controller.Options{
-		Reconciler: r,
-		LogConstructor: func(*reconcile.Request) logr.Logger {
-			// we log ourselves
-			return zapr.NewLogger(zap.NewNop())
-		},
-	})
-	if err != nil {
-		return err
-	}
+	_, err := builder.ControllerManagedBy(mgr).
+		Named(controllerName).
+		WithOptions(controller.Options{
+			LogConstructor: func(*reconcile.Request) logr.Logger {
+				// we log ourselves
+				return zapr.NewLogger(zap.NewNop())
+			},
+		}).
+		// Watch for changes to MachineSet.
+		For(&clusterv1alpha1.MachineSet{}).
+		// Watch for changes to Machines and reconcile the owner MachineSet.
+		Owns(&clusterv1alpha1.Machine{}).
+		// Watch for changes to Machines using a mapping function to MachineSets.
+		// This watcher is required for use cases like adoption. In case a Machine doesn't have
+		// a controller reference, it'll look for potential matching MachineSet to reconcile.
+		Watches(&clusterv1alpha1.Machine{}, handler.EnqueueRequestsFromMapFunc(mapFn)).
+		Build(r)
 
-	// Watch for changes to MachineSet.
-	err = c.Watch(
-		source.Kind(mgr.GetCache(), &clusterv1alpha1.MachineSet{}),
-		&handler.EnqueueRequestForObject{},
-	)
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to Machines and reconcile the owner MachineSet.
-	err = c.Watch(
-		source.Kind(mgr.GetCache(), &clusterv1alpha1.Machine{}),
-		handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &clusterv1alpha1.MachineSet{}, handler.OnlyControllerOwner()),
-	)
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to Machines using a mapping function to MachineSets.
-	// This watcher is required for use cases like adoption. In case a Machine doesn't have
-	// a controller reference, it'll look for potential matching MachineSet to reconcile.
-	return c.Watch(
-		source.Kind(mgr.GetCache(), &clusterv1alpha1.Machine{}),
-		handler.EnqueueRequestsFromMapFunc(mapFn),
-	)
+	return err
 }
 
 // ReconcileMachineSet reconciles a MachineSet object.

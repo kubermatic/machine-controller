@@ -18,6 +18,7 @@ package edge
 
 import (
 	"context"
+
 	"go.uber.org/zap"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
