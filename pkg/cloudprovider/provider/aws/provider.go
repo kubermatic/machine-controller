@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -100,43 +99,6 @@ var (
 	}
 
 	amiFilters = map[providerconfigtypes.OperatingSystem]map[awstypes.CPUArchitecture]amiFilter{
-		// Source: https://wiki.centos.org/Cloud/AWS
-		providerconfigtypes.OperatingSystemCentOS: {
-			awstypes.CPUArchitectureX86_64: {
-				description: "CentOS Linux 7* x86_64*",
-				// The AWS marketplace ID from CentOS Community Platform Engineering (CPE)
-				owner: "125523088429",
-			},
-			awstypes.CPUArchitectureARM64: {
-				description: "CentOS Linux 7* aarch64*",
-				// The AWS marketplace ID from CentOS Community Platform Engineering (CPE)
-				owner: "125523088429",
-			},
-		},
-		providerconfigtypes.OperatingSystemRockyLinux: {
-			awstypes.CPUArchitectureX86_64: {
-				description: "*Rocky-8-ec2-8*.x86_64",
-				// The AWS marketplace ID from Rocky Linux Community Platform Engineering (CPE)
-				owner: "792107900819",
-			},
-			awstypes.CPUArchitectureARM64: {
-				description: "*Rocky-8-ec2-8*.aarch64",
-				// The AWS marketplace ID from Rocky Linux Community Platform Engineering (CPE)
-				owner: "792107900819",
-			},
-		},
-		providerconfigtypes.OperatingSystemAmazonLinux2: {
-			awstypes.CPUArchitectureX86_64: {
-				description: "Amazon Linux 2 AMI * x86_64 HVM gp2",
-				// The AWS marketplace ID from Amazon
-				owner: "137112412989",
-			},
-			awstypes.CPUArchitectureARM64: {
-				description: "Amazon Linux 2 LTS Arm64 AMI * arm64 HVM gp2",
-				// The AWS marketplace ID from Amazon
-				owner: "137112412989",
-			},
-		},
 		providerconfigtypes.OperatingSystemUbuntu: {
 			awstypes.CPUArchitectureX86_64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
@@ -149,20 +111,6 @@ var (
 				description: "Canonical, Ubuntu, 22.04 LTS, arm64 jammy image build on ????-??-??",
 				// The AWS marketplace ID from Canonical
 				owner: "099720109477",
-			},
-		},
-		providerconfigtypes.OperatingSystemRHEL: {
-			awstypes.CPUArchitectureX86_64: {
-				// Be as precise as possible - otherwise we might get a nightly dev build
-				description: "Provided by Red Hat, Inc.",
-				// The AWS marketplace ID from RedHat
-				owner: "309956199498",
-			},
-			awstypes.CPUArchitectureARM64: {
-				// Be as precise as possible - otherwise we might get a nightly dev build
-				description: "Provided by Red Hat, Inc.",
-				// The AWS marketplace ID from RedHat
-				owner: "309956199498",
 			},
 		},
 		providerconfigtypes.OperatingSystemFlatcar: {
@@ -275,13 +223,6 @@ func getDefaultAMIID(ctx context.Context, log *zap.SugaredLogger, client *ec2.Cl
 		return "", fmt.Errorf("could not find Image for '%s' with arch '%s'", os, cpuArchitecture)
 	}
 
-	if os == providerconfigtypes.OperatingSystemRHEL {
-		imagesOut.Images, err = filterSupportedRHELImages(imagesOut.Images)
-		if err != nil {
-			return "", err
-		}
-	}
-
 	image := imagesOut.Images[0]
 	for _, v := range imagesOut.Images {
 		itime, _ := time.Parse(time.RFC3339, *image.CreationDate)
@@ -332,15 +273,7 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
 		return rootDevicePathSDA, nil
-	case providerconfigtypes.OperatingSystemCentOS:
-		return rootDevicePathSDA, nil
-	case providerconfigtypes.OperatingSystemRockyLinux:
-		return rootDevicePathSDA, nil
-	case providerconfigtypes.OperatingSystemRHEL:
-		return rootDevicePathSDA, nil
 	case providerconfigtypes.OperatingSystemFlatcar:
-		return rootDevicePathXVDA, nil
-	case providerconfigtypes.OperatingSystemAmazonLinux2:
 		return rootDevicePathXVDA, nil
 	}
 
@@ -1210,21 +1143,6 @@ func getInstanceCountForMachine(machine clusterv1alpha1.Machine, reservations []
 		}
 	}
 	return count
-}
-
-func filterSupportedRHELImages(images []ec2types.Image) ([]ec2types.Image, error) {
-	var filteredImages []ec2types.Image
-	for _, image := range images {
-		if strings.HasPrefix(*image.Name, "RHEL-8") {
-			filteredImages = append(filteredImages, image)
-		}
-	}
-
-	if filteredImages == nil {
-		return nil, errors.New("rhel 8 images are not found")
-	}
-
-	return filteredImages, nil
 }
 
 // waitForInstance waits for AWS instance to be created.

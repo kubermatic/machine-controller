@@ -44,12 +44,8 @@ var (
 	// supportedOS contains a list of operating systems the machine
 	// controller supports.
 	supportedOS = []providerconfigtypes.OperatingSystem{
-		providerconfigtypes.OperatingSystemAmazonLinux2,
-		providerconfigtypes.OperatingSystemCentOS,
 		providerconfigtypes.OperatingSystemFlatcar,
-		providerconfigtypes.OperatingSystemRHEL,
 		providerconfigtypes.OperatingSystemUbuntu,
-		providerconfigtypes.OperatingSystemRockyLinux,
 	}
 )
 

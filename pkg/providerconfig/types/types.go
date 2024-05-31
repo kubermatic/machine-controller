@@ -37,12 +37,8 @@ import (
 type OperatingSystem string
 
 const (
-	OperatingSystemUbuntu       OperatingSystem = "ubuntu"
-	OperatingSystemCentOS       OperatingSystem = "centos"
-	OperatingSystemAmazonLinux2 OperatingSystem = "amzn2"
-	OperatingSystemRHEL         OperatingSystem = "rhel"
-	OperatingSystemFlatcar      OperatingSystem = "flatcar"
-	OperatingSystemRockyLinux   OperatingSystem = "rockylinux"
+	OperatingSystemUbuntu  OperatingSystem = "ubuntu"
+	OperatingSystemFlatcar OperatingSystem = "flatcar"
 )
 
 type CloudProvider string
@@ -61,11 +57,7 @@ var (
 	// AllOperatingSystems is a slice containing all supported operating system identifiers.
 	AllOperatingSystems = []OperatingSystem{
 		OperatingSystemUbuntu,
-		OperatingSystemCentOS,
-		OperatingSystemAmazonLinux2,
-		OperatingSystemRHEL,
 		OperatingSystemFlatcar,
-		OperatingSystemRockyLinux,
 	}
 
 	// AllCloudProviders is a slice containing all supported cloud providers.

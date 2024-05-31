@@ -25,11 +25,7 @@ import (
 	"time"
 
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
-	"github.com/kubermatic/machine-controller/pkg/userdata/amzn2"
-	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
 	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
-	"github.com/kubermatic/machine-controller/pkg/userdata/rhel"
-	"github.com/kubermatic/machine-controller/pkg/userdata/rockylinux"
 	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 
 	corev1 "k8s.io/api/core/v1"
@@ -222,18 +218,10 @@ func DefaultOperatingSystemSpec(
 	externalBootstrapEnabled bool,
 ) (runtime.RawExtension, error) {
 	switch osys {
-	case providerconfigtypes.OperatingSystemAmazonLinux2:
-		return amzn2.DefaultConfig(operatingSystemSpec), nil
-	case providerconfigtypes.OperatingSystemCentOS:
-		return centos.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemFlatcar:
 		return flatcar.DefaultConfigForCloud(operatingSystemSpec, cloudProvider, externalBootstrapEnabled), nil
-	case providerconfigtypes.OperatingSystemRHEL:
-		return rhel.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemUbuntu:
 		return ubuntu.DefaultConfig(operatingSystemSpec), nil
-	case providerconfigtypes.OperatingSystemRockyLinux:
-		return rockylinux.DefaultConfig(operatingSystemSpec), nil
 	}
 
 	return operatingSystemSpec, errors.New("unknown OperatingSystem")

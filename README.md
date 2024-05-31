@@ -34,7 +34,7 @@
 ### What Works
 
 - Creation of worker nodes on AWS and Openstack
-- Using Ubuntu, Flatcar, CentOS 7 or Rocky Linux 8 distributions ([not all distributions work on all providers](/docs/operating-system.md))
+- Using Ubuntu and Flatcar distributions ([not all distributions work on all providers](/docs/operating-system.md))
 
 ### Supported Kubernetes Versions
 

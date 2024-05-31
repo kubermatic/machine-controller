@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 //
-// UserData plugin for CentOS.
+// UserData plugin for Flatcar.
 //
 
 package flatcar

@@ -43,15 +43,11 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	controllerutil "github.com/kubermatic/machine-controller/pkg/controller/util"
-	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
-	"github.com/kubermatic/machine-controller/pkg/rhsm"
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
-	"github.com/kubermatic/machine-controller/pkg/userdata/rhel"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -122,8 +118,6 @@ type Reconciler struct {
 	bootstrapTokenServiceAccountName *types.NamespacedName
 	skipEvictionAfter                time.Duration
 	nodeSettings                     NodeSettings
-	redhatSubscriptionManager        rhsm.RedHatSubscriptionManager
-	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
 
 	useExternalBootstrap              bool
 	nodePortRange                     string
@@ -208,8 +202,6 @@ func Add(
 		bootstrapTokenServiceAccountName: bootstrapTokenServiceAccountName,
 		skipEvictionAfter:                skipEvictionAfter,
 		nodeSettings:                     nodeSettings,
-		redhatSubscriptionManager:        rhsm.NewRedHatSubscriptionManager(log),
-		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(log),
 
 		useExternalBootstrap:              useExternalBootstrap,
 		nodePortRange:                     nodePortRange,
@@ -710,51 +702,6 @@ func (r *Reconciler) deleteCloudProviderInstance(ctx context.Context, log *zap.S
 		return &reconcile.Result{RequeueAfter: deletionRetryWaitPeriod}, nil
 	}
 
-	machineConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get provider config: %w", err)
-	}
-
-	if machineConfig.OperatingSystem == providerconfigtypes.OperatingSystemRHEL {
-		rhelConfig, err := rhel.LoadConfig(machineConfig.OperatingSystemSpec)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get rhel os specs: %w", err)
-		}
-
-		machineName := machine.Name
-		if machineConfig.CloudProvider == providerconfigtypes.CloudProviderAWS {
-			for _, address := range machine.Status.Addresses {
-				if address.Type == corev1.NodeInternalDNS {
-					machineName = address.Address
-				}
-			}
-		}
-
-		if rhelConfig.RHSMOfflineToken != "" {
-			if err := r.redhatSubscriptionManager.UnregisterInstance(ctx, rhelConfig.RHSMOfflineToken, machineName); err != nil {
-				return nil, fmt.Errorf("failed to delete subscription for machine name %s: %w", machine.Name, err)
-			}
-		}
-
-		if rhelConfig.RHELUseSatelliteServer {
-			if kuberneteshelper.HasFinalizer(machine, rhsm.RedhatSubscriptionFinalizer) {
-				err = r.satelliteSubscriptionManager.DeleteSatelliteHost(
-					ctx,
-					machineName,
-					rhelConfig.RHELSubscriptionManagerUser,
-					rhelConfig.RHELSubscriptionManagerPassword,
-					rhelConfig.RHELSatelliteServer)
-				if err != nil {
-					return nil, fmt.Errorf("failed to delete redhat satellite host for machine name %s: %w", machine.Name, err)
-				}
-			}
-		}
-
-		if err := rhsm.RemoveRHELSubscriptionFinalizer(machine, r.updateMachine); err != nil {
-			return nil, fmt.Errorf("failed to remove redhat subscription finalizer: %w", err)
-		}
-	}
-
 	return nil, r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		finalizers := sets.NewString(m.Finalizers...)
 		finalizers.Delete(FinalizerDeleteInstance)
@@ -906,11 +853,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				message := fmt.Sprintf("%v. Failed to create a machine.", err)
 				return nil, r.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to create machine at cloudprovider")
 			}
-			if providerConfig.OperatingSystem == providerconfigtypes.OperatingSystemRHEL {
-				if err := rhsm.AddRHELSubscriptionFinalizer(machine, r.updateMachine); err != nil {
-					return nil, fmt.Errorf("failed to add redhat subscription finalizer: %w", err)
-				}
-			}
+
 			r.recorder.Event(machine, corev1.EventTypeNormal, "Created", "Successfully created instance")
 			log.Info("Created machine at cloud provider")
 			// Reqeue the machine to make sure we notice if creation failed silently

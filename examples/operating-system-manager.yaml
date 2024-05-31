@@ -217,11 +217,7 @@ spec:
                   description: "OSType represent the operating system name e.g: ubuntu"
                   enum:
                     - flatcar
-                    - rhel
-                    - centos
                     - ubuntu
-                    - amzn2
-                    - rockylinux
                   type: string
                 osVersion:
                   description: OSVersion the version of the operating system
@@ -667,11 +663,7 @@ spec:
                   description: "OSType represent the operating system name e.g: ubuntu"
                   enum:
                     - flatcar
-                    - rhel
-                    - centos
                     - ubuntu
-                    - amzn2
-                    - rockylinux
                   type: string
                 osVersion:
                   description: OSVersion the version of the operating system
