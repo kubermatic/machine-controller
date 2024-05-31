@@ -317,6 +317,18 @@ func kubeletConfiguration(log *zap.SugaredLogger, clusterDomain string, clusterD
 		}
 	}
 
+	if maxParallelImagePulls, ok := kubeletConfigs[common.MaxParallelImagePullsKubeletConfig]; ok {
+		val, err := strconv.ParseInt(maxParallelImagePulls, 10, 32)
+		if err != nil || val < 1 {
+			// Instead of breaking the workflow, just print a warning and skip the configuration
+			log.Info("Skipping invalid MaxParallelImagePulls value for Kubelet configuration", "value", maxParallelImagePulls)
+		} else {
+			i32val := int32(val)
+			cfg.SerializeImagePulls = ptr.To(false)
+			cfg.MaxParallelImagePulls = &i32val
+		}
+	}
+
 	if enabled, ok := featureGates["SeccompDefault"]; ok && enabled {
 		cfg.SeccompDefault = ptr.To(true)
 	}
