@@ -47,7 +47,6 @@ const (
 	CloudProviderAWS       CloudProvider = "aws"
 	CloudProviderOpenstack CloudProvider = "openstack"
 	CloudProviderFake      CloudProvider = "fake"
-	CloudProviderBaremetal CloudProvider = "baremetal"
 	CloudProviderExternal  CloudProvider = "external"
 )
 
@@ -65,7 +64,6 @@ var (
 		CloudProviderAWS,
 		CloudProviderOpenstack,
 		CloudProviderFake,
-		CloudProviderBaremetal,
 	}
 )
 
