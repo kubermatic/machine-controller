@@ -21,7 +21,6 @@ import (
 
 	cloudprovidercache "github.com/kubermatic/machine-controller/pkg/cloudprovider/cache"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/fake"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -44,10 +43,6 @@ var (
 		},
 		providerconfigtypes.CloudProviderFake: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return fake.New(cvr)
-		},
-		providerconfigtypes.CloudProviderBaremetal: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-			// TODO(MQ): add a baremetal driver.
-			return baremetal.New(cvr)
 		},
 	}
 )

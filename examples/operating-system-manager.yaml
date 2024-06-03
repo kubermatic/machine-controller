@@ -201,7 +201,6 @@ spec:
                         - aws
                         - openstack
                         - fake
-                        - baremetal
                         - external
                       type: string
                     spec:
@@ -919,7 +918,6 @@ spec:
                           - aws
                           - openstack
                           - fake
-                          - baremetal
                           - external
                         type: string
                       spec:
