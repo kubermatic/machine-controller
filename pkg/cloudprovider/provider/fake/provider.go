@@ -95,10 +95,6 @@ func (p *provider) Get(_ context.Context, _ *zap.SugaredLogger, _ *clusterv1alph
 	return CloudProviderInstance{}, nil
 }
 
-func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (string, string, error) {
-	return "", "", nil
-}
-
 // Create creates a cloud instance according to the given machine.
 func (p *provider) Create(_ context.Context, _ *zap.SugaredLogger, _ *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, _ string) (instance.Instance, error) {
 	return CloudProviderInstance{}, nil

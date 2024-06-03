@@ -37,7 +37,6 @@ import (
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -57,7 +56,6 @@ const (
 	errInvalidDiskType       = "Disk type is missing or has wrong type, allowed are 'pd-standard' and 'pd-ssd'"
 	errRetrieveInstance      = "Failed to retrieve instance: %v"
 	errGotTooManyInstances   = "Got more than 1 instance matching the machine UID label"
-	errCloudConfig           = "Failed to convert cloud-config to string: %v"
 	errInsertInstance        = "Failed to insert instance: %v"
 	errDeleteInstance        = "Failed to delete instance: %v"
 	errSetLabels             = "Failed to set the labels for the new machine UID: %v"
@@ -182,32 +180,6 @@ func (p *Provider) get(ctx context.Context, machine *clusterv1alpha1.Machine) (*
 		projectID: cfg.projectID,
 		zone:      cfg.zone,
 	}, nil
-}
-
-// GetCloudConfig returns the cloud provider specific cloud-config for the kubelet.
-func (p *Provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
-	// Read configuration.
-	cfg, err := newConfig(p.resolver, spec.ProviderSpec)
-	if err != nil {
-		return "", "", newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
-	}
-	// Init cloud configuration.
-	cc := &gcetypes.CloudConfig{
-		Global: gcetypes.GlobalOpts{
-			ProjectID:      cfg.projectID,
-			LocalZone:      cfg.zone,
-			MultiZone:      cfg.multizone,
-			Regional:       cfg.regional,
-			NetworkName:    cfg.network,
-			SubnetworkName: cfg.subnetwork,
-			NodeTags:       cfg.tags,
-		},
-	}
-	config, err = cc.AsString()
-	if err != nil {
-		return "", "", newError(common.InvalidConfigurationMachineError, errCloudConfig, err)
-	}
-	return config, "gce", nil
 }
 
 // Create inserts a cloud instance according to the given machine.

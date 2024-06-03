@@ -866,45 +866,6 @@ func (p *provider) MigrateUID(_ context.Context, log *zap.SugaredLogger, machine
 	return nil
 }
 
-func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
-	c, _, _, err := p.getConfig(spec.ProviderSpec)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	cc := &openstacktypes.CloudConfig{
-		Global: openstacktypes.GlobalOpts{
-			AuthURL:                     c.IdentityEndpoint,
-			Username:                    c.Username,
-			Password:                    c.Password,
-			DomainName:                  c.DomainName,
-			ProjectName:                 c.ProjectName,
-			ProjectID:                   c.ProjectID,
-			Region:                      c.Region,
-			ApplicationCredentialSecret: c.ApplicationCredentialSecret,
-			ApplicationCredentialID:     c.ApplicationCredentialID,
-		},
-		LoadBalancer: openstacktypes.LoadBalancerOpts{
-			ManageSecurityGroups: true,
-		},
-		BlockStorage: openstacktypes.BlockStorageOpts{
-			BSVersion:       "auto",
-			TrustDevicePath: c.TrustDevicePath,
-			IgnoreVolumeAZ:  true,
-		},
-		Version: spec.Versions.Kubelet,
-	}
-	if c.NodeVolumeAttachLimit != nil {
-		cc.BlockStorage.NodeVolumeAttachLimit = *c.NodeVolumeAttachLimit
-	}
-
-	s, err := openstacktypes.CloudConfigToString(cc)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to convert the cloud-config to string: %w", err)
-	}
-	return s, "openstack", nil
-}
-
 func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 

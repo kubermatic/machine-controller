@@ -200,10 +200,6 @@ func (p *provider) Get(_ context.Context, _ *zap.SugaredLogger, machine *cluster
 	return nil, fmt.Errorf("instance %v is not ready", foundInstance.InstanceId)
 }
 
-func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
-	return "", "", nil
-}
-
 func (p *provider) Create(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {

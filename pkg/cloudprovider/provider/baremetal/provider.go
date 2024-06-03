@@ -213,10 +213,6 @@ func (p provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *cluste
 	}, nil
 }
 
-func (p provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
-	return "", "", nil
-}
-
 func (p provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {

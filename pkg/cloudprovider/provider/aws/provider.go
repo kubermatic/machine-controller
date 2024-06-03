@@ -917,28 +917,6 @@ func (p *provider) get(ctx context.Context, machine *clusterv1alpha1.Machine) (*
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
-	c, _, _, err := p.getConfig(spec.ProviderSpec)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	cc := &awstypes.CloudConfig{
-		Global: awstypes.GlobalOpts{
-			VPC:      c.VpcID,
-			SubnetID: c.SubnetID,
-			Zone:     c.AvailabilityZone,
-		},
-	}
-
-	s, err := awstypes.CloudConfigToString(cc)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to convert cloud-config to string: %w", err)
-	}
-
-	return s, "aws", nil
-}
-
 func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 

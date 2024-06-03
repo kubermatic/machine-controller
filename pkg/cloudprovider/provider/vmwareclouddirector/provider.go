@@ -309,10 +309,6 @@ func (p *provider) Get(_ context.Context, _ *zap.SugaredLogger, machine *cluster
 	return p.getInstance(vm)
 }
 
-func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
-	return "", "", nil
-}
-
 func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *vcdtypes.RawConfig, error) {
 	if provSpec.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")

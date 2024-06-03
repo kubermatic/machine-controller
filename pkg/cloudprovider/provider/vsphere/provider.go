@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 
@@ -591,68 +590,6 @@ func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 
 func (p *provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, _ *clusterv1alpha1.Machine, _ ktypes.UID) error {
 	return nil
-}
-
-func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
-	c, _, _, err := p.getConfig(spec.ProviderSpec)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	passedURL := c.VSphereURL
-	// Required because url.Parse returns an empty string for the hostname if there was no schema
-	if !strings.HasPrefix(passedURL, "https://") {
-		passedURL = "https://" + passedURL
-	}
-
-	u, err := url.Parse(passedURL)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to parse '%s' as url: %w", passedURL, err)
-	}
-
-	workingDir := c.Folder
-	// Default to basedir
-	if workingDir == "" {
-		workingDir = fmt.Sprintf("/%s/vm", c.Datacenter)
-	}
-
-	datastore := c.Datastore
-	if datastore == "" {
-		datastore = c.DatastoreCluster
-	}
-
-	cc := &vspheretypes.CloudConfig{
-		Global: vspheretypes.GlobalOpts{
-			User:         c.Username,
-			Password:     c.Password,
-			InsecureFlag: c.AllowInsecure,
-			VCenterPort:  u.Port(),
-		},
-		Disk: vspheretypes.DiskOpts{
-			SCSIControllerType: "pvscsi",
-		},
-		Workspace: vspheretypes.WorkspaceOpts{
-			Datacenter:       c.Datacenter,
-			VCenterIP:        u.Hostname(),
-			DefaultDatastore: datastore,
-			Folder:           workingDir,
-		},
-		VirtualCenter: map[string]*vspheretypes.VirtualCenterConfig{
-			u.Hostname(): {
-				VCenterPort: u.Port(),
-				Datacenters: c.Datacenter,
-				User:        c.Username,
-				Password:    c.Password,
-			},
-		},
-	}
-
-	s, err := cc.String()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to convert the cloud-config to string: %w", err)
-	}
-
-	return s, "vsphere", nil
 }
 
 func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {

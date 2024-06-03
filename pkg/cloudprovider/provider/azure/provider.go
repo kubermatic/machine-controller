@@ -932,44 +932,6 @@ func (p *provider) get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 	return &azureVM{vm: vm, ipAddresses: ipAddresses, status: status}, nil
 }
 
-func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
-	c, _, err := p.getConfig(spec.ProviderSpec)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	var avSet string
-	if c.AssignAvailabilitySet == nil && c.AvailabilitySet != "" ||
-		c.AssignAvailabilitySet != nil && *c.AssignAvailabilitySet && c.AvailabilitySet != "" {
-		avSet = c.AvailabilitySet
-	}
-
-	cc := &azuretypes.CloudConfig{
-		Cloud:                      "AZUREPUBLICCLOUD",
-		TenantID:                   c.TenantID,
-		SubscriptionID:             c.SubscriptionID,
-		AADClientID:                c.ClientID,
-		AADClientSecret:            c.ClientSecret,
-		ResourceGroup:              c.ResourceGroup,
-		VnetResourceGroup:          c.VNetResourceGroup,
-		Location:                   c.Location,
-		VNetName:                   c.VNetName,
-		SubnetName:                 c.SubnetName,
-		LoadBalancerSku:            c.LoadBalancerSku,
-		RouteTableName:             c.RouteTableName,
-		PrimaryAvailabilitySetName: avSet,
-		SecurityGroupName:          c.SecurityGroupName,
-		UseInstanceMetadata:        true,
-	}
-
-	s, err := azuretypes.CloudConfigToString(cc)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to convert cloud-config to string: %w", err)
-	}
-
-	return s, "azure", nil
-}
-
 func validateDiskSKUs(_ context.Context, c *config, sku compute.ResourceSku) error {
 	if c.OSDiskSKU != nil || c.DataDiskSKU != nil {
 		if c.OSDiskSKU != nil {

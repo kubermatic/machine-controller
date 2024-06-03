@@ -526,10 +526,6 @@ func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 	return &instance, nil
 }
 
-func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (string, string, error) {
-	return "", "", nil
-}
-
 func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (isDeleted bool, retErr error) {
 	if inst, err := p.Get(ctx, log, machine, data); err != nil {
 		if cloudprovidererrors.IsNotFound(err) {

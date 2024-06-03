@@ -29,12 +29,6 @@ Get(machine *v1alpha1.Machine) (instance.Instance, error)
 In case the instance cannot be found, the returned error has to be `github.com/kubermatic/machine-controller/pkg/cloudprovider/errors.ErrInstanceNotFound` for proper evaluation by the machine controller.
 
 ```go
-GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error)
-```
-
-`GetCloudConfig` will return the cloud provider specific cloud-config, which gets consumed by the kubelet.
-
-```go
 Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error)
 ```
 

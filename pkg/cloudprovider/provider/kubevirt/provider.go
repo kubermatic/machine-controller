@@ -543,20 +543,6 @@ func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.Machin
 	return spec, nil
 }
 
-func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
-	c, _, err := p.getConfig(spec.ProviderSpec)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	cc := kubevirttypes.CloudConfig{
-		Namespace: c.Namespace,
-	}
-	ccs, err := cc.String()
-
-	return ccs, string(providerconfigtypes.CloudProviderExternal), err
-}
-
 func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
