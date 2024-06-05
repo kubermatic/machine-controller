@@ -157,8 +157,16 @@ if [ -z "${DISABLE_CLUSTER_EXPOSER:-}" ]; then
     cd /tmp/kubermatic
     echodate "Cloning cluster exposer"
     KKP_REPO_URL="${KKP_REPO_URL:-https://github.com/kubermatic/kubermatic.git}"
-    KKP_REPO_TAG="${KKP_REPO_BRANCH:-main}"
-    git clone --depth 1 --branch "${KKP_REPO_TAG}" "${KKP_REPO_URL}" .
+
+    # This is pinned to the latest release branch as of 2024-June, just so we do not forget
+    # to pin it whenever a new machine-controller release branch is created. The
+    # cluster-exposer rarely ever changes and it's easier to use an old(er) version than
+    # to forget to re-pin this for every new MC release.
+    KKP_REPO_TAG="${KKP_REPO_BRANCH:-release/v2.25}"
+    (
+      set -x
+      git clone --depth 1 --branch "${KKP_REPO_TAG}" "${KKP_REPO_URL}" .
+    )
 
     echodate "Building cluster exposer"
     CGO_ENABLED=0 go build --tags ce -v -o /tmp/clusterexposer ./pkg/test/clusterexposer/cmd
