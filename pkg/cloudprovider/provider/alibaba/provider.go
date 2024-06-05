@@ -347,10 +347,6 @@ func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 }
 
 func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	if provSpec.Value == nil {
-		return nil, nil, errors.New("machine.spec.providerconfig.value is nil")
-	}
-
 	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode providers config: %w", err)
