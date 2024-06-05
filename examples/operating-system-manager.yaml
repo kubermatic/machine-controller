@@ -1,4 +1,4 @@
-# Source: https://github.com/kubermatic/operating-system-manager/tree/v0.5.0/deploy
+# Source: https://github.com/kubermatic/operating-system-manager/tree/v1.4.3/deploy
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -990,7 +990,7 @@ spec:
     spec:
       serviceAccountName: operating-system-manager-webhook
       containers:
-        - image: quay.io/kubermatic/operating-system-manager:v1.4.1
+        - image: quay.io/kubermatic/operating-system-manager:v1.4.3
           imagePullPolicy: Always
           name: webhook
           command:
@@ -1318,7 +1318,7 @@ spec:
     spec:
       serviceAccountName: operating-system-manager
       containers:
-        - image: quay.io/kubermatic/operating-system-manager:v1.4.1
+        - image: quay.io/kubermatic/operating-system-manager:v1.4.3
           imagePullPolicy: Always
           name: operating-system-manager
           command:
