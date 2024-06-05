@@ -24,6 +24,10 @@ fi
 export MC_VERSION="${MC_VERSION:-$(git rev-parse HEAD)}"
 OSM_REPO_URL="${OSM_REPO_URL:-https://github.com/kubermatic/operating-system-manager.git}"
 OSM_REPO_TAG="${OSM_REPO_TAG:-main}"
+OSM_TAG="${OSM_TAG:-}"
+
+# This needs to be set per minor release of Machine Controller and is only required in release branches.
+MAJOR_MINOR_OSM="${MAJOR_MINOR_OSM:-v1.5}"
 
 # cert-manager is required by OSM for generating TLS Certificates
 echodate "Installing cert-manager"
@@ -67,17 +71,24 @@ if [ ! -f machine-controller-deployed ]; then
   protokol --kubeconfig "$KUBECONFIG" --flat --output "$ARTIFACTS/logs" --namespace kube-system 'machine-controller-*' > /dev/null 2>&1 &
 fi
 
-OSM_TMP_DIR=/tmp/osm
-echodate "Clone OSM respository"
-(
-  # Clone OSM repo
-  mkdir -p $OSM_TMP_DIR
-  echodate "Cloning cluster exposer"
-  git clone --depth 1 --branch "${OSM_REPO_TAG}" "${OSM_REPO_URL}" $OSM_TMP_DIR
-)
+if [[ "${PULL_BASE_REF:-main}" =~ release/v[0-9]+.* ]]; then
+  echodate "Fetching latest patch release for OSM $MAJOR_MINOR_OSM"
+  releases=$(curl -s "https://api.github.com/repos/kubermatic/operating-system-manager/releases")
+  OSM_TAG=$(echo "$releases" | jq -r '[.[] | select(.tag_name | startswith("'"$MAJOR_MINOR_OSM."'"))] | max_by(.tag_name | split(".")[-1] | tonumber) | .tag_name')
+else
+  # Not a release branch so we have to clone and find the latest commit for OSM
+  OSM_TMP_DIR=/tmp/osm
+  echodate "Clone OSM respository"
+  (
+    # Clone OSM repo
+    mkdir -p $OSM_TMP_DIR
+    echodate "Cloning cluster exposer"
+    git clone --depth 1 --branch "${OSM_REPO_TAG}" "${OSM_REPO_URL}" $OSM_TMP_DIR
+  )
+  OSM_TAG="$(git -C $OSM_TMP_DIR rev-parse HEAD)"
+fi
 
 (
-  OSM_TAG="$(git -C $OSM_TMP_DIR rev-parse HEAD)"
   echodate "Installing operating-system-manager with image: $OSM_TAG"
 
   # In release branches we'll have this pinned to a specific semver instead of latest.
