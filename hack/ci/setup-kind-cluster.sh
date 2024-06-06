@@ -150,22 +150,9 @@ if [ -z "${DISABLE_CLUSTER_EXPOSER:-}" ]; then
 
   # Start cluster exposer, which will expose services from within kind as
   # a NodePort service on the host
-  echodate "Starting cluster exposer"
-  (
-    # Clone kubermatic repo to build clusterexposer
-    mkdir -p /tmp/kubermatic
-    cd /tmp/kubermatic
-    echodate "Cloning cluster exposer"
-    KKP_REPO_URL="${KKP_REPO_URL:-https://github.com/kubermatic/kubermatic.git}"
-    KKP_REPO_TAG="${KKP_REPO_BRANCH:-main}"
-    git clone --depth 1 --branch "${KKP_REPO_TAG}" "${KKP_REPO_URL}" .
-
-    echodate "Building cluster exposer"
-    CGO_ENABLED=0 go build --tags ce -v -o /tmp/clusterexposer ./pkg/test/clusterexposer/cmd
-  )
-
   export KUBECONFIG=~/.kube/config
-  /tmp/clusterexposer \
+  echodate "Starting cluster exposer"
+  clusterexposer \
     --kubeconfig-inner "$KUBECONFIG" \
     --kubeconfig-outer "/etc/kubeconfig/kubeconfig" \
     --build-id "$PROW_JOB_ID" &> /var/log/clusterexposer.log &
