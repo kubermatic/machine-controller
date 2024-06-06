@@ -21,7 +21,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"net/http/pprof"
 	"strings"
@@ -36,7 +35,6 @@ import (
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	clusterinfo "github.com/kubermatic/machine-controller/pkg/clusterinfo"
-	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	machinedeploymentcontroller "github.com/kubermatic/machine-controller/pkg/controller/machinedeployment"
 	machinesetcontroller "github.com/kubermatic/machine-controller/pkg/controller/machineset"
@@ -77,23 +75,32 @@ var (
 	enableLeaderElection             bool
 	leaderElectionNamespace          string
 
-	useOSM               bool
-	useExternalBootstrap bool
-
-	nodeCSRApprover                   bool
-	nodeHTTPProxy                     string
-	nodeNoProxy                       string
-	nodeInsecureRegistries            string
-	nodeRegistryMirrors               string
-	nodePauseImage                    string
-	nodeContainerRuntime              string
-	podCIDR                           string
-	nodePortRange                     string
-	nodeRegistryCredentialsSecret     string
-	nodeContainerdVersion             string
-	nodeContainerdRegistryMirrors     = containerruntime.RegistryMirrorsFlags{}
+	useExternalBootstrap              bool
 	overrideBootstrapKubeletAPIServer string
+	nodeCSRApprover                   bool
+	nodePortRange                     string
+
+	nodeHTTPProxy                 string
+	nodeNoProxy                   string
+	nodeInsecureRegistries        string
+	nodeRegistryMirrors           string
+	nodePauseImage                string
+	nodeContainerRuntime          string
+	nodeRegistryCredentialsSecret string
+	nodeContainerdVersion         string
+	nodeContainerdRegistryMirrors sliceVar
 )
+
+type sliceVar []string
+
+func (s *sliceVar) String() string {
+	return strings.Join(*s, ",")
+}
+
+func (s *sliceVar) Set(value string) error {
+	*s = append(*s, value)
+	return nil
+}
 
 const (
 	defaultLeaderElectionNamespace = "kube-system"
@@ -170,32 +177,26 @@ func main() {
 	flag.StringVar(&bootstrapTokenServiceAccountName, "bootstrap-token-service-account-name", "", "When set use the service account token from this SA as bootstrap token instead of creating a temporary one. Passed in namespace/name format")
 	flag.BoolVar(&profiling, "enable-profiling", false, "when set, enables the endpoints on the http server under /debug/pprof/")
 	flag.DurationVar(&skipEvictionAfter, "skip-eviction-after", 2*time.Hour, "Skips the eviction if a machine is not gone after the specified duration.")
-	flag.StringVar(&nodeHTTPProxy, "node-http-proxy", "", "If set, it configures the 'HTTP_PROXY' & 'HTTPS_PROXY' environment variable on the nodes.")
-	flag.StringVar(&nodeNoProxy, "node-no-proxy", ".svc,.cluster.local,localhost,127.0.0.1", "If set, it configures the 'NO_PROXY' environment variable on the nodes.")
-	flag.StringVar(&nodeInsecureRegistries, "node-insecure-registries", "", "Comma separated list of registries which should be configured as insecure on the container runtime")
-	flag.StringVar(&nodeRegistryMirrors, "node-registry-mirrors", "", "Comma separated list of Docker image mirrors")
-	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
-	flag.String("node-kubelet-repository", "quay.io/kubermatic/kubelet", "[NO-OP] Repository for the kubelet container. Has no effects.")
-	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "containerd", "container-runtime to deploy")
-	flag.StringVar(&nodeContainerdVersion, "node-containerd-version", "", "version of containerd to deploy")
-	flag.Var(&nodeContainerdRegistryMirrors, "node-containerd-registry-mirrors", "Configure registry mirrors endpoints. Can be used multiple times to specify multiple mirrors")
-	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
-	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
-	flag.StringVar(&podCIDR, "pod-cidr", "172.25.0.0/16", "WARNING: flag is unused, kept only for backwards compatibility")
-	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
-	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that contains auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. See doc at https://github.com/kubermaric/machine-controller/blob/main/docs/registry-authentication.md")
-	flag.BoolVar(&useOSM, "use-osm", false, "DEPRECATED: use osm controller for node bootstrap [use use-external-bootstrap instead]")
 	flag.BoolVar(&useExternalBootstrap, "use-external-bootstrap", true, "DEPRECATED: This flag is no-op and will have no effect since machine-controller only supports external bootstrap mechanism. This flag is only kept for backwards compatibility and will be removed in the future")
 	flag.StringVar(&overrideBootstrapKubeletAPIServer, "override-bootstrap-kubelet-apiserver", "", "Override for the API server address used in worker nodes bootstrap-kubelet.conf")
+	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
+	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
+	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
+
+	flag.StringVar(&nodeHTTPProxy, "node-http-proxy", "", "DEPRECATED: This flag is no-op and will have no effect. This value should be configured in the user-data provider, such as operating-system-manager.")
+	flag.StringVar(&nodeNoProxy, "node-no-proxy", "", "DEPRECATED: This flag is no-op and will have no effect. This value should be configured in the user-data provider, such as operating-system-manager.")
+	flag.StringVar(&nodeInsecureRegistries, "node-insecure-registries", "", "DEPRECATED: This flag is no-op and will have no effect. This value should be configured in the user-data provider, such as operating-system-manager.")
+	flag.StringVar(&nodeRegistryMirrors, "node-registry-mirrors", "", "DEPRECATED: This flag is no-op and will have no effect. This value should be configured in the user-data provider, such as operating-system-manager.")
+	flag.StringVar(&nodePauseImage, "node-pause-image", "", "DEPRECATED: This flag is no-op and will have no effect. This value should be configured in the user-data provider, such as operating-system-manager.")
+	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "", "DEPRECATED: This flag is no-op and will have no effect. This value should be configured in the user-data provider, such as operating-system-manager.")
+	flag.StringVar(&nodeContainerdVersion, "node-containerd-version", "", "DEPRECATED: This flag is no-op and will have no effect. This value should be configured in the user-data provider, such as operating-system-manager.")
+	flag.Var(&nodeContainerdRegistryMirrors, "node-containerd-registry-mirrors", "DEPRECATED: This flag is no-op and will have no effect. This value should be configured in the user-data provider, such as operating-system-manager.")
+	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "DEPRECATED: This flag is no-op and will have no effect. This value should be configured in the user-data provider, such as operating-system-manager.")
 
 	flag.Parse()
 
 	if err := logFlags.Validate(); err != nil {
 		log.Fatalf("Invalid options: %v", err)
-	}
-
-	if nodeContainerRuntime != "containerd" {
-		log.Fatalf("%s not supported; containerd is the only supported container runtime", nodeContainerRuntime)
 	}
 
 	rawLog := machinecontrollerlog.New(logFlags.Debug, logFlags.Format)
@@ -206,11 +207,6 @@ func main() {
 
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
 	masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
-
-	clusterDNSIPs, err := parseClusterDNSIPs(clusterDNSIPs)
-	if err != nil {
-		log.Fatalw("Invalid cluster dns specified", zap.Error(err))
-	}
 
 	var parsedJoinClusterTimeout *time.Duration
 	if joinClusterTimeout != "" {
@@ -261,38 +257,16 @@ func main() {
 	ctrlMetrics := machinecontroller.NewMachineControllerMetrics()
 	ctrlMetrics.MustRegister(metrics.Registry)
 
-	containerRuntimeOpts := containerruntime.Opts{
-		ContainerRuntime:          nodeContainerRuntime,
-		ContainerdVersion:         nodeContainerdVersion,
-		ContainerdRegistryMirrors: nodeContainerdRegistryMirrors,
-		InsecureRegistries:        nodeInsecureRegistries,
-		PauseImage:                nodePauseImage,
-		RegistryMirrors:           nodeRegistryMirrors,
-		RegistryCredentialsSecret: nodeRegistryCredentialsSecret,
-	}
-	containerRuntimeConfig, err := containerruntime.BuildConfig(containerRuntimeOpts)
-	if err != nil {
-		log.Fatalw("Failed to generate container runtime config", zap.Error(err))
-	}
-
 	runOptions := controllerRunOptions{
-		log:                  log,
-		kubeClient:           kubeClient,
-		kubeconfigProvider:   kubeconfigProvider,
-		name:                 name,
-		cfg:                  machineCfg,
-		metrics:              ctrlMetrics,
-		prometheusRegisterer: metrics.Registry,
-		skipEvictionAfter:    skipEvictionAfter,
-		nodeCSRApprover:      nodeCSRApprover,
-		node: machinecontroller.NodeSettings{
-			ClusterDNSIPs:                clusterDNSIPs,
-			HTTPProxy:                    nodeHTTPProxy,
-			NoProxy:                      nodeNoProxy,
-			PauseImage:                   nodePauseImage,
-			RegistryCredentialsSecretRef: nodeRegistryCredentialsSecret,
-			ContainerRuntime:             containerRuntimeConfig,
-		},
+		log:                               log,
+		kubeClient:                        kubeClient,
+		kubeconfigProvider:                kubeconfigProvider,
+		name:                              name,
+		cfg:                               machineCfg,
+		metrics:                           ctrlMetrics,
+		prometheusRegisterer:              metrics.Registry,
+		skipEvictionAfter:                 skipEvictionAfter,
+		nodeCSRApprover:                   nodeCSRApprover,
 		nodePortRange:                     nodePortRange,
 		overrideBootstrapKubeletAPIServer: overrideBootstrapKubeletAPIServer,
 	}
@@ -456,17 +430,4 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 	bs.opt.log.Info("Machine-controller startup complete")
 
 	return nil
-}
-
-func parseClusterDNSIPs(s string) ([]net.IP, error) {
-	var ips []net.IP
-	sips := strings.Split(s, ",")
-	for _, sip := range sips {
-		ip := net.ParseIP(strings.TrimSpace(sip))
-		if ip == nil {
-			return nil, fmt.Errorf("failed to parse IP %q", sip)
-		}
-		ips = append(ips, ip)
-	}
-	return ips, nil
 }

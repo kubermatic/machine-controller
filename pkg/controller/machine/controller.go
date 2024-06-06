@@ -39,7 +39,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
-	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	controllerutil "github.com/kubermatic/machine-controller/pkg/controller/util"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
@@ -140,8 +139,6 @@ type NodeSettings struct {
 	KubeletFeatureGates map[string]bool
 	// Used to set kubelet flag --cloud-provider=external
 	ExternalCloudProvider bool
-	// container runtime to install
-	ContainerRuntime containerruntime.Config
 	// Registry credentials secret object reference
 	RegistryCredentialsSecretRef string
 }

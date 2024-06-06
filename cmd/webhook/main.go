@@ -42,7 +42,6 @@ type options struct {
 	admissionTLSCertPath    string
 	admissionTLSKeyPath     string
 	caBundleFile            string
-	useOSM                  bool
 	useExternalBootstrap    bool
 	namespace               string
 	workerClusterKubeconfig string
@@ -70,8 +69,6 @@ func main() {
 	flag.StringVar(&opt.workerClusterKubeconfig, "worker-cluster-kubeconfig", "", "Path to kubeconfig of worker/user cluster where machines and machinedeployments exist. If not specified, value from --kubeconfig or in-cluster config will be used")
 	flag.StringVar(&opt.versionConstraint, "kubernetes-version-constraints", ">=0.0.0", "")
 
-	// OSM specific flags
-	flag.BoolVar(&opt.useOSM, "use-osm", false, "DEPRECATED: osm controller is enabled for node bootstrap [use use-external-bootstrap instead]")
 	flag.BoolVar(&opt.useExternalBootstrap, "use-external-bootstrap", true, "DEPRECATED: This flag is no-op and will have no effect since machine-controller only supports external bootstrap mechanism. This flag is only kept for backwards compatibility and will be removed in the future")
 
 	flag.Parse()
