@@ -343,10 +343,6 @@ func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clust
 	return p.getPhysicalMachine(ctx, c, machine)
 }
 
-func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
-	return "", "", nil
-}
-
 func (p *provider) waitForInstanceCreation(ctx context.Context, c *Config, instance instance.Instance, machine *clusterv1alpha1.Machine) error {
 	return wait.PollUntilContextTimeout(ctx, createCheckPeriod, createCheckTimeout, false, func(ctx context.Context) (bool, error) {
 		var err error

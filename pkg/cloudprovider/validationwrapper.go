@@ -75,11 +75,6 @@ func (w *cachingValidationWrapper) Get(ctx context.Context, log *zap.SugaredLogg
 	return w.actualProvider.Get(ctx, log, machine, data)
 }
 
-// GetCloudConfig just calls the underlying cloudproviders GetCloudConfig.
-func (w *cachingValidationWrapper) GetCloudConfig(spec v1alpha1.MachineSpec) (string, string, error) {
-	return w.actualProvider.GetCloudConfig(spec)
-}
-
 // Create just calls the underlying cloudproviders Create.
 func (w *cachingValidationWrapper) Create(ctx context.Context, log *zap.SugaredLogger, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	return w.actualProvider.Create(ctx, log, machine, data, userdata)

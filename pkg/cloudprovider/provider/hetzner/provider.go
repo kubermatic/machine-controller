@@ -521,10 +521,6 @@ func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machi
 	return nil
 }
 
-func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
-	return "", "", nil
-}
-
 func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 

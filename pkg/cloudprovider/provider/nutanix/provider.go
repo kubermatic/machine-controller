@@ -422,11 +422,6 @@ func (p *provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, _ *cluste
 	return nil
 }
 
-// GetCloudConfig returns an empty cloud configuration for Nutanix as no CCM exists.
-func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
-	return "", "", nil
-}
-
 func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 

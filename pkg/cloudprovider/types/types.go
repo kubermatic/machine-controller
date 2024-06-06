@@ -51,9 +51,6 @@ type Provider interface {
 	// In case the instance cannot be found, github.com/kubermatic/machine-controller/pkg/cloudprovider/errors/ErrInstanceNotFound will be returned
 	Get(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *ProviderData) (instance.Instance, error)
 
-	// GetCloudConfig will return the cloud provider specific cloud-config, which gets consumed by the kubelet
-	GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error)
-
 	// Create creates a cloud instance according to the given machine
 	Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *ProviderData, userdata string) (instance.Instance, error)
 

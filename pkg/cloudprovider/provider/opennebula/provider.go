@@ -157,10 +157,6 @@ func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec cluste
 	return nil
 }
 
-func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (string, string, error) {
-	return "", "", nil
-}
-
 func (p *provider) Create(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
