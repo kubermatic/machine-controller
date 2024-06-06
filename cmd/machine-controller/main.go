@@ -199,10 +199,6 @@ func main() {
 		log.Fatalf("Invalid options: %v", err)
 	}
 
-	if nodeContainerRuntime != "containerd" {
-		log.Fatalf("%s not supported; containerd is the only supported container runtime", nodeContainerRuntime)
-	}
-
 	rawLog := machinecontrollerlog.New(logFlags.Debug, logFlags.Format)
 	log := rawLog.Sugar()
 
