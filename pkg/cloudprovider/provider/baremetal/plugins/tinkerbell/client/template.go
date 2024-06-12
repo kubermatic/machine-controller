@@ -143,8 +143,7 @@ func getTemplate(osImageURL, hegelURL string) (string, error) {
 }
 
 func createWipeDiskAction() Action {
-	wipeScript := `
-apk add --no-cache util-linux
+	wipeScript := `apk add --no-cache util-linux
 disks="{{ .Hardware.Disks }}"
 disks=${disks:1:-1}
 for disk in $disks; do

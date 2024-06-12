@@ -28,14 +28,14 @@ import (
 
 // HardwareClient manages Tinkerbell hardware resources across two clusters.
 type HardwareClient struct {
-	KubeClient       client.Client // Client for the Machine Controller Cluster
+	//KubeClient       client.Client // Client for the Machine Controller Cluster
 	TinkerbellClient client.Client // Client for the Tinkerbell Cluster
 }
 
 // NewHardwareClient creates a new instance of HardwareClient.
-func NewHardwareClient(kubeClient, tinkerbellClient client.Client) *HardwareClient {
+func NewHardwareClient(tinkerbellClient client.Client) *HardwareClient {
 	return &HardwareClient{
-		KubeClient:       kubeClient,
+		//KubeClient:       kubeClient,
 		TinkerbellClient: tinkerbellClient,
 	}
 }
@@ -45,7 +45,7 @@ func NewHardwareClient(kubeClient, tinkerbellClient client.Client) *HardwareClie
 func (h *HardwareClient) SelectAvailableHardware(ctx context.Context, hardwareRefs []types.NamespacedName) (*tinkv1alpha1.Hardware, error) {
 	for _, ref := range hardwareRefs {
 		var hardware tinkv1alpha1.Hardware
-		if err := h.KubeClient.Get(ctx, client.ObjectKey{Namespace: ref.Namespace, Name: ref.Name}, &hardware); err != nil {
+		if err := h.TinkerbellClient.Get(ctx, client.ObjectKey{Namespace: ref.Namespace, Name: ref.Name}, &hardware); err != nil {
 			return nil, fmt.Errorf("failed to get hardware '%s' in namespace '%s': %w", ref.Name, ref.Namespace, err)
 		}
 
@@ -63,7 +63,7 @@ func (h *HardwareClient) SelectAvailableHardware(ctx context.Context, hardwareRe
 func (h *HardwareClient) GetHardware(ctx context.Context, hardwareRef types.NamespacedName) (*tinkv1alpha1.Hardware, error) {
 
 	var hardware tinkv1alpha1.Hardware
-	if err := h.KubeClient.Get(ctx, client.ObjectKey{Namespace: hardwareRef.Namespace, Name: hardwareRef.Name}, &hardware); err != nil {
+	if err := h.TinkerbellClient.Get(ctx, client.ObjectKey{Namespace: hardwareRef.Namespace, Name: hardwareRef.Name}, &hardware); err != nil {
 		return nil, fmt.Errorf("failed to get hardware '%s' in namespace '%s': %w", hardwareRef.Name, hardwareRef.Namespace, err)
 	}
 
@@ -81,7 +81,7 @@ func (h *HardwareClient) SetHardwareID(ctx context.Context, hardware *tinkv1alph
 	hardware.Spec.Metadata.Instance.ID = newID
 
 	// Update the hardware object in the cluster
-	if err := h.KubeClient.Update(ctx, hardware); err != nil {
+	if err := h.TinkerbellClient.Update(ctx, hardware); err != nil {
 		return fmt.Errorf("failed to update hardware ID for '%s': %w", hardware.Name, err)
 	}
 
@@ -107,7 +107,7 @@ func (h *HardwareClient) CreateHardwareOnTinkCluster(ctx context.Context, hardwa
 func (h *HardwareClient) GetHardwareWithID(ctx context.Context, uid string) (*tinkv1alpha1.Hardware, error) {
 	// Step 1: List all hardware in the cluster
 	var hardwares tinkv1alpha1.HardwareList
-	if err := h.KubeClient.List(ctx, &hardwares); err != nil {
+	if err := h.TinkerbellClient.List(ctx, &hardwares); err != nil {
 		return nil, fmt.Errorf("failed to list hardware: %w", err)
 	}
 
@@ -129,7 +129,7 @@ func (h *HardwareClient) SetHardwareUserData(ctx context.Context, hardware *tink
 	hardware.Spec.UserData = &userdata
 
 	// Update the hardware object in the cluster
-	if err := h.KubeClient.Update(ctx, hardware); err != nil {
+	if err := h.TinkerbellClient.Update(ctx, hardware); err != nil {
 		return fmt.Errorf("failed to update hardware UserData for '%s': %w", hardware.Name, err)
 	}
 
