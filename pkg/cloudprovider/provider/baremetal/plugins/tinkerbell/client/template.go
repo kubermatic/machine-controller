@@ -69,7 +69,6 @@ func NewTemplateClient(k8sClient client.Client) *TemplateClient {
 }
 
 func (t *TemplateClient) Delete(ctx context.Context, namespacedName types.NamespacedName) error {
-
 	template := &tinkv1alpha1.Template{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namespacedName.Name,
@@ -110,7 +109,6 @@ func (t *TemplateClient) CreateTemplate(ctx context.Context, namespacedName type
 }
 
 func getTemplate(osImageURL, hegelURL string) (string, error) {
-
 	actions := []Action{
 		createWipeDiskAction(),
 		createStreamUbuntuImageAction(hardwareDisk1, osImageURL),
@@ -136,7 +134,7 @@ func getTemplate(osImageURL, hegelURL string) (string, error) {
 	// Marshal task to YAML
 	yamlData, err := yaml.Marshal(template)
 	if err != nil {
-		return "", fmt.Errorf("error marshaling the template to YAML: %s", err)
+		return "", fmt.Errorf("error marshaling the template to YAML: %w", err)
 	}
 
 	return string(yamlData), nil
@@ -193,7 +191,6 @@ func createGrowPartitionAction(destDisk string) Action {
 }
 
 func createCloudInitConfigAction(destDisk, metadataURL string) Action {
-
 	// Use fmt.Sprintf to inject the variable into the string
 	cloudInitConfiguration := fmt.Sprintf(`
 datasource:
