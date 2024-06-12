@@ -60,7 +60,6 @@ func (h *HardwareClient) SelectAvailableHardware(ctx context.Context, hardwareRe
 // GetHardware selects an available hardware from the given list of hardware references
 // that has an empty ID.
 func (h *HardwareClient) GetHardware(ctx context.Context, hardwareRef types.NamespacedName) (*tinkv1alpha1.Hardware, error) {
-
 	var hardware tinkv1alpha1.Hardware
 	if err := h.TinkerbellClient.Get(ctx, client.ObjectKey{Namespace: hardwareRef.Namespace, Name: hardwareRef.Name}, &hardware); err != nil {
 		return nil, fmt.Errorf("failed to get hardware '%s' in namespace '%s': %w", hardwareRef.Name, hardwareRef.Namespace, err)

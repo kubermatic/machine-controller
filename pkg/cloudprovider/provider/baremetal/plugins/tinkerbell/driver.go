@@ -144,12 +144,10 @@ func (d *driver) ProvisionServer(ctx context.Context, meta metav1.ObjectMeta, _ 
 }
 
 func (d *driver) Validate(_ runtime.RawExtension) error {
-
 	return nil
 }
 
 func (d *driver) DeprovisionServer(ctx context.Context, meta metav1.ObjectMeta) error {
-
 	// Get the hardware object from tinkerbell cluster
 	targetHardware, err := d.HardwareClient.GetHardwareWithID(ctx, string(meta.UID))
 	if err != nil {
