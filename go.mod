@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.151.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.4
 	github.com/aws/smithy-go v1.20.1
-	github.com/davecgh/go-spew v1.1.1
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/digitalocean/godo v1.110.0
 	github.com/go-logr/logr v1.4.1
 	github.com/go-logr/zapr v1.3.0
@@ -34,11 +34,11 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pborman/uuid v1.2.1
 	github.com/pkg/errors v0.9.1
-	github.com/pmezard/go-difflib v1.0.0
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prometheus/client_golang v1.19.0
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.25
 	github.com/spf13/pflag v1.0.5
-	github.com/tinkerbell/tink v0.8.0
+	github.com/tinkerbell/tink v0.10.0
 	github.com/vmware/go-vcloud-director/v2 v2.22.0
 	github.com/vmware/govmomi v0.36.1
 	github.com/vultr/govultr/v3 v3.6.4
@@ -48,14 +48,14 @@ require (
 	golang.org/x/oauth2 v0.18.0
 	gomodules.xyz/jsonpatch/v2 v2.4.0
 	google.golang.org/api v0.170.0
-	google.golang.org/grpc v1.62.1
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.30.0
+	k8s.io/api v0.30.1
 	k8s.io/apiextensions-apiserver v0.30.0
-	k8s.io/apimachinery v0.30.0
-	k8s.io/client-go v0.30.0
+	k8s.io/apimachinery v0.30.1
+	k8s.io/client-go v0.30.1
 	k8s.io/cloud-provider v0.30.0
 	k8s.io/klog v1.0.0
+	k8s.io/kubectl v0.30.1
 	k8s.io/utils v0.0.0-20240310230437-4693a0247e57
 	kubevirt.io/api v1.2.0
 	kubevirt.io/containerized-data-importer-api v1.58.1
@@ -90,8 +90,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
-	github.com/distribution/reference v0.5.0 // indirect
-	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/emicklei/go-restful/v3 v3.11.1 // indirect
 	github.com/evanphx/json-patch v5.7.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
@@ -134,11 +132,9 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/onsi/ginkgo/v2 v2.17.1 // indirect
 	github.com/onsi/gomega v1.32.0 // indirect
-	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/openshift/api v0.0.0-20240104110125-c7a2d3b41e1f // indirect
 	github.com/openshift/custom-resource-status v1.1.2 // indirect
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
-	github.com/packethost/pkg v0.0.0-20230710142318-f8a288cd3046 // indirect
 	github.com/peterhellberg/link v1.2.0 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.48.0 // indirect
@@ -165,6 +161,7 @@ require (
 	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240311132316-a219d84964c2 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240311132316-a219d84964c2 // indirect
+	google.golang.org/grpc v1.62.1 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

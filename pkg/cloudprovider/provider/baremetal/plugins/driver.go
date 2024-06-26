@@ -19,8 +19,8 @@ package plugins
 import (
 	"context"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 type Driver string
@@ -36,10 +36,10 @@ type CloudConfigSettings struct {
 
 // PluginDriver manages the communications between the machine controller cloud provider and the bare metal env.
 type PluginDriver interface {
-	GetServer(context.Context, types.UID, runtime.RawExtension) (Server, error)
+	GetServer(context.Context, metav1.ObjectMeta, runtime.RawExtension) (Server, error)
 	Validate(runtime.RawExtension) error
-	ProvisionServer(context.Context, types.UID, *CloudConfigSettings, runtime.RawExtension) (Server, error)
-	DeprovisionServer(context.Context, types.UID) error
+	ProvisionServer(context.Context, metav1.ObjectMeta, runtime.RawExtension, string) (Server, error)
+	DeprovisionServer(context.Context, metav1.ObjectMeta) error
 }
 
 // Server represents the server/instance which exists in the bare metal env.
