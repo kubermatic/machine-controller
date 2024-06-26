@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hetznercloud/hcloud-go/hcloud"
+	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
@@ -200,17 +200,7 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 		return errors.New("token is missing")
 	}
 
-	_, err = getNameForOS(pc.OperatingSystem)
-	if err != nil {
-		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, err)
-	}
-
 	client := getClient(c.Token)
-
-	serverType, _, err := client.ServerType.Get(ctx, c.ServerType)
-	if err != nil {
-		return fmt.Errorf("failed to get server type: %w", err)
-	}
 
 	if c.Location != "" && c.Datacenter != "" {
 		return fmt.Errorf("location and datacenter must not be set at the same time")
@@ -228,10 +218,21 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 		}
 	}
 
-	if c.Image != "" {
-		if _, _, err = client.Image.GetForArchitecture(ctx, c.Image, serverType.Architecture); err != nil {
-			return fmt.Errorf("failed to get image: %w", err)
+	serverType, _, err := client.ServerType.Get(ctx, c.ServerType)
+	if err != nil {
+		return fmt.Errorf("failed to get server type: %w", err)
+	}
+
+	image := c.Image
+	if image == "" {
+		image, err = getNameForOS(pc.OperatingSystem)
+		if err != nil {
+			return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, err)
 		}
+	}
+
+	if _, _, err = client.Image.GetForArchitecture(ctx, image, serverType.Architecture); err != nil {
+		return fmt.Errorf("failed to get image: %w", err)
 	}
 
 	for _, network := range c.Networks {
@@ -520,6 +521,10 @@ func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machi
 	return nil
 }
 
+func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
+	return "", "", nil
+}
+
 func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
@@ -542,7 +547,7 @@ func (s *hetznerServer) Name() string {
 }
 
 func (s *hetznerServer) ID() string {
-	return strconv.Itoa(s.server.ID)
+	return strconv.FormatInt(s.server.ID, 10)
 }
 
 func (s *hetznerServer) ProviderID() string {

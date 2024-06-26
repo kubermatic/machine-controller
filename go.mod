@@ -27,7 +27,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud v1.11.0
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
-	github.com/hetznercloud/hcloud-go v1.53.0
+	github.com/hetznercloud/hcloud-go/v2 v2.10.1
 	github.com/linode/linodego v1.30.0
 	github.com/nutanix-cloud-native/prism-go-client v0.3.4
 	github.com/packethost/packngo v0.31.0
@@ -35,7 +35,7 @@ require (
 	github.com/pborman/uuid v1.2.1
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
-	github.com/prometheus/client_golang v1.19.0
+	github.com/prometheus/client_golang v1.19.1
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.25
 	github.com/spf13/pflag v1.0.5
 	github.com/tinkerbell/tink v0.8.0
@@ -44,7 +44,7 @@ require (
 	github.com/vultr/govultr/v3 v3.6.4
 	go.anx.io/go-anxcloud v0.6.4
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.21.0
+	golang.org/x/crypto v0.24.0
 	golang.org/x/oauth2 v0.18.0
 	gomodules.xyz/jsonpatch/v2 v2.4.0
 	google.golang.org/api v0.170.0
@@ -154,13 +154,13 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20240103183307-be819d1f06fc // indirect
-	golang.org/x/net v0.23.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/term v0.18.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/net v0.26.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/term v0.21.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.18.0 // indirect
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240311132316-a219d84964c2 // indirect
