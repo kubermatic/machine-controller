@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hetznercloud/hcloud-go/hcloud"
+	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
@@ -218,6 +218,11 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 		}
 	}
 
+	serverType, _, err := client.ServerType.Get(ctx, c.ServerType)
+	if err != nil {
+		return fmt.Errorf("failed to get server type: %w", err)
+	}
+
 	image := c.Image
 	if image == "" {
 		image, err = getNameForOS(pc.OperatingSystem)
@@ -226,8 +231,7 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 		}
 	}
 
-	//nolint:staticcheck // We do not have the architecture available here.
-	if _, _, err = client.Image.Get(ctx, image); err != nil {
+	if _, _, err = client.Image.GetForArchitecture(ctx, image, serverType.Architecture); err != nil {
 		return fmt.Errorf("failed to get image: %w", err)
 	}
 
@@ -249,10 +253,6 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 
 	if !c.AssignIPv4 && !c.AssignIPv6 && len(c.Networks) < 1 {
 		return errors.New("server should have either a public ipv4, ipv6 or dedicated network")
-	}
-
-	if _, _, err = client.ServerType.Get(ctx, c.ServerType); err != nil {
-		return fmt.Errorf("failed to get server type: %w", err)
 	}
 
 	return nil
@@ -348,16 +348,6 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		serverCreateOpts.Firewalls = append(serverCreateOpts.Firewalls, &hcloud.ServerCreateFirewall{Firewall: *n})
 	}
 
-	//nolint:staticcheck // We do not have the architecture available here.
-	image, _, err := client.Image.Get(ctx, c.Image)
-	if err != nil {
-		return nil, hzErrorToTerminalError(err, "failed to get image")
-	}
-	if image == nil {
-		return nil, fmt.Errorf("image %q does not exist", c.Image)
-	}
-	serverCreateOpts.Image = image
-
 	serverType, _, err := client.ServerType.Get(ctx, c.ServerType)
 	if err != nil {
 		return nil, hzErrorToTerminalError(err, "failed to get server type")
@@ -366,6 +356,15 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		return nil, fmt.Errorf("server type %q does not exist", c.ServerType)
 	}
 	serverCreateOpts.ServerType = serverType
+
+	image, _, err := client.Image.GetForArchitecture(ctx, c.Image, serverType.Architecture)
+	if err != nil {
+		return nil, hzErrorToTerminalError(err, "failed to get image")
+	}
+	if image == nil {
+		return nil, fmt.Errorf("image %q does not exist", c.Image)
+	}
+	serverCreateOpts.Image = image
 
 	// We generate a temporary SSH key here, because otherwise Hetzner creates
 	// a password and sends it via E-Mail to the account owner, which can be quite
@@ -544,7 +543,7 @@ func (s *hetznerServer) Name() string {
 }
 
 func (s *hetznerServer) ID() string {
-	return strconv.Itoa(s.server.ID)
+	return strconv.FormatInt(s.server.ID, 10)
 }
 
 func (s *hetznerServer) ProviderID() string {
