@@ -39,6 +39,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/ptr"
 )
 
 type provider struct {
@@ -194,7 +195,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		Name:           machine.Spec.Name,
 		CommercialType: c.CommercialType,
 		Tags:           append(c.Tags, string(machine.UID)),
-		EnableIPv6:     c.IPv6,
+		EnableIPv6:     ptr.To(c.IPv6),
 	}
 
 	serverResp, err := api.CreateServer(createServerRequest, scw.WithContext(ctx))
@@ -382,8 +383,10 @@ func (s *scwServer) Addresses() map[string]corev1.NodeAddressType {
 		addresses[*s.server.PrivateIP] = corev1.NodeInternalIP
 	}
 
-	if s.server.PublicIP != nil {
-		addresses[s.server.PublicIP.Address.String()] = corev1.NodeExternalIP
+	if s.server.PublicIPs != nil {
+		for _, publicIP := range s.server.PublicIPs {
+			addresses[publicIP.Address.String()] = corev1.NodeExternalIP
+		}
 	}
 
 	if s.server.IPv6 != nil {
