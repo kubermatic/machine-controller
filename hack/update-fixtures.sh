@@ -19,7 +19,7 @@ set -euo pipefail
 cd $(dirname $0)/..
 source hack/lib.sh
 
-CONTAINERIZE_IMAGE=quay.io/kubermatic/build:go-1.22-node-20-10 containerize ./hack/update-fixtures.sh
+CONTAINERIZE_IMAGE=quay.io/kubermatic/build:go-1.22-node-20-11 containerize ./hack/update-fixtures.sh
 
 go test ./... -v -update || go test ./...
 
