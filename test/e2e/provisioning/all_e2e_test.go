@@ -85,7 +85,7 @@ const (
 )
 
 const (
-	defaultKubernetesVersion    = "1.29.4"
+	defaultKubernetesVersion    = "1.29.6"
 	awsDefaultKubernetesVersion = "1.26.12"
 	defaultContainerRuntime     = "containerd"
 )
@@ -348,7 +348,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 	}
 
 	// In-tree cloud provider is not supported from Kubernetes v1.26.
-	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.27.13", "1.28.9", "1.29.4", "1.30.0")))
+	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.27.13", "1.28.11", "1.29.6", "1.30.2")))
 	runScenarios(context.Background(), t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -424,7 +424,7 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	}
 
 	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := Not(VersionSelector("1.27.13", "1.28.9", "1.29.4", "1.30.0"))
+	selector := Not(VersionSelector("1.27.13", "1.28.11", "1.29.6", "1.30.2"))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -478,7 +478,7 @@ func TestAWSSpotInstanceProvisioningE2E(t *testing.T) {
 	}
 	// Since we are only testing the spot instance functionality, testing it against a single OS is sufficient.
 	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.13", "1.28.9", "1.29.4", "1.30.0")))
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.13", "1.28.11", "1.29.6", "1.30.2")))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -500,7 +500,7 @@ func TestAWSARMProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.13", "1.28.9", "1.29.4", "1.30.0")))
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.13", "1.28.11", "1.29.6", "1.30.2")))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -596,7 +596,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 	}
 
 	// In-tree cloud provider is not supported from Kubernetes v1.30.
-	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.30.0")))
+	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.30.2")))
 
 	// act
 	params := []string{
@@ -625,7 +625,7 @@ func TestAzureCustomImageReferenceProvisioningE2E(t *testing.T) {
 	}
 
 	// In-tree cloud provider is not supported from Kubernetes v1.30.
-	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.30.0")))
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.30.2")))
 	// act
 	params := []string{
 		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
@@ -841,7 +841,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	// In-tree cloud provider is not supported from Kubernetes v1.30.
-	selector := And(Not(OsSelector("amzn2", "centos")), Not(VersionSelector("1.30.0")))
+	selector := And(Not(OsSelector("amzn2", "centos")), Not(VersionSelector("1.30.2")))
 	params := getVSphereTestParams(t)
 
 	runScenarios(context.Background(), t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
@@ -853,7 +853,7 @@ func TestVsphereMultipleNICProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	// In-tree cloud provider is not supported from Kubernetes v1.30.
-	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.30.0")))
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.30.2")))
 	params := getVSphereTestParams(t)
 
 	runScenarios(context.Background(), t, selector, params, VSPhereMultipleNICManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
@@ -882,7 +882,7 @@ func TestVsphereDatastoreClusterProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	// In-tree cloud provider is not supported from Kubernetes v1.30.
-	selector := And(OsSelector("ubuntu", "centos", "rhel", "flatcar"), Not(VersionSelector("1.30.0")))
+	selector := And(OsSelector("ubuntu", "centos", "rhel", "flatcar"), Not(VersionSelector("1.30.2")))
 
 	params := getVSphereTestParams(t)
 	runScenarios(context.Background(), t, selector, params, VSPhereDSCManifest, fmt.Sprintf("vs-dsc-%s", *testRunIdentifier))
