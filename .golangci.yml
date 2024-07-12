@@ -56,8 +56,6 @@ issues:
     - func Convert_MachineSet_ProviderConfig_To_ProviderSpec should be ConvertMachineSetProviderConfigToProviderSpec
     - func Convert_Machine_ProviderConfig_To_ProviderSpec should be ConvertMachineProviderConfigToProviderSpec
     - 'cyclomatic complexity 33 of func `\(\*provider\)\.Create` is high'
-    - 'cyclomatic complexity 32 of func `\(\*Reconciler\)\.ensureInstanceExistsForMachine` is high'
     - "SA1019: s.server.IPv6 is deprecated"
   exclude-dirs:
-    - pkg/client
     - pkg/machines
