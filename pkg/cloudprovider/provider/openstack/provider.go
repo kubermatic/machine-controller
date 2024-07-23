@@ -103,6 +103,7 @@ type Config struct {
 	FloatingIPPool        string
 	AvailabilityZone      string
 	TrustDevicePath       bool
+	ConfigDrive           bool
 	RootDiskSizeGB        *int
 	RootDiskVolumeType    string
 	NodeVolumeAttachLimit *uint
@@ -263,6 +264,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	cfg.TrustDevicePath, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.TrustDevicePath)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	cfg.ConfigDrive, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.ConfigDrive)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -611,6 +617,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		Name:             machine.Spec.Name,
 		FlavorRef:        flavor.ID,
 		UserData:         []byte(userdata),
+		ConfigDrive:      &cfg.ConfigDrive,
 		SecurityGroups:   securityGroups,
 		AvailabilityZone: cfg.AvailabilityZone,
 		Networks:         []osservers.Network{{UUID: network.ID}},
