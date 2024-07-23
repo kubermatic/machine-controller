@@ -45,6 +45,7 @@ import (
 const expectedServerRequest = `{
   "server": {
 	  "availability_zone": "eu-de-01",
+	  "config_drive": false,
 	  "flavorRef": "1",
 	  "imageRef": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
 	  "metadata": {
@@ -72,6 +73,7 @@ const expectedServerRequest = `{
 const expectedBlockDeviceBootRequest = `{
   "server": {
 	"availability_zone": "eu-de-01",
+	"config_drive": false,
 	"block_device_mapping_v2": [
 	  {
 		"boot_index": 0,
@@ -108,6 +110,7 @@ const expectedBlockDeviceBootRequest = `{
 const expectedBlockDeviceBootVolumeTypeRequest = `{
 	"server": {
 	  "availability_zone": "eu-de-01",
+	  "config_drive": false,
 	  "block_device_mapping_v2": [
 		{
 		  "boot_index": 0,
@@ -152,6 +155,7 @@ type openstackProviderSpecConf struct {
 	ProjectID                   string
 	TenantID                    string
 	TenantName                  string
+	ConfigDrive                 bool
 	ComputeAPIVersion           string
 }
 

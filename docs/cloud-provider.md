@@ -135,6 +135,8 @@ network: ""
 computeAPIVersion: ""
 # set trust-device-path flag for kubelet
 trustDevicePath: false
+# set to true to store metadata on a configuration drive instead of the metadata service
+configDrive: false
 # set root disk size
 rootDiskSizeGB: 50
 # set root disk volume type
