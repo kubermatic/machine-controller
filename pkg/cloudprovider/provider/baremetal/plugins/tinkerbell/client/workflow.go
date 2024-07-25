@@ -53,6 +53,7 @@ func (w *WorkflowClient) CreateWorkflow(ctx context.Context, userData, workflowN
 
 	workflow := &tinkv1alpha1.Workflow{
 		ObjectMeta: metav1.ObjectMeta{
+			// TODO(MQ): generalize the naming of the workflow and implement a function that can be used across the provider.
 			Name:      workflowName + "-workflow",
 			Namespace: hardware.Namespace,
 		},

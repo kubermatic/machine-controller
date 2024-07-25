@@ -85,11 +85,9 @@ func (h *HardwareClient) GetHardwareWithID(ctx context.Context, uid string) (*ti
 	}
 
 	// Find the Hardware with the given ID
-	var targetHardware tinkv1alpha1.Hardware
 	for _, hw := range hardwares.Items {
 		if hw.Spec.Metadata.Instance.ID == uid {
-			targetHardware = hw
-			return &targetHardware, nil
+			return &hw, nil
 		}
 	}
 

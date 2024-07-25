@@ -81,7 +81,7 @@ func (t *TemplateClient) Delete(ctx context.Context, namespacedName types.Namesp
 			Namespace: namespacedName.Namespace,
 		},
 	}
-	// Create the Template object in the Tinkerbell cluster
+
 	if err := t.tinkclient.Delete(ctx, template); err != nil {
 		return fmt.Errorf("failed to delete Template in Tinkerbell cluster: %w", err)
 	}
@@ -145,7 +145,6 @@ func getTemplate(hardware *tinkv1alpha1.Hardware, osImageURL string) (string, er
 		GlobalTimeout: 1800,
 		Tasks:         []Task{task},
 	}
-	// Marshal task to YAML
 	yamlData, err := yaml.Marshal(template)
 	if err != nil {
 		return "", fmt.Errorf("error marshaling the template to YAML: %w", err)
@@ -192,7 +191,7 @@ func createStreamUbuntuImageAction(destDisk, osImageURL string) Action {
 func createGrowPartitionAction(destDisk string) Action {
 	return Action{
 		Name:    "grow-partition",
-		Image:   "quay.io/tinkerbell/actions/cexec:latest",
+		Image:   "quay.io/tinkerbell/actions/cexec:c5bde803d9f6c90f1a9d5e06930d856d1481854c",
 		Timeout: 90,
 		Environment: map[string]string{
 			"BLOCK_DEVICE":        "{{ index .Hardware.Disks 0 }}3",

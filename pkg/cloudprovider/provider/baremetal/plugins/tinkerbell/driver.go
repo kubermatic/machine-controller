@@ -42,9 +42,10 @@ import (
 type driver struct {
 	ClusterName string
 	OSImageURL  string
-	TinkClient  ctrlruntimeclient.Client
-	//KubeClient     ctrlruntimeclient.Client
-	HardwareRef    types.NamespacedName
+
+	HardwareRef types.NamespacedName
+
+	TinkClient     ctrlruntimeclient.Client
 	HardwareClient client.HardwareClient
 	WorkflowClient client.WorkflowClient
 	TemplateClient client.TemplateClient
@@ -75,10 +76,9 @@ func NewTinkerbellDriver(tinkConfig tinktypes.Config, tinkSpec *tinktypes.Tinker
 	tmplClient := client.NewTemplateClient(tinkClient)
 
 	d := driver{
-		ClusterName: tinkSpec.ClusterName.Value,
-		TinkClient:  tinkClient,
-		HardwareRef: tinkSpec.HardwareRef,
-		//KubeClient:     k8sClient,
+		ClusterName:    tinkSpec.ClusterName.Value,
+		TinkClient:     tinkClient,
+		HardwareRef:    tinkSpec.HardwareRef,
 		HardwareClient: *hwClient,
 		WorkflowClient: *wkClient,
 		TemplateClient: *tmplClient,
@@ -123,8 +123,7 @@ func (d *driver) ProvisionServer(ctx context.Context, log *zap.SugaredLogger, me
 	}
 
 	if !allowProvision {
-		log.Infow("server is not allowed to be provisioned; either hardware allowPXE and allowWorkflow is set tp false", "hardware", hardware.Name)
-		return nil, nil
+		return nil, fmt.Errorf("server %s is not allowed to be provisioned; either hardware allowPXE or allowWorkflow is set to false", hardware.Name)
 	}
 
 	// Create template if it doesn't exist
@@ -164,7 +163,7 @@ func (d *driver) DeprovisionServer(ctx context.Context) error {
 		return fmt.Errorf("failed to delete workflow %s: %w", workflowName, err)
 	}
 
-	// Reset the hardware ID in the tinkerbell cluster.
+	// Reset the hardware ID and state in the tinkerbell cluster.
 	if err := d.HardwareClient.SetHardwareID(ctx, targetHardware, ""); err != nil {
 		return fmt.Errorf("failed to reset hardware ID for %s: %w", targetHardware.Name, err)
 	}
@@ -172,7 +171,7 @@ func (d *driver) DeprovisionServer(ctx context.Context) error {
 	return nil
 }
 
-func GetConfig(driverConfig tinktypes.TinkerbellPluginSpec, aa func(configVar providerconfigtypes.ConfigVarString, envVarName string) (string, error)) (*tinktypes.Config, error) {
+func GetConfig(driverConfig tinktypes.TinkerbellPluginSpec, valueFromStringOrEnvVar func(configVar providerconfigtypes.ConfigVarString, envVarName string) (string, error)) (*tinktypes.Config, error) {
 	config := tinktypes.Config{}
 	var err error
 	// Kubeconfig was specified directly in the Machine/MachineDeployment CR. In this case we need to ensure that the value is base64 encoded.
@@ -187,17 +186,18 @@ func GetConfig(driverConfig tinktypes.TinkerbellPluginSpec, aa func(configVar pr
 	} else {
 		// Environment variable or secret reference was used for providing the value of kubeconfig
 		// We have to be lenient in this case and allow unencoded values as well.
-		config.Kubeconfig, err = aa(driverConfig.Auth.Kubeconfig, "TINK_KUBECONFIG")
+		// TODO(mq): Replace this field with a reference to a secret instead of having it inlined.
+		config.Kubeconfig, err = valueFromStringOrEnvVar(driverConfig.Auth.Kubeconfig, "TINK_KUBECONFIG")
 		if err != nil {
 			return nil, fmt.Errorf(`failed to get value of "kubeconfig" field: %w`, err)
 		}
 	}
-	config.ClusterName, err = aa(driverConfig.ClusterName, "CLUSTER_NAME")
+	config.ClusterName, err = valueFromStringOrEnvVar(driverConfig.ClusterName, "CLUSTER_NAME")
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "clusterName" field: %w`, err)
 	}
 
-	config.OSImageURL, err = aa(driverConfig.OSImageURL, "OS_IMAGE_URL")
+	config.OSImageURL, err = valueFromStringOrEnvVar(driverConfig.OSImageURL, "OS_IMAGE_URL")
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "OSImageURL" field: %w`, err)
 	}

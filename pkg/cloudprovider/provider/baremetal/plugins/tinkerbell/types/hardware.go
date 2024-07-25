@@ -33,8 +33,7 @@ func (h *Hardware) GetName() string {
 
 func (h *Hardware) GetID() string {
 	if h.Spec.Metadata != nil &&
-		h.Spec.Metadata.Instance != nil &&
-		h.Spec.Metadata.Instance.ID != "" {
+		h.Spec.Metadata.Instance != nil {
 		return h.Spec.Metadata.Instance.ID
 	}
 
@@ -65,5 +64,5 @@ func (h *Hardware) GetStatus() string {
 		return string(h.Status.State)
 	}
 
-	return "Unknown"
+	return Unknown
 }

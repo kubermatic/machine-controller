@@ -23,7 +23,8 @@ import (
 )
 
 const (
-	Staged         string = "Staged"
+	Unknown        string = "Unknown"
+	Staged                = "Staged"
 	Provisioned           = "Provisioned"
 	Decommissioned        = "Decommissioned"
 )
