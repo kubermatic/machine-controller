@@ -18,205 +18,188 @@ package tinkerbell
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
+	"encoding/base64"
 	"fmt"
-
-	tinkclient "github.com/tinkerbell/tink/client"
-	tinkpkg "github.com/tinkerbell/tink/pkg"
-	"github.com/tinkerbell/tink/protos/hardware"
-	tinktmpl "github.com/tinkerbell/tink/protos/template"
-	"gopkg.in/yaml.v3"
-
+	"github.com/aws/smithy-go/ptr"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
-	tinkerbellclient "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client"
-	metadataclient "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/metadata"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+	"go.uber.org/zap"
 
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client"
+	tinktypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
+	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubectl/pkg/scheme"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type ClientFactory func() (metadataclient.Client, tinkerbellclient.HardwareClient, tinkerbellclient.TemplateClient, tinkerbellclient.WorkflowClient)
-
 type driver struct {
-	TinkServerAddress string
-	ImageRepoAddress  string
+	ClusterName string
+	OSImageURL  string
 
-	metadataClient metadataclient.Client
-	hardwareClient tinkerbellclient.HardwareClient
-	templateClient tinkerbellclient.TemplateClient
-	workflowClient tinkerbellclient.WorkflowClient
+	HardwareRef types.NamespacedName
+
+	TinkClient     ctrlruntimeclient.Client
+	HardwareClient client.HardwareClient
+	WorkflowClient client.WorkflowClient
+	TemplateClient client.TemplateClient
+}
+
+func init() {
+	// Ensure the Tinkerbell API types are registered with the global scheme.
+	if err := tinkv1alpha1.SchemeBuilder.AddToScheme(scheme.Scheme); err != nil {
+		panic(fmt.Sprintf("failed to add tinkv1alpha1 to scheme: %v", err))
+	}
 }
 
 // NewTinkerbellDriver returns a new TinkerBell driver with a configured tinkserver address and a client timeout.
-func NewTinkerbellDriver(mdConfig *metadataclient.Config, factory ClientFactory, tinkServerAddress, imageRepoAddress string) (plugins.PluginDriver, error) {
-	if tinkServerAddress == "" || imageRepoAddress == "" {
-		return nil, errors.New("tink-server address, ImageRepoAddress cannot be empty")
+func NewTinkerbellDriver(tinkConfig tinktypes.Config, tinkSpec *tinktypes.TinkerbellPluginSpec) (plugins.PluginDriver, error) {
+	tinkClient, err := ctrlruntimeclient.New(tinkConfig.RestConfig, ctrlruntimeclient.Options{Scheme: scheme.Scheme})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create k8s client: %w", err)
+	}
+	hwClient := client.NewHardwareClient(tinkClient)
+
+	wkClient := client.NewWorkflowClient(tinkClient)
+
+	tmplClient := client.NewTemplateClient(tinkClient)
+
+	d := driver{
+		ClusterName:    tinkSpec.ClusterName.Value,
+		TinkClient:     tinkClient,
+		HardwareRef:    tinkSpec.HardwareRef,
+		HardwareClient: *hwClient,
+		WorkflowClient: *wkClient,
+		TemplateClient: *tmplClient,
+		OSImageURL:     tinkSpec.OSImageURL.Value,
 	}
 
-	var (
-		mdClient   metadataclient.Client
-		hwClient   tinkerbellclient.HardwareClient
-		tmplClient tinkerbellclient.TemplateClient
-		wflClient  tinkerbellclient.WorkflowClient
-		err        error
-	)
+	return &d, nil
+}
 
-	if factory == nil {
-		mdClient, err = metadataclient.NewMetadataClient(mdConfig)
+func (d *driver) GetServer(ctx context.Context) (plugins.Server, error) {
+	targetHardware, err := d.HardwareClient.GetHardware(ctx, d.HardwareRef)
+	if err != nil {
+		return nil, err
+	}
+
+	if targetHardware.Spec.Metadata != nil && targetHardware.Spec.Metadata.State != tinktypes.Staged {
+		return nil, cloudprovidererrors.ErrInstanceNotFound
+	}
+
+	server := tinktypes.Hardware{Hardware: targetHardware}
+	return &server, nil
+}
+
+func (d *driver) ProvisionServer(ctx context.Context, _ *zap.SugaredLogger, meta metav1.ObjectMeta, _ runtime.RawExtension, userdata string) (plugins.Server, error) {
+	// Get the hardware object from tinkerbell
+	hardware, err := d.HardwareClient.GetHardware(ctx, d.HardwareRef)
+	if err != nil {
+		return nil, err
+	}
+
+	var allowProvision bool
+	for _, iface := range hardware.Spec.Interfaces {
+		if iface.Netboot != nil && iface.Netboot.AllowPXE != nil && iface.Netboot.AllowPXE == ptr.Bool(false) {
+			continue
+		}
+
+		if iface.Netboot != nil && iface.Netboot.AllowWorkflow != nil && iface.Netboot.AllowWorkflow == ptr.Bool(false) {
+			continue
+		}
+
+		allowProvision = true
+	}
+
+	if !allowProvision {
+		return nil, fmt.Errorf("server %s is not allowed to be provisioned; either hardware allowPXE or allowWorkflow is set to false", hardware.Name)
+	}
+
+	// Create template if it doesn't exist
+	err = d.TemplateClient.CreateTemplate(ctx, hardware, d.HardwareRef.Namespace, d.OSImageURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create Workflow to match the template and server
+	server := tinktypes.Hardware{Hardware: hardware}
+	if err = d.WorkflowClient.CreateWorkflow(ctx, userdata, server.Name, client.ProvisionWorkerNodeTemplate, server); err != nil {
+		return nil, err
+	}
+
+	// Set the HardwareID with machine UID. The hardware object is claimed by the machine.
+	if err = d.HardwareClient.SetHardwareID(ctx, hardware, string(meta.UID)); err != nil {
+		return nil, err
+	}
+
+	return &server, nil
+}
+
+func (d *driver) Validate(_ runtime.RawExtension) error {
+	return nil
+}
+
+func (d *driver) DeprovisionServer(ctx context.Context) error {
+	// Get the hardware object from tinkerbell cluster
+	targetHardware, err := d.HardwareClient.GetHardware(ctx, d.HardwareRef)
+	if err != nil {
+		return err
+	}
+
+	// Delete the associated Workflow.
+	workflowName := targetHardware.Name + "-workflow" // Assuming workflow names are derived from hardware names
+	if err := d.WorkflowClient.DeleteWorkflow(ctx, workflowName, targetHardware.Namespace); err != nil {
+		return fmt.Errorf("failed to delete workflow %s: %w", workflowName, err)
+	}
+
+	// Reset the hardware ID and state in the tinkerbell cluster.
+	if err := d.HardwareClient.SetHardwareID(ctx, targetHardware, ""); err != nil {
+		return fmt.Errorf("failed to reset hardware ID for %s: %w", targetHardware.Name, err)
+	}
+
+	return nil
+}
+
+func GetConfig(driverConfig tinktypes.TinkerbellPluginSpec, valueFromStringOrEnvVar func(configVar providerconfigtypes.ConfigVarString, envVarName string) (string, error)) (*tinktypes.Config, error) {
+	config := tinktypes.Config{}
+	var err error
+	// Kubeconfig was specified directly in the Machine/MachineDeployment CR. In this case we need to ensure that the value is base64 encoded.
+	if driverConfig.Auth.Kubeconfig.Value != "" {
+		val, err := base64.StdEncoding.DecodeString(driverConfig.Auth.Kubeconfig.Value)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create metadata client: %w", err)
+			// An error here means that this is not a valid base64 string
+			// We can be more explicit here with the error for visibility. Webhook will return this error if we hit this scenario.
+			return nil, fmt.Errorf("failed to decode base64 encoded kubeconfig. Expected value is a base64 encoded Kubeconfig in JSON or YAML format: %w", err)
 		}
-
-		if err := tinkclient.Setup(); err != nil {
-			return nil, fmt.Errorf("failed to setup tink-server client: %w", err)
-		}
-
-		hwClient = tinkerbellclient.NewHardwareClient(tinkclient.HardwareClient)
-		tmplClient = tinkerbellclient.NewTemplateClient(tinkclient.TemplateClient)
-		wflClient = tinkerbellclient.NewWorkflowClient(tinkclient.WorkflowClient, tinkerbellclient.NewHardwareClient(tinkclient.HardwareClient))
+		config.Kubeconfig = string(val)
 	} else {
-		mdClient, hwClient, tmplClient, wflClient = factory()
+		// Environment variable or secret reference was used for providing the value of kubeconfig
+		// We have to be lenient in this case and allow unencoded values as well.
+		// TODO(mq): Replace this field with a reference to a secret instead of having it inlined.
+		config.Kubeconfig, err = valueFromStringOrEnvVar(driverConfig.Auth.Kubeconfig, "TINK_KUBECONFIG")
+		if err != nil {
+			return nil, fmt.Errorf(`failed to get value of "kubeconfig" field: %w`, err)
+		}
 	}
-
-	d := &driver{
-		TinkServerAddress: tinkServerAddress,
-		ImageRepoAddress:  imageRepoAddress,
-		metadataClient:    mdClient,
-		hardwareClient:    hwClient,
-		templateClient:    tmplClient,
-		workflowClient:    wflClient,
-	}
-
-	return d, nil
-}
-
-func (d *driver) GetServer(ctx context.Context, uid types.UID, hwSpec runtime.RawExtension) (plugins.Server, error) {
-	hw := HardwareSpec{}
-	if err := json.Unmarshal(hwSpec.Raw, &hw); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal tinkerbell hardware spec: %w", err)
-	}
-
-	fetchedHW, err := d.hardwareClient.Get(ctx, string(uid), hw.GetIPAddress(),
-		hw.GetMACAddress())
+	config.ClusterName, err = valueFromStringOrEnvVar(driverConfig.ClusterName, "CLUSTER_NAME")
 	if err != nil {
-		if resourceNotFoundErr(err) {
-			return nil, cloudprovidererrors.ErrInstanceNotFound
-		}
-
-		return nil, fmt.Errorf("failed to get hardware: %w", err)
+		return nil, fmt.Errorf(`failed to get value of "clusterName" field: %w`, err)
 	}
 
-	return &HardwareSpec{
-		Hardware: tinkpkg.HardwareWrapper{
-			Hardware: fetchedHW,
-		},
-	}, nil
-}
-
-func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, cfg *plugins.CloudConfigSettings, hwSpec runtime.RawExtension) (plugins.Server, error) {
-	hw := HardwareSpec{}
-	if err := json.Unmarshal(hwSpec.Raw, &hw); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal tinkerbell hardware spec: %w", err)
-	}
-	hw.Hardware.Id = string(uid)
-	_, err := d.hardwareClient.Get(ctx, hw.Hardware.Id, "", "")
+	config.OSImageURL, err = valueFromStringOrEnvVar(driverConfig.OSImageURL, "OS_IMAGE_URL")
 	if err != nil {
-		if resourceNotFoundErr(err) {
-			cfg, err := d.metadataClient.GetMachineMetadata()
-			if err != nil {
-				return nil, fmt.Errorf("failed to get metadata configs: %w", err)
-			}
-
-			hw.Hardware.Network.Interfaces[0].Dhcp.Mac = cfg.MACAddress
-
-			ip, netmask, _, err := util.CIDRToIPAndNetMask(cfg.CIDR)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse CIDR: %w", err)
-			}
-			dhcpIP := &hardware.Hardware_DHCP_IP{
-				Address: ip,
-				Netmask: netmask,
-				Gateway: cfg.Gateway,
-			}
-			hw.Hardware.Network.Interfaces[0].Dhcp.Ip = dhcpIP
-
-			if err := d.hardwareClient.Create(ctx, hw.Hardware.Hardware); err != nil {
-				return nil, fmt.Errorf("failed to register hardware to tink-server: %w", err)
-			}
-		}
+		return nil, fmt.Errorf(`failed to get value of "OSImageURL" field: %w`, err)
 	}
 
-	// cfg.SecretName has the same name as the machine name
-	workflowTemplate, err := d.templateClient.Get(ctx, "", cfg.SecretName)
+	config.RestConfig, err = clientcmd.RESTConfigFromKubeConfig([]byte(config.Kubeconfig))
 	if err != nil {
-		if resourceNotFoundErr(err) {
-			tmpl := createTemplate(d.TinkServerAddress, d.ImageRepoAddress, cfg)
-			payload, err := yaml.Marshal(tmpl)
-			if err != nil {
-				return nil, fmt.Errorf("failed marshalling workflow template: %w", err)
-			}
-
-			workflowTemplate = &tinktmpl.WorkflowTemplate{
-				Name: tmpl.Name,
-				Id:   tmpl.ID,
-				Data: string(payload),
-			}
-
-			if err := d.templateClient.Create(ctx, workflowTemplate); err != nil {
-				return nil, fmt.Errorf("failed to create workflow template: %w", err)
-			}
-		}
+		return nil, fmt.Errorf("failed to decode kubeconfig: %w", err)
 	}
-
-	if _, err := d.workflowClient.Create(ctx, workflowTemplate.Id, hw.GetID()); err != nil {
-		return nil, fmt.Errorf("failed to provision server id %s running template id %s: %w", workflowTemplate.Id, hw.GetID(), err)
-	}
-
-	return &hw, nil
-}
-
-func (d *driver) Validate(hwSpec runtime.RawExtension) error {
-	hw := HardwareSpec{}
-	if err := json.Unmarshal(hwSpec.Raw, &hw); err != nil {
-		return fmt.Errorf("failed to unmarshal tinkerbell hardware spec: %w", err)
-	}
-
-	if hw.Hardware.Hardware == nil {
-		return fmt.Errorf("tinkerbell hardware data can not be empty")
-	}
-
-	if hw.Hardware.Network == nil {
-		return fmt.Errorf("tinkerbell hardware network configs can not be empty")
-	}
-
-	if hw.Hardware.Metadata == "" {
-		return fmt.Errorf("tinkerbell hardware metadata can not be empty")
-	}
-
-	return nil
-}
-
-func (d *driver) DeprovisionServer(ctx context.Context, uid types.UID) error {
-	if err := d.hardwareClient.Delete(ctx, string(uid)); err != nil {
-		if resourceNotFoundErr(err) {
-			return nil
-		}
-		return fmt.Errorf("failed to delete tinkerbell hardware data: %w", err)
-	}
-
-	return nil
-}
-
-func resourceNotFoundErr(err error) bool {
-	switch err.Error() {
-	case fmt.Sprintf("hardware %s", tinkerbellclient.ErrNotFound.Error()):
-		return true
-	case fmt.Sprintf("template %s", tinkerbellclient.ErrNotFound.Error()):
-		return true
-	}
-
-	return false
+	return &config, nil
 }

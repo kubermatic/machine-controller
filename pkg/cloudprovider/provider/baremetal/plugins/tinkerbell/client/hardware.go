@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Machine Controller Authors.
+Copyright 2024 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,94 +18,78 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 
-	"github.com/google/uuid"
-	"github.com/tinkerbell/tink/protos/hardware"
-	"google.golang.org/grpc"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	tbtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
+	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
+
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Hardware client for Tinkerbell.
-type Hardware struct {
-	client hardware.HardwareServiceClient
+// HardwareClient manages Tinkerbell hardware resources across two clusters.
+type HardwareClient struct {
+	TinkerbellClient client.Client
 }
 
-// NewHardwareClient returns a Hardware client.
-func NewHardwareClient(client hardware.HardwareServiceClient) *Hardware {
-	return &Hardware{client: client}
+// NewHardwareClient creates a new instance of HardwareClient.
+func NewHardwareClient(tinkerbellClient client.Client) *HardwareClient {
+	return &HardwareClient{
+		TinkerbellClient: tinkerbellClient,
+	}
 }
 
-// Create Tinkerbell Hardware.
-func (t *Hardware) Create(ctx context.Context, h *hardware.Hardware) error {
-	if h == nil {
-		return errors.New("hardware should not be nil")
+// GetHardware fetches a hardware object from the Tinkerbell cluster based on the hardware reference in the machine
+// deployment object.
+func (h *HardwareClient) GetHardware(ctx context.Context, hardwareRef types.NamespacedName) (*tinkv1alpha1.Hardware, error) {
+	hardware := &tinkv1alpha1.Hardware{}
+	if err := h.TinkerbellClient.Get(ctx, client.ObjectKey{Namespace: hardwareRef.Namespace, Name: hardwareRef.Name}, hardware); err != nil {
+		return nil, fmt.Errorf("failed to get hardware '%s' in namespace '%s': %w", hardwareRef.Name, hardwareRef.Namespace, err)
 	}
 
-	if h.GetId() == "" {
-		h.Id = uuid.New().String()
+	return hardware, nil
+}
+
+// SetHardwareID sets the ID of a specified Hardware object.
+func (h *HardwareClient) SetHardwareID(ctx context.Context, hardware *tinkv1alpha1.Hardware, newID string) error {
+	if hardware.Spec.Metadata == nil {
+		hardware.Spec.Metadata = &tinkv1alpha1.HardwareMetadata{}
 	}
 
-	if _, err := t.client.Push(ctx, &hardware.PushRequest{Data: h}); err != nil {
-		return fmt.Errorf("creating hardware in Tinkerbell: %w", err)
+	if hardware.Spec.Metadata.Instance == nil {
+		hardware.Spec.Metadata.Instance = &tinkv1alpha1.MetadataInstance{}
+	}
+
+	hardware.Spec.Metadata.Instance.ID = newID
+	// Set the new ID
+	hardware.Spec.Metadata.State = tbtypes.Staged
+	if newID == "" {
+		// Machine has been deprovisioned
+		hardware.Spec.Metadata.State = tbtypes.Decommissioned
+	}
+
+	// Update the hardware object in the cluster
+	if err := h.TinkerbellClient.Update(ctx, hardware); err != nil {
+		return fmt.Errorf("failed to update hardware ID for '%s': %w", hardware.Name, err)
 	}
 
 	return nil
 }
 
-// Update Tinkerbell Hardware.
-func (t *Hardware) Update(ctx context.Context, h *hardware.Hardware) error {
-	if _, err := t.client.Push(ctx, &hardware.PushRequest{Data: h}); err != nil {
-		return fmt.Errorf("updating template in Tinkerbell: %w", err)
+func (h *HardwareClient) GetHardwareWithID(ctx context.Context, uid string) (*tinkv1alpha1.Hardware, error) {
+	// List all hardware in the cluster
+	var hardwares tinkv1alpha1.HardwareList
+	if err := h.TinkerbellClient.List(ctx, &hardwares); err != nil {
+		return nil, fmt.Errorf("failed to list hardware: %w", err)
 	}
 
-	return nil
-}
-
-// Get returns a Tinkerbell Hardware.
-func (t *Hardware) Get(ctx context.Context, id, ip, mac string) (*hardware.Hardware, error) {
-	var method func(context.Context, *hardware.GetRequest, ...grpc.CallOption) (*hardware.Hardware, error)
-
-	req := &hardware.GetRequest{}
-
-	switch {
-	case id != "":
-		req.Id = id
-		method = t.client.ByID
-	case mac != "":
-		req.Mac = mac
-		method = t.client.ByMAC
-	case ip != "":
-		req.Ip = ip
-		method = t.client.ByIP
-	default:
-		return nil, errors.New("need to specify either id, ip, or mac")
-	}
-
-	tinkHardware, err := method(ctx, req)
-	if err != nil {
-		if err.Error() == sqlErrorString || err.Error() == sqlErrorStringAlt {
-			return nil, fmt.Errorf("hardware %w", ErrNotFound)
+	// Find the Hardware with the given ID
+	for _, hw := range hardwares.Items {
+		if hw.Spec.Metadata.Instance.ID == uid {
+			return &hw, nil
 		}
-
-		return nil, fmt.Errorf("getting hardware from Tinkerbell: %w", err)
 	}
 
-	return tinkHardware, nil
-}
-
-// Delete a Tinkerbell Hardware.
-func (t *Hardware) Delete(ctx context.Context, id string) error {
-	if _, err := t.client.Delete(ctx, &hardware.DeleteRequest{Id: id}); err != nil {
-		if err.Error() == sqlErrorString ||
-			err.Error() == sqlErrorStringAlt ||
-			strings.Contains(err.Error(), sqlErrorNotFound) {
-			return fmt.Errorf("hardware %w", ErrNotFound)
-		}
-
-		return fmt.Errorf("deleting hardware from Tinkerbell: %w", err)
-	}
-
-	return nil
+	return nil, errors.ErrInstanceNotFound
 }

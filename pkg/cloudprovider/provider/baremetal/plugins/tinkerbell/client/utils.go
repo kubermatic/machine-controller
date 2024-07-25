@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Machine Controller Authors.
+Copyright 2024 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,19 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package client contains a client wrapper for Tinkerbell.
 package client
 
 import (
-	"errors"
+	"fmt"
+	"net"
+	"strings"
+
+	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
 )
 
-// ErrNotFound is returned if a requested resource is not found.
-var ErrNotFound = errors.New("resource not found")
+func convertNetmaskToCIDR(ip *tinkv1alpha1.IP) string {
+	mask := net.IPMask(net.ParseIP(ip.Netmask).To4())
+	length, _ := mask.Size()
 
-// than parsing for these specific error message.
-const (
-	sqlErrorString    = "rpc error: code = Unknown desc = sql: no rows in result set"
-	sqlErrorStringAlt = "rpc error: code = Unknown desc = SELECT: sql: no rows in result set"
-	sqlErrorNotFound  = "rpc error: code = NotFound desc = not found"
-)
+	cidr := ""
+	parts := strings.Split(ip.Address, ".")
+	for i := 0; i < len(parts); i++ {
+		cidr += parts[i] + "."
+	}
+	cidr = strings.TrimSuffix(cidr, ".")
+
+	return fmt.Sprintf("%s/%v", cidr, length)
+}
