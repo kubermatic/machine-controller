@@ -63,15 +63,6 @@ type defaultClient struct {
 	client           *http.Client
 }
 
-func NewMetadataClient(cfg *Config) (Client, error) {
-	client := http.DefaultClient
-	client.Timeout = defaultTimeout
-
-	return &defaultClient{
-		client: client,
-	}, nil
-}
-
 func (d *defaultClient) GetMachineMetadata() (*MachineMetadata, error) {
 	req, err := http.NewRequest(http.MethodGet, d.metadataEndpoint, nil)
 	// TODO: Fix this

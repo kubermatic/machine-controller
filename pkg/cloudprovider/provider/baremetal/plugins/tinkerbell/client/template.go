@@ -116,7 +116,7 @@ func (t *TemplateClient) CreateTemplate(ctx context.Context, hardware *tinkv1alp
 			return nil
 		}
 
-		return fmt.Errorf("failed to get template %s: %v", ProvisionWorkerNodeTemplate, err)
+		return fmt.Errorf("failed to get template %s: %w", ProvisionWorkerNodeTemplate, err)
 	}
 
 	return nil
@@ -127,7 +127,7 @@ func getTemplate(hardware *tinkv1alpha1.Hardware, osImageURL string) (string, er
 		createWipeDiskAction(),
 		createStreamUbuntuImageAction(hardwareDisk1, osImageURL),
 		createGrowPartitionAction(hardwareDisk1),
-		createNetworkConfigAction(hardware),
+		createNetworkConfigAction(),
 		createCloudInitConfigAction(),
 		decodeCloudInitFile(hardware.Name),
 	}
@@ -203,7 +203,7 @@ func createGrowPartitionAction(destDisk string) Action {
 	}
 }
 
-func createNetworkConfigAction(hardware *tinkv1alpha1.Hardware) Action {
+func createNetworkConfigAction() Action {
 	netplaneConfig := `
 network:
   version: 2

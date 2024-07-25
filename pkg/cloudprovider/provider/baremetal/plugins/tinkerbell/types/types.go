@@ -24,9 +24,9 @@ import (
 
 const (
 	Unknown        string = "Unknown"
-	Staged                = "Staged"
-	Provisioned           = "Provisioned"
-	Decommissioned        = "Decommissioned"
+	Staged         string = "Staged"
+	Provisioned    string = "Provisioned"
+	Decommissioned string = "Decommissioned"
 )
 
 const ()

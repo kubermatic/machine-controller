@@ -64,11 +64,6 @@ func NewTinkerbellDriver(tinkConfig tinktypes.Config, tinkSpec *tinktypes.Tinker
 	if err != nil {
 		return nil, fmt.Errorf("failed to create k8s client: %w", err)
 	}
-
-	if err != nil {
-		return nil, err
-	}
-
 	hwClient := client.NewHardwareClient(tinkClient)
 
 	wkClient := client.NewWorkflowClient(tinkClient)
