@@ -22,6 +22,8 @@ import (
 
 	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
 	"gopkg.in/yaml.v3"
+
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,11 +54,15 @@ type Template struct {
 	Tasks         []Task `yaml:"tasks"`
 }
 
-const fsType = "ext4"
-const defaultInterpreter = "/bin/sh -c"
-const hardwareDisk1 = "{{ index .Hardware.Disks 0 }}"
+const (
+	fsType             = "ext4"
+	defaultInterpreter = "/bin/sh -c"
+	hardwareDisk1      = "{{ index .Hardware.Disks 0 }}"
 
-// WorkflowClient handles interactions with the Tinkerbell Workflows.
+	ProvisionWorkerNodeTemplate = "provision-worker-node"
+)
+
+// TemplateClient handles interactions with the Tinkerbell Templates in the Tinkerbell cluster.
 type TemplateClient struct {
 	tinkclient client.Client
 }
@@ -84,38 +90,46 @@ func (t *TemplateClient) Delete(ctx context.Context, namespacedName types.Namesp
 }
 
 // CreateTemplate creates a Tinkerbell Template in the Kubernetes cluster.
-func (t *TemplateClient) CreateTemplate(ctx context.Context, namespacedName types.NamespacedName, osImageURL, hegelURL string) (*tinkv1alpha1.Template, error) {
-	data, err := getTemplate(osImageURL, hegelURL)
+func (t *TemplateClient) CreateTemplate(ctx context.Context, hardware *tinkv1alpha1.Hardware, namespace, osImageURL string) error {
+	template := &tinkv1alpha1.Template{}
+	if err := t.tinkclient.Get(ctx, types.NamespacedName{
+		Name:      ProvisionWorkerNodeTemplate,
+		Namespace: namespace,
+	}, template); err != nil {
+		if kerrors.IsNotFound(err) {
+			data, err := getTemplate(hardware, osImageURL)
+			if err != nil {
+				return err
+			}
 
-	if err != nil {
-		return nil, err
-	}
-	template := &tinkv1alpha1.Template{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      namespacedName.Name,
-			Namespace: namespacedName.Namespace,
-		},
-		Spec: tinkv1alpha1.TemplateSpec{
-			Data: &data, // templateData is a string containing the YAML definition.
-		},
+			template.Name = ProvisionWorkerNodeTemplate
+			template.Namespace = namespace
+			template.Spec = tinkv1alpha1.TemplateSpec{
+				Data: &data, // templateData is a string containing the YAML definition.
+			}
+
+			// Create the Template object in the Tinkerbell cluster
+			if err := t.tinkclient.Create(ctx, template); err != nil {
+				return fmt.Errorf("failed to create Template in Tinkerbell cluster: %w", err)
+			}
+
+			return nil
+		}
+
+		return fmt.Errorf("failed to get template %s: %v", ProvisionWorkerNodeTemplate, err)
 	}
 
-	// Create the Template object in the Tinkerbell cluster
-	if err := t.tinkclient.Create(ctx, template); err != nil {
-		return nil, fmt.Errorf("failed to create Template in Tinkerbell cluster: %w", err)
-	}
-
-	return template, nil
+	return nil
 }
 
-func getTemplate(osImageURL, hegelURL string) (string, error) {
+func getTemplate(hardware *tinkv1alpha1.Hardware, osImageURL string) (string, error) {
 	actions := []Action{
 		createWipeDiskAction(),
 		createStreamUbuntuImageAction(hardwareDisk1, osImageURL),
 		createGrowPartitionAction(hardwareDisk1),
-		createCloudInitConfigAction(hardwareDisk1, hegelURL),
-		createCloudInitIdentityAction(hardwareDisk1),
-		createKexecAction(hardwareDisk1),
+		createNetworkConfigAction(hardware),
+		createCloudInitConfigAction(),
+		decodeCloudInitFile(hardware.Name),
 	}
 
 	task := Task{
@@ -178,10 +192,10 @@ func createStreamUbuntuImageAction(destDisk, osImageURL string) Action {
 func createGrowPartitionAction(destDisk string) Action {
 	return Action{
 		Name:    "grow-partition",
-		Image:   "quay.io/tinkerbell-actions/cexec:v1.0.0",
+		Image:   "quay.io/tinkerbell/actions/cexec:latest",
 		Timeout: 90,
 		Environment: map[string]string{
-			"BLOCK_DEVICE":        destDisk + "3",
+			"BLOCK_DEVICE":        "{{ index .Hardware.Disks 0 }}3",
 			"FS_TYPE":             fsType,
 			"CHROOT":              "y",
 			"DEFAULT_INTERPRETER": defaultInterpreter,
@@ -190,27 +204,49 @@ func createGrowPartitionAction(destDisk string) Action {
 	}
 }
 
-func createCloudInitConfigAction(destDisk, metadataURL string) Action {
-	// Use fmt.Sprintf to inject the variable into the string
-	cloudInitConfiguration := fmt.Sprintf(`
-datasource:
-  Ec2:
-    metadata_urls: ["%s"]
-    strict_id: false
-manage_etc_hosts: localhost
-warnings:
-  dsid_missing_source: off
-`, metadataURL)
+func createNetworkConfigAction(hardware *tinkv1alpha1.Hardware) Action {
+	netplaneConfig := `
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    {{.interface_name}}:
+      dhcp4: no
+      addresses:
+        - {{.cidr}}
+      nameservers:
+        addresses:
+          - {{.ns}}
+      routes:
+      - to: default
+        via: {{.default_route}}`
+	return Action{
+		Name:    "add-netplan-config",
+		Image:   "quay.io/tinkerbell-actions/writefile:v1.0.0",
+		Timeout: 90,
+		Environment: map[string]string{
+			"DEST_DISK": "{{ index .Hardware.Disks 0 }}3",
+			"FS_TYPE":   fsType,
+			"DEST_PATH": "/etc/netplan/config.yaml",
+			"CONTENTS":  netplaneConfig,
+			"UID":       "0",
+			"GID":       "0",
+			"MODE":      "0644",
+			"DIRMODE":   "0755",
+		},
+	}
+}
 
+func createCloudInitConfigAction() Action {
 	return Action{
 		Name:    "add-cloud-init-config",
 		Image:   "quay.io/tinkerbell-actions/writefile:v1.0.0",
 		Timeout: 90,
 		Environment: map[string]string{
-			"DEST_DISK": destDisk + "1",
+			"DEST_DISK": "{{ index .Hardware.Disks 0 }}3",
 			"FS_TYPE":   fsType,
-			"DEST_PATH": "/etc/cloud/cloud.cfg.d/10_tinkerbell.cfg",
-			"CONTENTS":  cloudInitConfiguration,
+			"DEST_PATH": "{{.dst_path}}",
+			"CONTENTS":  "{{.cloud_init_script}}",
 			"UID":       "0",
 			"GID":       "0",
 			"MODE":      "0644",
@@ -219,38 +255,17 @@ warnings:
 	}
 }
 
-func createCloudInitIdentityAction(destDisk string) Action {
-	dsContent := `
-datasource: Ec2
-`
+func decodeCloudInitFile(hardwareName string) Action {
 	return Action{
-		Name:    "add-cloud-init-identity",
-		Image:   "quay.io/tinkerbell-actions/writefile:v1.0.0",
+		Name:    "decode-cloud-init-file",
+		Image:   "quay.io/tinkerbell/actions/cexec:latest",
 		Timeout: 90,
 		Environment: map[string]string{
-			"DEST_DISK": destDisk + "1",
-			"FS_TYPE":   fsType,
-			"DEST_PATH": "/etc/cloud/ds-identify.cfg",
-			"CONTENTS":  dsContent,
-			"UID":       "0",
-			"GID":       "0",
-			"MODE":      "0644",
-			"DIRMODE":   "0755",
+			"BLOCK_DEVICE":        "{{ index .Hardware.Disks 0 }}3",
+			"FS_TYPE":             fsType,
+			"CHROOT":              "y",
+			"DEFAULT_INTERPRETER": "/bin/sh -c",
+			"CMD_LINE":            fmt.Sprintf("cat /tmp/%s-bootstrap-config | base64 -d > /etc/cloud/cloud.cfg.d/%s-cloud-init.cfg", hardwareName, hardwareName),
 		},
-	}
-}
-
-func createKexecAction(destDisk string) Action {
-	return Action{
-		Name:    "kexec",
-		Image:   "ghcr.io/jacobweinstock/waitdaemon:latest",
-		Timeout: 90,
-		Pid:     "host",
-		Environment: map[string]string{
-			"BLOCK_DEVICE": destDisk + "1",
-			"IMAGE":        "quay.io/tinkerbell-actions/kexec:v1.0.0",
-			"WAIT_SECONDS": "10",
-		},
-		Volumes: []string{"/var/run/docker.sock:/var/run/docker.sock"},
 	}
 }

@@ -18,7 +18,9 @@ package client
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 
 	tink "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 
@@ -40,8 +42,15 @@ func NewWorkflowClient(k8sClient client.Client) *WorkflowClient {
 }
 
 // CreateWorkflow creates a new Tinkerbell Workflow resource in the cluster.
-func (w *WorkflowClient) CreateWorkflow(ctx context.Context, workflowName, templateRef string, hardware tink.Hardware) error {
+func (w *WorkflowClient) CreateWorkflow(ctx context.Context, userData, workflowName, templateRef string, hardware tink.Hardware) error {
 	// Construct the Workflow object
+	ifaceConfig := hardware.Spec.Interfaces[0].DHCP
+	dnsNameservers := "1.1.1.1"
+
+	for _, ns := range ifaceConfig.NameServers {
+		dnsNameservers = ns
+	}
+
 	workflow := &tinkv1alpha1.Workflow{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      workflowName + "-workflow",
@@ -51,7 +60,13 @@ func (w *WorkflowClient) CreateWorkflow(ctx context.Context, workflowName, templ
 			TemplateRef: templateRef,
 			HardwareRef: hardware.GetName(),
 			HardwareMap: map[string]string{
-				"device_1": hardware.GetMACAddress(),
+				"device_1":          hardware.GetMACAddress(),
+				"dst_path":          fmt.Sprintf("/tmp/%s-bootstrap-config", hardware.Name),
+				"cloud_init_script": base64.StdEncoding.EncodeToString([]byte(userData)),
+				"interface_name":    ifaceConfig.IfaceName,
+				"cidr":              convertNetmaskToCIDR(ifaceConfig.IP),
+				"ns":                dnsNameservers,
+				"default_route":     ifaceConfig.IP.Gateway,
 			},
 		},
 	}
@@ -60,6 +75,7 @@ func (w *WorkflowClient) CreateWorkflow(ctx context.Context, workflowName, templ
 	if err := w.tinkclient.Create(ctx, workflow); err != nil {
 		return fmt.Errorf("failed to create the workflow: %w", err)
 	}
+
 	return nil
 }
 
@@ -72,8 +88,11 @@ func (w *WorkflowClient) DeleteWorkflow(ctx context.Context, name string, namesp
 		},
 	}
 	if err := w.tinkclient.Delete(ctx, workflow); err != nil {
-		return fmt.Errorf("failed to delete workflow: %w", err)
+		if !kerrors.IsNotFound(err) {
+			return fmt.Errorf("failed to delete workflow: %w", err)
+		}
 	}
+
 	return nil
 }
 

@@ -21,82 +21,57 @@ import (
 	"fmt"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	tbtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
+
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // HardwareClient manages Tinkerbell hardware resources across two clusters.
 type HardwareClient struct {
-	TinkerbellClient client.Client // Client for the Tinkerbell Cluster
+	TinkerbellClient client.Client
 }
 
 // NewHardwareClient creates a new instance of HardwareClient.
 func NewHardwareClient(tinkerbellClient client.Client) *HardwareClient {
 	return &HardwareClient{
-		//KubeClient:       kubeClient,
 		TinkerbellClient: tinkerbellClient,
 	}
 }
 
-// SelectAvailableHardware selects an available hardware from the given list of hardware references
-// that has an empty ID.
-func (h *HardwareClient) SelectAvailableHardware(ctx context.Context, hardwareRefs []types.NamespacedName) (*tinkv1alpha1.Hardware, error) {
-	for _, ref := range hardwareRefs {
-		var hardware tinkv1alpha1.Hardware
-		if err := h.TinkerbellClient.Get(ctx, client.ObjectKey{Namespace: ref.Namespace, Name: ref.Name}, &hardware); err != nil {
-			return nil, fmt.Errorf("failed to get hardware '%s' in namespace '%s': %w", ref.Name, ref.Namespace, err)
-		}
-
-		// Check if the ID is empty and return the hardware if it is
-		if hardware.Spec.Metadata.Instance.ID == "" {
-			return &hardware, nil // Found an unclaimed hardware
-		}
-	}
-
-	return nil, fmt.Errorf("failed to get available hardware to provision")
-}
-
-// GetHardware selects an available hardware from the given list of hardware references
-// that has an empty ID.
+// GetHardware fetches a hardware object from the Tinkerbell cluster based on the hardware reference in the machine
+// deployment object.
 func (h *HardwareClient) GetHardware(ctx context.Context, hardwareRef types.NamespacedName) (*tinkv1alpha1.Hardware, error) {
-	var hardware tinkv1alpha1.Hardware
-	if err := h.TinkerbellClient.Get(ctx, client.ObjectKey{Namespace: hardwareRef.Namespace, Name: hardwareRef.Name}, &hardware); err != nil {
+	hardware := &tinkv1alpha1.Hardware{}
+	if err := h.TinkerbellClient.Get(ctx, client.ObjectKey{Namespace: hardwareRef.Namespace, Name: hardwareRef.Name}, hardware); err != nil {
 		return nil, fmt.Errorf("failed to get hardware '%s' in namespace '%s': %w", hardwareRef.Name, hardwareRef.Namespace, err)
 	}
 
-	// Check if the ID is empty and return the hardware if it is
-	if hardware.Spec.Metadata.Instance.ID == "" {
-		return &hardware, nil // Found an unclaimed hardware
-	}
-
-	return nil, fmt.Errorf("failed to get available hardware to provision")
+	return hardware, nil
 }
 
 // SetHardwareID sets the ID of a specified Hardware object.
 func (h *HardwareClient) SetHardwareID(ctx context.Context, hardware *tinkv1alpha1.Hardware, newID string) error {
-	// Set the new ID
+	if hardware.Spec.Metadata == nil {
+		hardware.Spec.Metadata = &tinkv1alpha1.HardwareMetadata{}
+	}
+
+	if hardware.Spec.Metadata.Instance == nil {
+		hardware.Spec.Metadata.Instance = &tinkv1alpha1.MetadataInstance{}
+	}
+
 	hardware.Spec.Metadata.Instance.ID = newID
+	// Set the new ID
+	hardware.Spec.Metadata.State = tbtypes.Staged
+	if newID == "" {
+		// Machine has been deprovisioned
+		hardware.Spec.Metadata.State = tbtypes.Decommissioned
+	}
 
 	// Update the hardware object in the cluster
 	if err := h.TinkerbellClient.Update(ctx, hardware); err != nil {
 		return fmt.Errorf("failed to update hardware ID for '%s': %w", hardware.Name, err)
-	}
-
-	return nil
-}
-
-// CreateHardwareOnTinkCluster creates a hardware object on the Tinkerbell cluster.
-func (h *HardwareClient) CreateHardwareOnTinkCluster(ctx context.Context, hardware *tinkv1alpha1.Hardware) error {
-	// Set the namespace if it is not already specified
-	if hardware.Namespace == "" {
-		hardware.Namespace = "default"
-	}
-
-	hardware.ResourceVersion = ""
-	// Create the hardware object on the Tinkerbell cluster
-	if err := h.TinkerbellClient.Create(ctx, hardware); err != nil {
-		return fmt.Errorf("failed to create hardware in Tinkerbell cluster: %w", err)
 	}
 
 	return nil
@@ -119,17 +94,4 @@ func (h *HardwareClient) GetHardwareWithID(ctx context.Context, uid string) (*ti
 	}
 
 	return nil, errors.ErrInstanceNotFound
-}
-
-// SetHardwareUserData sets the User Data (cloud-init) of a specified Hardware object.
-func (h *HardwareClient) SetHardwareUserData(ctx context.Context, hardware *tinkv1alpha1.Hardware, userdata string) error {
-	// Set the new ID
-	hardware.Spec.UserData = &userdata
-
-	// Update the hardware object in the cluster
-	if err := h.TinkerbellClient.Update(ctx, hardware); err != nil {
-		return fmt.Errorf("failed to update hardware UserData for '%s': %w", hardware.Name, err)
-	}
-
-	return nil
 }
