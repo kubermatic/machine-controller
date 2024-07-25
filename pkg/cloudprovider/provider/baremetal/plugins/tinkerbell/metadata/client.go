@@ -19,7 +19,6 @@ package metadata
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -65,17 +64,11 @@ type defaultClient struct {
 }
 
 func NewMetadataClient(cfg *Config) (Client, error) {
-	if cfg.Endpoint == "" {
-		return nil, errors.New("machine metadata endpoint cannot be empty")
-	}
-
 	client := http.DefaultClient
 	client.Timeout = defaultTimeout
 
 	return &defaultClient{
-		metadataEndpoint: cfg.Endpoint,
-		authConfig:       cfg.AuthConfig,
-		client:           client,
+		client: client,
 	}, nil
 }
 

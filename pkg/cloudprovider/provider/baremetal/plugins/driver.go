@@ -18,6 +18,7 @@ package plugins
 
 import (
 	"context"
+	"go.uber.org/zap"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,10 +37,10 @@ type CloudConfigSettings struct {
 
 // PluginDriver manages the communications between the machine controller cloud provider and the bare metal env.
 type PluginDriver interface {
-	GetServer(context.Context, metav1.ObjectMeta, runtime.RawExtension) (Server, error)
+	GetServer(context.Context) (Server, error)
 	Validate(runtime.RawExtension) error
-	ProvisionServer(context.Context, metav1.ObjectMeta, runtime.RawExtension, string) (Server, error)
-	DeprovisionServer(context.Context, metav1.ObjectMeta) error
+	ProvisionServer(context.Context, *zap.SugaredLogger, metav1.ObjectMeta, runtime.RawExtension, string) (Server, error)
+	DeprovisionServer(context.Context) error
 }
 
 // Server represents the server/instance which exists in the bare metal env.

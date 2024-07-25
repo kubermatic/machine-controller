@@ -32,13 +32,21 @@ func (h *Hardware) GetName() string {
 }
 
 func (h *Hardware) GetID() string {
-	return h.Spec.Metadata.Instance.ID
+	if h.Spec.Metadata != nil &&
+		h.Spec.Metadata.Instance != nil &&
+		h.Spec.Metadata.Instance.ID != "" {
+		return h.Spec.Metadata.Instance.ID
+	}
+
+	return ""
 }
 
 func (h *Hardware) GetIPAddress() string {
-	interfaces := h.Spec.Interfaces
-	if len(interfaces) > 0 && interfaces[0].DHCP.IP != nil {
-		return interfaces[0].DHCP.IP.Address
+	if h.Spec.Metadata != nil && h.Spec.Metadata.State == Staged {
+		interfaces := h.Spec.Interfaces
+		if len(interfaces) > 0 && interfaces[0].DHCP.IP != nil {
+			return interfaces[0].DHCP.IP.Address
+		}
 	}
 
 	return ""

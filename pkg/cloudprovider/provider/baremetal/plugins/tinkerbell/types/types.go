@@ -22,6 +22,14 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+const (
+	Staged         string = "Staged"
+	Provisioned           = "Provisioned"
+	Decommissioned        = "Decommissioned"
+)
+
+const ()
+
 // TinkerbellPluginSpec defines the required information for the Tinkerbell plugin.
 type TinkerbellPluginSpec struct {
 
