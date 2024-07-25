@@ -29,8 +29,6 @@ const (
 	Decommissioned string = "Decommissioned"
 )
 
-const ()
-
 // TinkerbellPluginSpec defines the required information for the Tinkerbell plugin.
 type TinkerbellPluginSpec struct {
 

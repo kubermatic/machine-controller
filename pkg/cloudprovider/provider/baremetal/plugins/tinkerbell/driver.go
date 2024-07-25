@@ -97,7 +97,7 @@ func (d *driver) GetServer(ctx context.Context) (plugins.Server, error) {
 	return &server, nil
 }
 
-func (d *driver) ProvisionServer(ctx context.Context, log *zap.SugaredLogger, meta metav1.ObjectMeta, _ runtime.RawExtension, userdata string) (plugins.Server, error) {
+func (d *driver) ProvisionServer(ctx context.Context, _ *zap.SugaredLogger, meta metav1.ObjectMeta, _ runtime.RawExtension, userdata string) (plugins.Server, error) {
 	// Get the hardware object from tinkerbell
 	hardware, err := d.HardwareClient.GetHardware(ctx, d.HardwareRef)
 	if err != nil {
