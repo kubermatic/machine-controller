@@ -41,10 +41,6 @@ type TinkerbellPluginSpec struct {
 	// Tinkerbell cluster API. This field is optional and should be provided if authentication is required.
 	Auth Auth `json:"auth,omitempty"`
 
-	// HegelURL specifies the URL of the Hegel metadata server. This server is crucial
-	// for the cloud-init process as it provides necessary metadata to the booting machines.
-	HegelURL providerconfigtypes.ConfigVarString `json:"hegelUrl"`
-
 	// OSImageURL is the URL where the OS image for the Tinkerbell template is located.
 	// This URL is used to download and stream the OS image during the provisioning process.
 	OSImageURL providerconfigtypes.ConfigVarString `json:"osImageUrl"`
@@ -64,6 +60,5 @@ type Config struct {
 	Kubeconfig  string
 	ClusterName string
 	RestConfig  *rest.Config
-	HegelURL    string
 	OSImageURL  string
 }

@@ -25,36 +25,9 @@ spec:
           cloudProvider: "baremetal"
           cloudProviderSpec:
             driver: "tinkerbell"
-            metadataClientConfig:
-              endpoint:
-                secretKeyRef:
-                  namespace: kube-system
-                  name: machine-controller-baremetal-tb
-                  key: endpoint
-              authMethod:
-                secretKeyRef:
-                  namespace: kube-system
-                  name: machine-controller-baremetal-tb
-                  key: authMethod
-              username:
-                secretKeyRef:
-                  namespace: kube-system
-                  name: machine-controller-baremetal-tb
-                  key: username
-              password:
-                secretKeyRef:
-                  namespace: kube-system
-                  name: machine-controller-baremetal-tb
-                  key: password
-              token:
-                secretKeyRef:
-                  namespace: kube-system
-                  name: machine-controller-baremetal-tb
-                  key: token
             driverSpec:
               clusterName: "<< CLUSTER_NAME >>"
               osImageUrl: "<< OS_IMAGE_URL >>"
-              hegelUrl: "<< HEGEL_URL >>"
               auth:
                 kubeconfig:
                   value: "<< KUBECONFIG_BASE64 >>"

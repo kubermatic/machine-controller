@@ -42,7 +42,6 @@ import (
 type driver struct {
 	ClusterName string
 	OSImageURL  string
-	HegelURL    string
 	TinkClient  ctrlruntimeclient.Client
 	//KubeClient     ctrlruntimeclient.Client
 	HardwareRef    types.NamespacedName
@@ -84,7 +83,6 @@ func NewTinkerbellDriver(tinkConfig tinktypes.Config, tinkSpec *tinktypes.Tinker
 		WorkflowClient: *wkClient,
 		TemplateClient: *tmplClient,
 		OSImageURL:     tinkSpec.OSImageURL.Value,
-		HegelURL:       tinkSpec.HegelURL.Value,
 	}
 
 	return &d, nil
@@ -202,11 +200,6 @@ func GetConfig(driverConfig tinktypes.TinkerbellPluginSpec, aa func(configVar pr
 	config.OSImageURL, err = aa(driverConfig.OSImageURL, "OS_IMAGE_URL")
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "OSImageURL" field: %w`, err)
-	}
-
-	config.HegelURL, err = aa(driverConfig.HegelURL, "HEGEL_URL")
-	if err != nil {
-		return nil, fmt.Errorf(`failed to get value of "HegelURL" field: %w`, err)
 	}
 
 	config.RestConfig, err = clientcmd.RESTConfigFromKubeConfig([]byte(config.Kubeconfig))
