@@ -129,7 +129,7 @@ func (d *driver) ProvisionServer(ctx context.Context, _ *zap.SugaredLogger, meta
 
 	// Create Workflow to match the template and server
 	server := tinktypes.Hardware{Hardware: hardware}
-	if err = d.WorkflowClient.CreateWorkflow(ctx, userdata, server.Name, client.ProvisionWorkerNodeTemplate, server); err != nil {
+	if err = d.WorkflowClient.CreateWorkflow(ctx, userdata, client.ProvisionWorkerNodeTemplate, server); err != nil {
 		return nil, err
 	}
 
@@ -152,10 +152,8 @@ func (d *driver) DeprovisionServer(ctx context.Context) error {
 		return err
 	}
 
-	// Delete the associated Workflow.
-	workflowName := targetHardware.Name + "-workflow" // Assuming workflow names are derived from hardware names
-	if err := d.WorkflowClient.DeleteWorkflow(ctx, workflowName, targetHardware.Namespace); err != nil {
-		return fmt.Errorf("failed to delete workflow %s: %w", workflowName, err)
+	if err := d.WorkflowClient.CleanupWorkflows(ctx, targetHardware.Name, targetHardware.Namespace); err != nil {
+		return fmt.Errorf("failed to cleanup workflows for hardware %s: %w", targetHardware.Name, err)
 	}
 
 	// Reset the hardware ID and state in the tinkerbell cluster.

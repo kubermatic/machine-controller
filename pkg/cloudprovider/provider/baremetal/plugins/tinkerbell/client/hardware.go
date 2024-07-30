@@ -62,7 +62,6 @@ func (h *HardwareClient) SetHardwareID(ctx context.Context, hardware *tinkv1alph
 	}
 
 	hardware.Spec.Metadata.Instance.ID = newID
-	// Set the new ID
 	hardware.Spec.Metadata.State = tbtypes.Staged
 	if newID == "" {
 		// Machine has been deprovisioned

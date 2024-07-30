@@ -27,6 +27,8 @@ const (
 	Staged         string = "Staged"
 	Provisioned    string = "Provisioned"
 	Decommissioned string = "Decommissioned"
+
+	HardwareRefLabel = "app.kubernetes.io/hardware-reference"
 )
 
 // TinkerbellPluginSpec defines the required information for the Tinkerbell plugin.
