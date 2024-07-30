@@ -89,7 +89,7 @@ func (d *driver) GetServer(ctx context.Context) (plugins.Server, error) {
 		return nil, err
 	}
 
-	if targetHardware.Spec.Metadata != nil && targetHardware.Spec.Metadata.State != tinktypes.Staged {
+	if targetHardware.Spec.Metadata == nil || targetHardware.Spec.Metadata.State == "" {
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
