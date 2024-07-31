@@ -61,6 +61,11 @@ const (
 	// Interval and timeout for polling.
 	pollInterval = 2 * time.Second
 	pollTimeout  = 5 * time.Minute
+	// The maximum number of hops that the metadata service can be forwarded to, defaults to 2.
+	// We need to set this to a higher value i.e. 3 to ensure that it is not blocked by extra hops that are introduced either by CNI or other networking components. With lower
+	// limits AWS metadata service is not reachable from the container network in such a scenario.
+	// For example: https://github.com/cilium/cilium/issues/25232
+	awsMetadataHTTPPutResponseHopLimit = 3
 )
 
 var (
@@ -760,6 +765,9 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	assignPublicIP := config.AssignPublicIP == nil || *config.AssignPublicIP
 
 	instanceRequest := &ec2.RunInstancesInput{
+		MetadataOptions: &ec2types.InstanceMetadataOptionsRequest{
+			HttpPutResponseHopLimit: aws.Int32(awsMetadataHTTPPutResponseHopLimit),
+		},
 		ImageId:               aws.String(amiID),
 		InstanceMarketOptions: instanceMarketOptions,
 		BlockDeviceMappings: []ec2types.BlockDeviceMapping{
