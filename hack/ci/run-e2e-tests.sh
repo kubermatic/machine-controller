@@ -66,6 +66,8 @@ beforeMCSetup=$(nowms)
 source hack/ci/setup-machine-controller-in-kind.sh
 pushElapsed kind_mc_setup_duration_milliseconds $beforeMCSetup
 
+source hack/ci/setup-ccm.sh
+
 echo "Running e2e tests..."
 EXTRA_ARGS=""
 if [[ $# -gt 0 ]]; then

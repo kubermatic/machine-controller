@@ -200,25 +200,6 @@ start_docker_daemon_ci() {
   DOCKER_REGISTRY_MIRROR="${DOCKER_REGISTRY_MIRROR_ADDR:-}" DOCKER_MTU=1400 start-docker.sh
 }
 
-start_docker_daemon() {
-  if docker stats --no-stream > /dev/null 2>&1; then
-    echodate "Not starting Docker again, it's already running."
-    return
-  fi
-
-  # Start Docker daemon
-  echodate "Starting Docker"
-  dockerd > /tmp/docker.log 2>&1 &
-
-  echodate "Started Docker successfully"
-  appendTrap docker_logs EXIT
-
-  # Wait for Docker to start
-  echodate "Waiting for Docker"
-  retry 5 docker stats --no-stream
-  echodate "Docker became ready"
-}
-
 check_all_deployments_ready() {
   local namespace="$1"
 
