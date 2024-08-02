@@ -66,12 +66,16 @@ beforeMCSetup=$(nowms)
 source hack/ci/setup-machine-controller-in-kind.sh
 pushElapsed kind_mc_setup_duration_milliseconds $beforeMCSetup
 
+source hack/ci/setup-ccm.sh
+
 echo "Running e2e tests..."
 EXTRA_ARGS=""
 if [[ $# -gt 0 ]]; then
   EXTRA_ARGS="-run $1"
 fi
 go test -race -tags=e2e -parallel 240 -v -timeout 70m ./test/e2e/... -identifier=$BUILD_ID $EXTRA_ARGS
+
+kubectl get nodes
 
 echo "Cleaning up machines and services..."
 source hack/ci/cleanup.sh

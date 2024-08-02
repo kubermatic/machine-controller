@@ -68,11 +68,10 @@ if [ ! -f machine-controller-deployed ]; then
 fi
 
 OSM_TMP_DIR=/tmp/osm
-echodate "Clone OSM respository"
 (
   # Clone OSM repo
+  echodate "Clone OSM respository"
   mkdir -p $OSM_TMP_DIR
-  echodate "Cloning cluster exposer"
   git clone --depth 1 --branch "${OSM_REPO_TAG}" "${OSM_REPO_URL}" $OSM_TMP_DIR
 )
 

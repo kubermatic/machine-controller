@@ -61,7 +61,7 @@ spec:
             diskType: "gp2"
             ebsVolumeEncrypted: false
             ami: "my-custom-ami"
-            ## Only application if diskType = io1
+            ## Only applicable if diskType = io1
             diskIops: 500
             # Assign a public IP to this instance. Default: true
             assignPublicIP: false
