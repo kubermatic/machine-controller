@@ -424,7 +424,7 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	}
 
 	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := Not(VersionSelector("1.28.11", "1.29.6", "1.30.2"))
+	selector := OsSelector("ubuntu")
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),

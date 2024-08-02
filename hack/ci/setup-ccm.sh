@@ -18,8 +18,16 @@ source hack/lib.sh
 
 echodate "Setting up $CLOUD_PROVIDER cloud-controller-manager…"
 
+# kubectl taint node machine-controller-control-plane node.cloudprovider.kubernetes.io/uninitialized:PreferNoSchedule
+kubectl delete node machine-controller-control-plane
+
 case "$CLOUD_PROVIDER" in
 aws)
+  kubectl create secret generic cloud-credentials \
+    --namespace kube-system \
+    --from-literal "accessKeyId=$AWS_E2E_TESTS_KEY_ID" \
+    --from-literal "secretAccessKey=$AWS_E2E_TESTS_SECRET"
+
   kubectl apply -f hack/ci/ccm/aws/
   ;;
 esac
