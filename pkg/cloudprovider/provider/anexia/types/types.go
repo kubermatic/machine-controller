@@ -53,10 +53,20 @@ type RawDisk struct {
 	PerformanceType providerconfigtypes.ConfigVarString `json:"performanceType"`
 }
 
+// RawNetwork specifies a single network interface.
+type RawNetwork struct {
+	// Identifier of the VLAN to attach this network interface to.
+	VlanID providerconfigtypes.ConfigVarString `json:"vlan"`
+
+	// IDs of prefixes to reserve IP addresses from for each Machine on network interface.
+	//
+	// Empty list means that no IPs will be reserved, but the interface will still be added.
+	PrefixIDs []providerconfigtypes.ConfigVarString `json:"prefixes"`
+}
+
 // RawConfig contains all the configuration values for VMs to create, with some values maybe being fetched from secrets.
 type RawConfig struct {
 	Token      providerconfigtypes.ConfigVarString `json:"token,omitempty"`
-	VlanID     providerconfigtypes.ConfigVarString `json:"vlanID"`
 	LocationID providerconfigtypes.ConfigVarString `json:"locationID"`
 
 	TemplateID    providerconfigtypes.ConfigVarString `json:"templateID"`
@@ -71,16 +81,34 @@ type RawConfig struct {
 	DiskSize int `json:"diskSize"`
 
 	Disks []RawDisk `json:"disks"`
+
+	// Deprecated, use Networks instead.
+	VlanID providerconfigtypes.ConfigVarString `json:"vlanID"`
+
+	// Configuration of the network interfaces. At least one entry with at
+	// least one Prefix is required.
+	Networks []RawNetwork `json:"networks"`
+}
+
+type NetworkAddressStatus struct {
+	ReservedIP            string    `json:"reservedIP"`
+	IPState               string    `json:"ipState"`
+	IPProvisioningExpires time.Time `json:"ipProvisioningExpires"`
+}
+
+type NetworkStatus struct {
+	// each entry belongs to a config.Networks.Prefix entry at the same index
+	Addresses []NetworkAddressStatus `json:"addresses"`
 }
 
 type ProviderStatus struct {
-	InstanceID            string         `json:"instanceID"`
-	ProvisioningID        string         `json:"provisioningID"`
-	DeprovisioningID      string         `json:"deprovisioningID"`
-	ReservedIP            string         `json:"reservedIP"`
-	IPState               string         `json:"ipState"`
-	IPProvisioningExpires time.Time      `json:"ipProvisioningExpires"`
-	Conditions            []v1.Condition `json:"conditions,omitempty"`
+	InstanceID       string         `json:"instanceID"`
+	ProvisioningID   string         `json:"provisioningID"`
+	DeprovisioningID string         `json:"deprovisioningID"`
+	Conditions       []v1.Condition `json:"conditions,omitempty"`
+
+	// each entry belongs to the config.Networks entry at the same index
+	Networks []NetworkStatus `json:"networkStatus,omitempty"`
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {

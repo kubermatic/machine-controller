@@ -90,8 +90,11 @@ func hookableConfig(hook func(*anxtypes.RawConfig)) anxtypes.RawConfig {
 			{Size: 5, PerformanceType: newConfigVarString("ENT6")},
 		},
 
+		Networks: []anxtypes.RawNetwork{
+			{VlanID: newConfigVarString("test-vlan"), PrefixIDs: []types.ConfigVarString{newConfigVarString("test-prefix")}},
+		},
+
 		Token:      newConfigVarString("test-token"),
-		VlanID:     newConfigVarString("test-vlan"),
 		LocationID: newConfigVarString("test-location"),
 		TemplateID: newConfigVarString("test-template-id"),
 	}
@@ -112,13 +115,20 @@ func hookableReconcileContext(locationID string, templateID string, hook func(*r
 		Status:   &anxtypes.ProviderStatus{},
 		UserData: "",
 		Config: resolvedConfig{
-			VlanID:     "VLAN-ID",
 			LocationID: locationID,
 			TemplateID: templateID,
 			Disks: []resolvedDisk{
 				{
 					RawDisk: anxtypes.RawDisk{
 						Size: 5,
+					},
+				},
+			},
+			Networks: []resolvedNetwork{
+				{
+					VlanID: "VLAN-ID",
+					Prefixes: []string{
+						"Prefix-ID",
 					},
 				},
 			},
