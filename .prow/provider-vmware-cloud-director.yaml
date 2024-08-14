@@ -31,7 +31,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.22-node-20-kind-0.23-11
+        - image: quay.io/kubermatic/build:go-1.23-node-20-kind-0.23-0
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:

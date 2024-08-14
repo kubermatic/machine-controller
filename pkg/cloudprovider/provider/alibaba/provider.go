@@ -423,9 +423,7 @@ func getInstance(client *ecs.Client, instanceName string, uid string) (*ecs.Inst
 		return nil, fmt.Errorf("failed to describe instance with instanceName: %s: %w", instanceName, err)
 	}
 
-	if response.Instances.Instance == nil ||
-		len(response.Instances.Instance) == 0 ||
-		response.GetHttpStatus() == http.StatusNotFound {
+	if len(response.Instances.Instance) == 0 || response.GetHttpStatus() == http.StatusNotFound {
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
