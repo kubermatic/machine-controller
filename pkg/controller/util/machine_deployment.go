@@ -132,7 +132,7 @@ func SetDeploymentRevision(deployment *v1alpha1.MachineDeployment, revision stri
 
 // MaxRevision finds the highest revision in the machine sets.
 func MaxRevision(log *zap.SugaredLogger, allMSs []*v1alpha1.MachineSet) int64 {
-	max := int64(0)
+	maxRev := int64(0)
 	for _, ms := range allMSs {
 		if v, err := Revision(ms); err != nil {
 			log.Debugw(
@@ -140,11 +140,11 @@ func MaxRevision(log *zap.SugaredLogger, allMSs []*v1alpha1.MachineSet) int64 {
 				"machinset", client.ObjectKeyFromObject(ms),
 				zap.Error(err),
 			)
-		} else if v > max {
-			max = v
+		} else if v > maxRev {
+			maxRev = v
 		}
 	}
-	return max
+	return maxRev
 }
 
 // Revision returns the revision number of the input object.
