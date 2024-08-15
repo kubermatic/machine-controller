@@ -19,10 +19,10 @@ package types
 import (
 	"time"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
-	"github.com/kubermatic/machine-controller/pkg/jsonutil"
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/pkg/apis/cluster/common"
+	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
+	"k8c.io/machine-controller/pkg/jsonutil"
+	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

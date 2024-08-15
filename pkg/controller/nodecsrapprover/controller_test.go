@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"

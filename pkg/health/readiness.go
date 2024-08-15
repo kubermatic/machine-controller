@@ -23,7 +23,7 @@ import (
 
 	"go.uber.org/zap"
 
-	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
+	machinecontroller "k8c.io/machine-controller/pkg/controller/machine"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"

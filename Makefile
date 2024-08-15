@@ -48,7 +48,7 @@ build-machine-controller: machine-controller
 	GOOS=$(GOOS) go build -v \
 		$(LDFLAGS) \
 		-o $@ \
-		github.com/kubermatic/machine-controller/cmd/$*
+		k8c.io/machine-controller/cmd/$*
 
 .PHONY: clean
 clean:
@@ -81,10 +81,10 @@ docker-image-publish: docker-image
 .PHONY: test-unit-docker
 test-unit-docker:
 	@docker run --rm \
-		-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
+		-v $$PWD:/go/src/k8c.io/machine-controller \
 		-v $$PWD/.buildcache:/cache \
 		-e GOCACHE=/cache \
-		-w /go/src/github.com/kubermatic/machine-controller \
+		-w /go/src/k8c.io/machine-controller \
 		golang:$(GO_VERSION) \
 			make test-unit "GOFLAGS=$(GOFLAGS)"
 

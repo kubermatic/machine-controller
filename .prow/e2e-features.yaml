@@ -17,6 +17,7 @@ presubmits:
     always_run: true
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    path_alias: k8c.io/machine-controller
     labels:
       preset-aws: "true"
       preset-azure: "true"
@@ -52,6 +53,7 @@ presubmits:
     always_run: true
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    path_alias: k8c.io/machine-controller
     labels:
       preset-openstack: "true"
       preset-hetzner: "true"
@@ -82,6 +84,7 @@ presubmits:
     # run_if_changed: "(pkg/cloudprovider/provider/openstack/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    path_alias: k8c.io/machine-controller
     labels:
       preset-openstack: "true"
       preset-hetzner: "true"
@@ -110,6 +113,7 @@ presubmits:
     always_run: false
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    path_alias: k8c.io/machine-controller
     labels:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"

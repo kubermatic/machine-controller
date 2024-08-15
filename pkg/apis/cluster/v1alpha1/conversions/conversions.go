@@ -20,8 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+	machinesv1alpha1 "k8c.io/machine-controller/pkg/machines/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -36,7 +36,7 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	out.CreationTimestamp = metav1.Time{}
 	out.ObjectMeta.Namespace = metav1.NamespaceSystem
 
-	// github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1.MachineStatus and
+	// k8c.io/machine-controller/pkg/apis/cluster/v1alpha1.MachineStatus and
 	// pkg/machines/v1alpha1.MachineStatus are semantically identical, the former
 	// only has one additional field, so we cast by serializing and deserializing
 	inStatusJSON, err := json.Marshal(in.Status)

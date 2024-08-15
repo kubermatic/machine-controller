@@ -27,7 +27,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
 )
 
 var (

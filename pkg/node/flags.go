@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
+	machinecontroller "k8c.io/machine-controller/pkg/controller/machine"
 )
 
 func NewFlags(flagset *flag.FlagSet) *Flags {

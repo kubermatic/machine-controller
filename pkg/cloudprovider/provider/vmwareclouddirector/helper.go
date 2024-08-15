@@ -27,7 +27,7 @@ import (
 	"github.com/vmware/go-vcloud-director/v2/types/v56"
 	vcdapitypes "github.com/vmware/go-vcloud-director/v2/types/v56"
 
-	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 
 	"k8s.io/utils/ptr"
 )

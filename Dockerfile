@@ -14,7 +14,7 @@
 
 ARG GO_VERSION=1.23.0
 FROM docker.io/golang:${GO_VERSION} AS builder
-WORKDIR /go/src/github.com/kubermatic/machine-controller
+WORKDIR /go/src/k8c.io/machine-controller
 COPY . .
 RUN make all
 
@@ -23,7 +23,7 @@ FROM alpine:3.19
 RUN apk add --no-cache ca-certificates cdrkit
 
 COPY --from=builder \
-    /go/src/github.com/kubermatic/machine-controller/machine-controller \
-    /go/src/github.com/kubermatic/machine-controller/webhook \
+    /go/src/k8c.io/machine-controller/machine-controller \
+    /go/src/k8c.io/machine-controller/webhook \
     /usr/local/bin/
 USER nobody

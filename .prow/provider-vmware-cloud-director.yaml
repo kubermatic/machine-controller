@@ -19,6 +19,7 @@ presubmits:
     # Please check: https://github.com/kubermatic/machine-controller/issues/1619
     optional: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    path_alias: k8c.io/machine-controller
     run_if_changed: "(pkg/cloudprovider/provider/vmwareclouddirector/)"
     labels:
       preset-vcloud-director: "true"

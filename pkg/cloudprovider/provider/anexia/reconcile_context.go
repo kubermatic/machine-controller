@@ -19,10 +19,10 @@ package anexia
 import (
 	"context"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
-	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
+	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
+	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
 )
 
 type contextKey byte

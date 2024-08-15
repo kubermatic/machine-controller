@@ -26,7 +26,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"go.uber.org/zap"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+	"k8c.io/machine-controller/pkg/cloudprovider/util"
 
 	"k8s.io/apimachinery/pkg/types"
 )

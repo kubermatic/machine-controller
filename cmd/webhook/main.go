@@ -24,10 +24,10 @@ import (
 	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
 
-	"github.com/kubermatic/machine-controller/pkg/admission"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
-	machinecontrollerlog "github.com/kubermatic/machine-controller/pkg/log"
-	"github.com/kubermatic/machine-controller/pkg/node"
+	"k8c.io/machine-controller/pkg/admission"
+	"k8c.io/machine-controller/pkg/cloudprovider/util"
+	machinecontrollerlog "k8c.io/machine-controller/pkg/log"
+	"k8c.io/machine-controller/pkg/node"
 
 	"k8s.io/client-go/tools/clientcmd"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"

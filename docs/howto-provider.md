@@ -6,7 +6,7 @@
 
 ### Interface description
 
-The interface a cloud provider has to implement is located in the package `github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud`. It is named `Provider` and defines a small set of functions:
+The interface a cloud provider has to implement is located in the package `k8c.io/machine-controller/pkg/cloudprovider/cloud`. It is named `Provider` and defines a small set of functions:
 
 ```go
 AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error)
@@ -26,7 +26,7 @@ Get(machine *v1alpha1.Machine) (instance.Instance, error)
 
 `Get` gets a node that is associated with the given machine. Note that this method can return a so called _terminal error_, which indicates that a manual interaction is required to recover from this state. See `v1alpha1.MachineStatus` for more info and `errors.TerminalError` type.
 
-In case the instance cannot be found, the returned error has to be `github.com/kubermatic/machine-controller/pkg/cloudprovider/errors.ErrInstanceNotFound` for proper evaluation by the machine controller.
+In case the instance cannot be found, the returned error has to be `k8c.io/machine-controller/pkg/cloudprovider/errors.ErrInstanceNotFound` for proper evaluation by the machine controller.
 
 ```go
 Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error)
@@ -60,7 +60,7 @@ SetMetricsForMachines(machines v1alpha1.MachineList) error
 
 ### Implementation hints
 
-Provider implementations are located in individual packages in `github.com/kubermatic/machine-controller/pkg/cloudprovider/provider`. Here see e.g. `hetzner` as a straight and good understandable implementation. Other implementations are there too, helping to understand the needed tasks inside and around the `Provider` interface implementation.
+Provider implementations are located in individual packages in `k8c.io/machine-controller/pkg/cloudprovider/provider`. Here see e.g. `hetzner` as a straight and good understandable implementation. Other implementations are there too, helping to understand the needed tasks inside and around the `Provider` interface implementation.
 
 When retrieving the individual configuration from the provider specification a type for unmarshalling is needed. Here first the provider configuration is read and based on it the individual values of the configuration are retrieved. Typically the access data (token, ID/key combination, document with all information) alternatively can be passed via an environment variable. According
 methods of the used `providerconfig.ConfigVarResolver` do support this.
@@ -69,15 +69,15 @@ For creation of new machines the support of the possible information has to be c
 
 ## Integrate provider into the Machine Controller
 
-For each cloud provider a unique string constant has to be defined in file `types.go` in package `github.com/kubermatic/machine-controller/pkg/providerconfig`. Registration based on this constant is done in file `provider.go` in package `github.com/kubermatic/machine-controller/pkg/cloudprovider`.
+For each cloud provider a unique string constant has to be defined in file `types.go` in package `k8c.io/machine-controller/pkg/providerconfig`. Registration based on this constant is done in file `provider.go` in package `k8c.io/machine-controller/pkg/cloudprovider`.
 
 ## Add example manifest
 
-For documentation of the different configuration options an according example manifest with helpful comments has to be added to `github.com/kubermatic/machine-controller/examples`. Naming scheme is `<package-name>-machinedeployment.yaml`.
+For documentation of the different configuration options an according example manifest with helpful comments has to be added to `k8c.io/machine-controller/examples`. Naming scheme is `<package-name>-machinedeployment.yaml`.
 
 ## Integrate provider into CI
 
-Like the example manifest a more concrete one named `machinedeployment-<package-name>.yaml` has to be added to `github.com/kubermatic/machine-controller/test/e2e/provisioning/testdata`. Additionally file `all_e2e_test.go` in package `github.com/kubermatic/machine-controller/test/e2e/provisioning` contains all provider tests. Like the existing ones the test for the new provider has to be placed here. Mainly it's the retrieval of test data, especially the access data, from the environment and the starting of the test scenarios.
+Like the example manifest a more concrete one named `machinedeployment-<package-name>.yaml` has to be added to `k8c.io/machine-controller/test/e2e/provisioning/testdata`. Additionally file `all_e2e_test.go` in package `k8c.io/machine-controller/test/e2e/provisioning` contains all provider tests. Like the existing ones the test for the new provider has to be placed here. Mainly it's the retrieval of test data, especially the access data, from the environment and the starting of the test scenarios.
 
 Now the provider is ready to be added into the project for CI tests.
 
