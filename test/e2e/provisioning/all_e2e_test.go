@@ -302,7 +302,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
-	selector := OsSelector("ubuntu", "centos", "flatcar", "rockylinux")
+	selector := OsSelector("ubuntu", "flatcar", "rockylinux")
 
 	params := []string{
 		fmt.Sprintf("<< KUBECONFIG_BASE64 >>=%s", safeBase64Encoding(kubevirtKubeconfig)),
@@ -347,8 +347,10 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	// In-tree cloud provider is not supported from Kubernetes v1.26.
-	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.28.12", "1.29.8", "1.30.4", "1.31.0")))
+	// In-tree CCM for OpenStack is not available starting with Kubernetes 1.26.
+	// OSM doesn't support provisioning machines without any CCM prior to Kubernetes 1.29,
+	// so we ignore versions lower 1.29.
+	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.28.12")))
 	runScenarios(context.Background(), t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -402,7 +404,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, DO_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
-	selector := OsSelector("ubuntu", "centos", "rockylinux")
+	selector := OsSelector("ubuntu", "rockylinux")
 
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
@@ -423,8 +425,10 @@ func TestAWSProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 
-	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := Not(VersionSelector("1.28.12", "1.29.8", "1.30.4", "1.31.0"))
+	// In-tree CCM for AWS is not available starting with Kubernetes 1.27.
+	// OSM doesn't support provisioning machines without any CCM prior to Kubernetes 1.29,
+	// so we ignore versions lower 1.29.
+	selector := Not(VersionSelector("1.28.12"))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -476,9 +480,12 @@ func TestAWSSpotInstanceProvisioningE2E(t *testing.T) {
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
 		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
+
 	// Since we are only testing the spot instance functionality, testing it against a single OS is sufficient.
-	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.28.12", "1.29.8", "1.30.4", "1.31.0")))
+	// In-tree CCM for AWS is not available starting with Kubernetes 1.27.
+	// OSM doesn't support provisioning machines without any CCM prior to Kubernetes 1.29,
+	// so we ignore versions lower 1.29.
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.28.12")))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -499,8 +506,11 @@ func TestAWSARMProvisioningE2E(t *testing.T) {
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
 		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
-	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.28.12", "1.29.8", "1.30.4", "1.31.0")))
+
+	// In-tree CCM for AWS is not available starting with Kubernetes 1.27.
+	// OSM doesn't support provisioning machines without any CCM prior to Kubernetes 1.29,
+	// so we ignore versions lower 1.29.
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.28.12")))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -528,29 +538,6 @@ func TestAWSFlatcarCoreOSCloudInit8ProvisioningE2E(t *testing.T) {
 
 	// We would like to test flatcar with CoreOS-cloud-init
 	selector := OsSelector("flatcar")
-	runScenarios(context.Background(), t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
-}
-
-func TestAWSCentOS8ProvisioningE2E(t *testing.T) {
-	t.Parallel()
-
-	// test data
-	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
-	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
-	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
-		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
-	}
-
-	amiID := "ami-032025b3afcbb6b34" // official "CentOS 8.2.2004 x86_64"
-
-	params := []string{
-		fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
-		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
-		fmt.Sprintf("<< AMI >>=%s", amiID),
-	}
-
-	// We would like to test CentOS8 image only in this test as the other images are tested in TestAWSProvisioningE2E
-	selector := OsSelector("centos")
 	runScenarios(context.Background(), t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
@@ -595,8 +582,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
-	// In-tree cloud provider is not supported from Kubernetes v1.30.
-	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.30.4", "1.31.0")))
+	selector := Not(OsSelector("amzn2"))
 
 	// act
 	params := []string{
@@ -624,8 +610,7 @@ func TestAzureCustomImageReferenceProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
-	// In-tree cloud provider is not supported from Kubernetes v1.30.
-	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.30.4", "1.31.0")))
+	selector := OsSelector("ubuntu")
 	// act
 	params := []string{
 		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
@@ -686,7 +671,6 @@ func TestGCEProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, GOOGLE_SERVICE_ACCOUNT environment variable cannot be empty")
 	}
 
-	// Act. GCE does not support CentOS.
 	selector := OsSelector("ubuntu", "flatcar")
 	params := []string{
 		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT_BASE64 >>=%s", safeBase64Encoding(googleServiceAccount)),
@@ -729,7 +713,7 @@ func TestEquinixMetalProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, METAL_PROJECT_ID environment variable cannot be empty")
 	}
 
-	selector := And(OsSelector("ubuntu", "centos", "rockylinux", "flatcar"), Not(NameSelector("migrateUID")))
+	selector := And(OsSelector("ubuntu", "rockylinux", "flatcar"), Not(NameSelector("migrateUID")))
 
 	// act
 	params := []string{
@@ -776,7 +760,6 @@ func TestLinodeProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, LINODE_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
-	// we're shimming userdata through Linode stackscripts and the stackscript hasn't been verified for use with centos
 	selector := OsSelector("ubuntu")
 
 	// act
@@ -840,8 +823,7 @@ func getVSphereTestParams(t *testing.T) []string {
 func TestVsphereProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	// In-tree cloud provider is not supported from Kubernetes v1.30.
-	selector := And(Not(OsSelector("amzn2", "centos")), Not(VersionSelector("1.30.4", "1.31.0")))
+	selector := Not(OsSelector("amzn2"))
 	params := getVSphereTestParams(t)
 
 	runScenarios(context.Background(), t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
@@ -852,8 +834,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 func TestVsphereMultipleNICProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	// In-tree cloud provider is not supported from Kubernetes v1.30.
-	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.30.4", "1.31.0")))
+	selector := OsSelector("ubuntu")
 	params := getVSphereTestParams(t)
 
 	runScenarios(context.Background(), t, selector, params, VSPhereMultipleNICManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
@@ -881,8 +862,7 @@ func TestVsphereAntiAffinityProvisioningE2E(t *testing.T) {
 func TestVsphereDatastoreClusterProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	// In-tree cloud provider is not supported from Kubernetes v1.30.
-	selector := And(OsSelector("ubuntu", "centos", "rhel", "flatcar"), Not(VersionSelector("1.30.4", "1.31.0")))
+	selector := OsSelector("ubuntu", "rhel", "flatcar")
 
 	params := getVSphereTestParams(t)
 	runScenarios(context.Background(), t, selector, params, VSPhereDSCManifest, fmt.Sprintf("vs-dsc-%s", *testRunIdentifier))
@@ -975,7 +955,7 @@ func TestNutanixProvisioningE2E(t *testing.T) {
 
 	// exclude migrateUID test case because it's a no-op for Nutanix and runs from a different
 	// location, thus possibly blocking access a HTTP proxy if it is configured.
-	selector := And(OsSelector("ubuntu", "centos"), Not(NameSelector("migrateUID")))
+	selector := And(OsSelector("ubuntu"), Not(NameSelector("migrateUID")))
 	params := getNutanixTestParams(t)
 	runScenarios(context.Background(), t, selector, params, nutanixManifest, fmt.Sprintf("nx-%s", *testRunIdentifier))
 }
@@ -1113,7 +1093,7 @@ func TestVultrProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, VULTR_API_KEY environment variable cannot be empty")
 	}
 
-	selector := OsSelector("ubuntu", "centos", "rockylinux")
+	selector := OsSelector("ubuntu", "rockylinux")
 
 	// act
 	params := []string{fmt.Sprintf("<< VULTR_API_KEY >>=%s", apiKey)}
