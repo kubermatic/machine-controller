@@ -42,7 +42,6 @@ var (
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
 		providerconfigtypes.OperatingSystemUbuntu,
-		providerconfigtypes.OperatingSystemCentOS,
 		providerconfigtypes.OperatingSystemAmazonLinux2,
 		providerconfigtypes.OperatingSystemRHEL,
 		providerconfigtypes.OperatingSystemFlatcar,
@@ -51,7 +50,6 @@ var (
 
 	openStackImages = map[string]string{
 		string(providerconfigtypes.OperatingSystemUbuntu):     "kubermatic-ubuntu",
-		string(providerconfigtypes.OperatingSystemCentOS):     "machine-controller-e2e-centos",
 		string(providerconfigtypes.OperatingSystemRHEL):       "machine-controller-e2e-rhel-8-5",
 		string(providerconfigtypes.OperatingSystemFlatcar):    "kubermatic-e2e-flatcar",
 		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux",
@@ -63,7 +61,6 @@ var (
 	}
 
 	vSphereOSImageTemplates = map[string]string{
-		string(providerconfigtypes.OperatingSystemCentOS):     "kkp-centos-7",
 		string(providerconfigtypes.OperatingSystemFlatcar):    "kkp-flatcar-3139.2.0",
 		string(providerconfigtypes.OperatingSystemRHEL):       "kkp-rhel-8.6",
 		string(providerconfigtypes.OperatingSystemRockyLinux): "kkp-rockylinux-8",
@@ -71,7 +68,6 @@ var (
 	}
 
 	kubevirtImages = map[string]string{
-		string(providerconfigtypes.OperatingSystemCentOS):     "centos",
 		string(providerconfigtypes.OperatingSystemFlatcar):    "flatcar",
 		string(providerconfigtypes.OperatingSystemRHEL):       "rhel",
 		string(providerconfigtypes.OperatingSystemRockyLinux): "rockylinux",
@@ -245,9 +241,6 @@ func testScenario(ctx context.Context, t *testing.T, testCase scenario, cloudPro
 
 	if strings.Contains(cloudProvider, string(providerconfigtypes.CloudProviderEquinixMetal)) {
 		switch testCase.osName {
-		case string(providerconfigtypes.OperatingSystemCentOS):
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "m3.small.x86"))
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "AM"))
 		case string(providerconfigtypes.OperatingSystemFlatcar):
 			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "c3.small.x86"))
 			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "NY"))
