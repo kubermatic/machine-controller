@@ -202,7 +202,7 @@ func Add(
 		nodePortRange:                     nodePortRange,
 		overrideBootstrapKubeletAPIServer: overrideBootstrapKubeletAPIServer,
 	}
-	utilruntime.ErrorHandlers = append(utilruntime.ErrorHandlers, func(error) {
+	utilruntime.ErrorHandlers = append(utilruntime.ErrorHandlers, func(context.Context, error, string, ...interface{}) {
 		reconciler.metrics.Errors.Add(1)
 	})
 

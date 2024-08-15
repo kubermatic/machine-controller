@@ -67,4 +67,4 @@ spec:
             # use cloud-init for flatcar as ignition doesn't know anything about OpenNebula yet
             provisioningUtility: "cloud-init"
       versions:
-        kubelet: 1.29.6
+        kubelet: 1.30.4
