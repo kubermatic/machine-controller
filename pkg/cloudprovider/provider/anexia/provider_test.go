@@ -242,7 +242,7 @@ func TestAnexiaProvider(t *testing.T) {
 
 		provider := New(nil).(*provider)
 		for _, testCase := range testCases {
-			templateID, err := resolveTemplateID(context.Background(), a, testCase.config, provider.configVarResolver, "foo")
+			templateID, err := provider.resolveTemplateID(context.Background(), a, testCase.config, "foo")
 			if testCase.expectedError != "" {
 				if err != nil {
 					testhelper.AssertErr(t, err)
@@ -292,17 +292,25 @@ func TestAnexiaProvider(t *testing.T) {
 	t.Run("Test getIPAddress", func(t *testing.T) {
 		t.Parallel()
 		providerStatus := &anxtypes.ProviderStatus{
-			ReservedIP: "",
-			IPState:    "",
+			Networks: []anxtypes.NetworkStatus{
+				{
+					Addresses: []anxtypes.NetworkAddressStatus{
+						{
+							ReservedIP: "",
+							IPState:    "",
+						},
+					},
+				},
+			},
 		}
 		ctx := createReconcileContext(context.Background(), reconcileContext{Status: providerStatus})
 
 		t.Run("with unbound reserved IP", func(t *testing.T) {
 			expectedIP := "8.8.8.8"
-			providerStatus.ReservedIP = expectedIP
-			providerStatus.IPState = anxtypes.IPStateUnbound
-			providerStatus.IPProvisioningExpires = time.Now().Add(anxtypes.IPProvisioningExpires)
-			reservedIP, err := getIPAddress(ctx, log, client)
+			providerStatus.Networks[0].Addresses[0].ReservedIP = expectedIP
+			providerStatus.Networks[0].Addresses[0].IPState = anxtypes.IPStateUnbound
+			providerStatus.Networks[0].Addresses[0].IPProvisioningExpires = time.Now().Add(anxtypes.IPProvisioningExpires)
+			reservedIP, err := getIPAddress(ctx, log, &resolvedNetwork{}, "Prefix-ID", &providerStatus.Networks[0].Addresses[0], client)
 			testhelper.AssertNoErr(t, err)
 			testhelper.AssertEquals(t, expectedIP, reservedIP)
 		})
@@ -342,9 +350,14 @@ func TestValidate(t *testing.T) {
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.LocationID.Value = "" }),
 			Error:  errors.New("location id is missing"),
 		},
+
 		ConfigTestCase{
-			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.VlanID.Value = "" }),
-			Error:  errors.New("vlan id is missing"),
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Networks = []anxtypes.RawNetwork{} }),
+			Error:  errors.New("no networks configured"),
+		},
+		ConfigTestCase{
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.VlanID.Value = "legacy VLAN-ID" }),
+			Error:  ErrConfigVlanIDAndNetworks,
 		},
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.DiskSize = 10; c.Disks = []anxtypes.RawDisk{} }),

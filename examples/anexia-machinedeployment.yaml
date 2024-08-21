@@ -30,7 +30,7 @@ spec:
                 namespace: kube-system
                 name: machine-controller-anexia
                 key: token
-            vlanID: "<< ANEXIA_VLAN_ID >>"
+
             # Currently only the "Flatcar Linux Stable" template is supported.
             # Use templateBuild to specify a build. If empty => latest
             # Alternatively use templateID for a specific template.
@@ -47,6 +47,30 @@ spec:
             disks:
               - size: 60
                 performanceType: ENT6
+
+            # Each entry in this array will create a network interface in each
+            # Machine, connected to the given VLAN.
+            networks:
+              - vlan: "<< ANEXIA_VLAN_ID >>"
+
+                # If prefixes are given, we reserve an IP address for each of
+                # them - if you give one IPv4 and one IPv6 prefix, your
+                # Machines will have dual-stack connectivity
+                #
+                # As an compatibility-aid for the old cloudProviderSpec.vlanID,
+                # which reserved an IP for the configured VLAN, you can also
+                # have an entry "" (empty string) to get the same behavior -
+                # but this is not recommended.
+                #
+                # Not configuring any prefix might be useful if you want to
+                # configure IP addresses on this interface via other means,
+                # e.g. a Layer2 load balancer.
+                #
+                # Each MachineDeployment needs at least one Network with at
+                # least one Prefix, because we have to know (and thus, reserve)
+                # at least one IP address for each Machine.
+                prefixes:
+                - "<< ANEXIA_PREFIX_ID >>"
 
             # You may have this old disk config attribute in your config - please migrate to the disks attribute.
             # For now it is still recognized though.

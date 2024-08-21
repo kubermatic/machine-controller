@@ -24,15 +24,11 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"go.anx.io/go-anxcloud/pkg/api"
-	corev1 "go.anx.io/go-anxcloud/pkg/apis/core/v1"
-	vspherev1 "go.anx.io/go-anxcloud/pkg/apis/vsphere/v1"
 	"go.anx.io/go-anxcloud/pkg/client"
 	anxclient "go.anx.io/go-anxcloud/pkg/client"
-	anxaddr "go.anx.io/go-anxcloud/pkg/ipam/address"
 	"go.anx.io/go-anxcloud/pkg/vsphere"
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/progress"
 	anxvm "go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
@@ -62,29 +58,13 @@ const (
 var (
 	// ErrConfigDiskSizeAndDisks is returned when the config has both DiskSize and Disks set, which is unsupported.
 	ErrConfigDiskSizeAndDisks = errors.New("both the deprecated DiskSize and new Disks attribute are set")
+
+	// ErrConfigVlanIDAndNetworks is returned when the config has both VlanID and Networks set, which is unsupported.
+	ErrConfigVlanIDAndNetworks = errors.New("both the deprecated VlanID and new Networks attribute are set")
 )
 
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
-}
-
-// resolvedDisk contains the resolved values from types.RawDisk.
-type resolvedDisk struct {
-	anxtypes.RawDisk
-
-	PerformanceType string
-}
-
-// resolvedConfig contains the resolved values from types.RawConfig.
-type resolvedConfig struct {
-	anxtypes.RawConfig
-
-	Token      string
-	VlanID     string
-	LocationID string
-	TemplateID string
-
-	Disks []resolvedDisk
 }
 
 func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance instance.Instance, retErr error) {
@@ -139,15 +119,10 @@ func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.C
 		log.Info("Machine does not contain a provisioningID yet. Starting to provision")
 
 		config := reconcileContext.Config
-		reservedIP, err := getIPAddress(ctx, log, client)
+		networkInterfaces, err := networkInterfacesForProvisioning(ctx, log, client)
 		if err != nil {
-			return newError(common.CreateMachineError, "failed to reserve IP: %v", err)
+			return fmt.Errorf("error generating network config for machine: %w", err)
 		}
-		networkInterfaces := []anxvm.Network{{
-			NICType: anxtypes.VmxNet3NIC,
-			IPs:     []string{reservedIP},
-			VLAN:    config.VlanID,
-		}}
 
 		vm := vmAPI.Provisioning().VM().NewDefinition(
 			config.LocationID,
@@ -210,7 +185,7 @@ func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.C
 		}
 
 		// we successfully sent a VM provisioning request to the API, we consider the IP as 'Bound' now
-		status.IPState = anxtypes.IPStateBound
+		networkStatusMarkIPsBound(status)
 
 		status.ProvisioningID = provisionResponse.Identifier
 		err = updateMachineStatus(reconcileContext.Machine, *status, reconcileContext.ProviderData.Update)
@@ -229,44 +204,6 @@ func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.C
 	})
 
 	return updateMachineStatus(reconcileContext.Machine, *status, reconcileContext.ProviderData.Update)
-}
-
-var _engsup3404mutex sync.Mutex
-
-func getIPAddress(ctx context.Context, log *zap.SugaredLogger, client anxclient.Client) (string, error) {
-	reconcileContext := getReconcileContext(ctx)
-	status := reconcileContext.Status
-
-	// only use IP if it is still unbound
-	if status.ReservedIP != "" && status.IPState == anxtypes.IPStateUnbound && (!status.IPProvisioningExpires.IsZero() && status.IPProvisioningExpires.After(time.Now())) {
-		log.Infow("Re-using already provisioned IP", "ip", status.ReservedIP)
-		return status.ReservedIP, nil
-	}
-
-	_engsup3404mutex.Lock()
-	defer _engsup3404mutex.Unlock()
-
-	log.Info("Creating a new IP for machine")
-	addrAPI := anxaddr.NewAPI(client)
-	config := reconcileContext.Config
-	res, err := addrAPI.ReserveRandom(ctx, anxaddr.ReserveRandom{
-		LocationID: config.LocationID,
-		VlanID:     config.VlanID,
-		Count:      1,
-	})
-	if err != nil {
-		return "", newError(common.InvalidConfigurationMachineError, "failed to reserve an ip address: %v", err)
-	}
-	if len(res.Data) < 1 {
-		return "", newError(common.InsufficientResourcesMachineError, "no ip address is available for this machine")
-	}
-
-	ip := res.Data[0].Address
-	status.ReservedIP = ip
-	status.IPState = anxtypes.IPStateUnbound
-	status.IPProvisioningExpires = time.Now().Add(anxtypes.IPProvisioningExpires)
-
-	return ip, nil
 }
 
 func isAlreadyProvisioning(ctx context.Context) bool {
@@ -295,95 +232,6 @@ func ensureConditions(status *anxtypes.ProviderStatus) {
 			meta.SetStatusCondition(&status.Conditions, condition)
 		}
 	}
-}
-
-func resolveTemplateID(ctx context.Context, a api.API, config anxtypes.RawConfig, configVarResolver *providerconfig.ConfigVarResolver, locationID string) (string, error) {
-	templateName, err := configVarResolver.GetConfigVarStringValue(config.Template)
-	if err != nil {
-		return "", fmt.Errorf("failed to get 'template': %w", err)
-	}
-
-	templateBuild, err := configVarResolver.GetConfigVarStringValue(config.TemplateBuild)
-	if err != nil {
-		return "", fmt.Errorf("failed to get 'templateBuild': %w", err)
-	}
-
-	template, err := vspherev1.FindNamedTemplate(ctx, a, templateName, templateBuild, corev1.Location{Identifier: locationID})
-	if err != nil {
-		return "", fmt.Errorf("failed to retrieve named template: %w", err)
-	}
-
-	return template.Identifier, nil
-}
-
-func (p *provider) resolveConfig(ctx context.Context, log *zap.SugaredLogger, config anxtypes.RawConfig) (*resolvedConfig, error) {
-	var err error
-	ret := resolvedConfig{
-		RawConfig: config,
-	}
-
-	ret.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(config.Token, anxtypes.AnxTokenEnv)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get 'token': %w", err)
-	}
-
-	ret.LocationID, err = p.configVarResolver.GetConfigVarStringValue(config.LocationID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get 'locationID': %w", err)
-	}
-
-	ret.TemplateID, err = p.configVarResolver.GetConfigVarStringValue(config.TemplateID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get 'templateID': %w", err)
-	}
-
-	// when "templateID" is not set, we expect "template" to be
-	if ret.TemplateID == "" {
-		a, _, err := getClient(ret.Token, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed initializing API clients: %w", err)
-		}
-
-		templateID, err := resolveTemplateID(ctx, a, config, p.configVarResolver, ret.LocationID)
-		if err != nil {
-			return nil, fmt.Errorf("failed retrieving template id from named template: %w", err)
-		}
-
-		ret.TemplateID = templateID
-	}
-
-	ret.VlanID, err = p.configVarResolver.GetConfigVarStringValue(config.VlanID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get 'vlanID': %w", err)
-	}
-
-	if config.DiskSize != 0 {
-		if len(config.Disks) != 0 {
-			return nil, ErrConfigDiskSizeAndDisks
-		}
-
-		log.Info("Configuration uses the deprecated DiskSize attribute, please migrate to the Disks array instead.")
-
-		config.Disks = []anxtypes.RawDisk{
-			{
-				Size: config.DiskSize,
-			},
-		}
-		config.DiskSize = 0
-	}
-
-	ret.Disks = make([]resolvedDisk, len(config.Disks))
-
-	for idx, disk := range config.Disks {
-		ret.Disks[idx].RawDisk = disk
-
-		ret.Disks[idx].PerformanceType, err = p.configVarResolver.GetConfigVarStringValue(disk.PerformanceType)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get 'performanceType' of disk %v: %w", idx, err)
-		}
-	}
-
-	return &ret, nil
 }
 
 func (p *provider) getConfig(ctx context.Context, log *zap.SugaredLogger, provSpec clusterv1alpha1.ProviderSpec) (*resolvedConfig, *providerconfigtypes.Config, error) {
@@ -456,8 +304,19 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, machine
 		return errors.New("no valid template configured")
 	}
 
-	if config.VlanID == "" {
-		return errors.New("vlan id is missing")
+	if len(config.Networks) == 0 {
+		return errors.New("no networks configured")
+	}
+
+	atLeastOneAddressSourceConfigured := false
+	for _, network := range config.Networks {
+		if len(network.Prefixes) > 0 {
+			atLeastOneAddressSourceConfigured = true
+			break
+		}
+	}
+	if !atLeastOneAddressSourceConfigured {
+		return errors.New("none of the configured networks define an address source, cannot create Machines without any IP")
 	}
 
 	return nil
@@ -506,10 +365,7 @@ func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 	}
 
 	instance := anexiaInstance{}
-
-	if status.IPState == anxtypes.IPStateBound && status.ReservedIP != "" {
-		instance.reservedAddresses = []string{status.ReservedIP}
-	}
+	instance.reservedAddresses = networkReservedAddresses(&status)
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, anxtypes.GetRequestTimeout)
 	defer cancel()
