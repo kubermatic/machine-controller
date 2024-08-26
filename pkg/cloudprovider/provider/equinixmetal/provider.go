@@ -478,7 +478,9 @@ func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 }
 
 func getClient(apiKey string) *packngo.Client {
-	return packngo.NewClientWithAuth("kubermatic", apiKey, nil)
+	client := packngo.NewClientWithAuth("kubermatic", apiKey, nil)
+	client.UserAgent = fmt.Sprintf("kubermatic/machine-controller %s", client.UserAgent)
+	return client
 }
 
 func generateTag(ID string) string {
