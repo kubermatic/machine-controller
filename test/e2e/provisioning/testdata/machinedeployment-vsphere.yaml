@@ -30,12 +30,12 @@ spec:
             username: '<< VSPHERE_USERNAME >>'
             vsphereURL: '<< VSPHERE_ADDRESS >>'
             datacenter: 'Hamburg'
-            folder: '/Hamburg/vm/Kubermatic-ci'
+            folder: '/Hamburg/vm/Kubermatic-dev'
             password: << VSPHERE_PASSWORD >>
             # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
-            cluster: Kubermatic
+            cluster: 'vSAN Cluster'
             vmAntiAffinity: true
-            datastore: vsan
+            datastore: Datastore0-truenas
             cpus: 2
             MemoryMB: 4096
             diskSizeGB: << DISK_SIZE >>

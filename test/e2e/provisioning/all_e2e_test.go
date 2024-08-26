@@ -816,7 +816,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	// In-tree cloud provider is not supported from Kubernetes v1.30.
-	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.30.4", "1.31.0")))
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.30.4", "1.31.0")))
 	params := getVSphereTestParams(t)
 
 	runScenarios(context.Background(), t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
