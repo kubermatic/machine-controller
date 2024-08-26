@@ -26,7 +26,7 @@ import (
 	"github.com/vmware/go-vcloud-director/v2/govcd"
 	"github.com/vmware/go-vcloud-director/v2/types/v56"
 
-	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 )
 
 type Client struct {

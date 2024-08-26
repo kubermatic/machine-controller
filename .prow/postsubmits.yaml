@@ -17,6 +17,7 @@ postsubmits:
     always_run: true
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    path_alias: k8c.io/machine-controller
     branches:
       - ^main$
       # Match on tags
@@ -48,6 +49,7 @@ postsubmits:
     always_run: true
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    path_alias: k8c.io/machine-controller
     branches:
       - ^main$
     labels:

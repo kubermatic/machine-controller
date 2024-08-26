@@ -1,4 +1,4 @@
-module github.com/kubermatic/machine-controller
+module k8c.io/machine-controller
 
 go 1.22.0
 

@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
-	tbtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
+	"k8c.io/machine-controller/pkg/cloudprovider/errors"
+	tbtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"

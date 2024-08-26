@@ -21,6 +21,7 @@ presubmits:
     always_run: false
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    path_alias: k8c.io/machine-controller
     labels:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"

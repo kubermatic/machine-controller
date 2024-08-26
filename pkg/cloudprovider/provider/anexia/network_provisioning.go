@@ -21,12 +21,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	anxclient "go.anx.io/go-anxcloud/pkg/client"
 	anxaddr "go.anx.io/go-anxcloud/pkg/ipam/address"
 	anxvm "go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
 	"go.uber.org/zap"
+
+	"k8c.io/machine-controller/pkg/apis/cluster/common"
+	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
 )
 
 func networkInterfacesForProvisioning(ctx context.Context, log *zap.SugaredLogger, client anxclient.Client) ([]anxvm.Network, error) {

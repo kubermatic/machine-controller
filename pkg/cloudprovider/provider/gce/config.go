@@ -32,10 +32,10 @@ import (
 	googleoauth "golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+	gcetypes "k8c.io/machine-controller/pkg/cloudprovider/provider/gce/types"
+	"k8c.io/machine-controller/pkg/providerconfig"
+	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
 )
 
 // Environment variables for the configuration of the Google Cloud project access.

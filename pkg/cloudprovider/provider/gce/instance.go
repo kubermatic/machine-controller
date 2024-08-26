@@ -26,7 +26,7 @@ import (
 
 	"google.golang.org/api/compute/v1"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 
 	v1 "k8s.io/api/core/v1"
 )

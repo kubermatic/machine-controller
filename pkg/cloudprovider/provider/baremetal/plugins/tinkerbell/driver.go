@@ -20,16 +20,17 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+
 	"github.com/aws/smithy-go/ptr"
-	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"go.uber.org/zap"
+	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client"
-	tinktypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
+	"k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
+	"k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client"
+	tinktypes "k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 

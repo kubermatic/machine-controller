@@ -22,8 +22,8 @@ import (
 
 	"go.uber.org/zap"
 
-	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/types"
@@ -48,7 +48,7 @@ type Provider interface {
 	// which indicates that a manual interaction is required to recover from this state.
 	// See v1alpha1.MachineStatus for more info and TerminalError type
 	//
-	// In case the instance cannot be found, github.com/kubermatic/machine-controller/pkg/cloudprovider/errors/ErrInstanceNotFound will be returned
+	// In case the instance cannot be found, k8c.io/machine-controller/pkg/cloudprovider/errors/ErrInstanceNotFound will be returned
 	Get(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *ProviderData) (instance.Instance, error)
 
 	// Create creates a cloud instance according to the given machine

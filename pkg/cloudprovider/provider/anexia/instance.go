@@ -21,8 +21,8 @@ import (
 
 	"go.anx.io/go-anxcloud/pkg/vsphere/info"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
+	"k8c.io/machine-controller/pkg/cloudprovider/instance"
+	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
 
 	v1 "k8s.io/api/core/v1"
 )

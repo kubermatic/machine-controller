@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"time"
 
-	tink "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
+	tink "k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 
 	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"

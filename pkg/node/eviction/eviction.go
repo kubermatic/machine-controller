@@ -23,8 +23,8 @@ import (
 
 	"go.uber.org/zap"
 
-	evictiontypes "github.com/kubermatic/machine-controller/pkg/node/eviction/types"
-	"github.com/kubermatic/machine-controller/pkg/node/nodemanager"
+	evictiontypes "k8c.io/machine-controller/pkg/node/eviction/types"
+	"k8c.io/machine-controller/pkg/node/nodemanager"
 
 	corev1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"

@@ -17,8 +17,8 @@ limitations under the License.
 package types
 
 import (
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
 	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
+	"k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
 )
 
 type Hardware struct {

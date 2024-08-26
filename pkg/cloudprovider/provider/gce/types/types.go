@@ -20,9 +20,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	"github.com/kubermatic/machine-controller/pkg/jsonutil"
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+	"k8c.io/machine-controller/pkg/jsonutil"
+	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/runtime"
 )

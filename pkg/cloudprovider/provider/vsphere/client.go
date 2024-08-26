@@ -29,7 +29,7 @@ import (
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/soap"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+	"k8c.io/machine-controller/pkg/cloudprovider/util"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
