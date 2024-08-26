@@ -62,6 +62,8 @@ spec:
             cluster: cl-1
             # Automatically create anti affinity rules for machines
             vmAntiAffinity: true
+            # Optional. Sets the VM group for the Machines in the MachineDeployment.
+            # vmGroup: "vmgroup-name"
             cpus: 2
             memoryMB: 2048
             # Optional: Resize the root disk to this size. Must be bigger than the existing size

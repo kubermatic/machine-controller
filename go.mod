@@ -40,7 +40,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/tinkerbell/tink v0.10.0
 	github.com/vmware/go-vcloud-director/v2 v2.25.0
-	github.com/vmware/govmomi v0.38.0
+	github.com/vmware/govmomi v0.42.0
 	github.com/vultr/govultr/v3 v3.9.0
 	go.anx.io/go-anxcloud v0.7.2
 	go.uber.org/zap v1.27.0
@@ -154,10 +154,10 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20240707233637-46b078467d37 // indirect
 	golang.org/x/net v0.27.0 // indirect
-	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/term v0.22.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/text v0.17.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
 	google.golang.org/genproto v0.0.0-20240701130421-f6361c86f094 // indirect
