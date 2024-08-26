@@ -75,6 +75,7 @@ type Config struct {
 	MemoryMB         int64
 	DiskSizeGB       *int64
 	Tags             []tags.Tag
+	VMGroup          string
 }
 
 // Ensures that Server implements Instance interface.
@@ -210,6 +211,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, nil, err
 	}
 
+	c.VMGroup, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VMGroup)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	c.CPUs = rawConfig.CPUs
 	c.MemoryMB = rawConfig.MemoryMB
 	c.DiskSizeGB = rawConfig.DiskSizeGB
@@ -311,10 +317,13 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 		}
 	}
 
-	if config.VMAntiAffinity {
-		if config.Cluster == "" {
-			return fmt.Errorf("cluster is required for vm anti affinity")
-		}
+	if config.VMAntiAffinity && config.Cluster == "" {
+		return fmt.Errorf("cluster is required for vm anti affinity")
+	} else if config.VMGroup != "" && config.Cluster == "" {
+		return fmt.Errorf("cluster is required for vm group")
+	}
+
+	if config.Cluster != "" {
 		_, err = session.Finder.ClusterComputeResource(ctx, config.Cluster)
 		if err != nil {
 			return fmt.Errorf("failed to get cluster %q, %w", config.Cluster, err)
@@ -374,6 +383,12 @@ func (p *provider) create(ctx context.Context, log *zap.SugaredLogger, machine *
 
 	if err := attachTags(ctx, log, config, virtualMachine); err != nil {
 		return nil, fmt.Errorf("failed to attach tags: %w", err)
+	}
+
+	if config.VMGroup != "" {
+		if err := p.addToVMGroup(ctx, log, session, machine, config); err != nil {
+			return nil, fmt.Errorf("failed to add VM to VM group: %w", err)
+		}
 	}
 
 	if config.VMAntiAffinity {
