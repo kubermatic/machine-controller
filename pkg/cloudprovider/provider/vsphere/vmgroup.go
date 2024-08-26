@@ -55,13 +55,17 @@ func (p *provider) addToVMGroup(ctx context.Context, log *zap.SugaredLogger, ses
 
 	var vmRefsToAdd []types.ManagedObjectReference
 	for _, vm := range vmRefs {
+		found := false
 		for _, existingVM := range vmGroup.Vm {
 			if existingVM.Value == vm.Value {
 				log.Debugf("VM %s already in VM group %s", machine.Name, config.VMGroup)
-				continue
+				found = true
+				break
 			}
 		}
-		vmRefsToAdd = append(vmRefsToAdd, vm)
+		if !found {
+			vmRefsToAdd = append(vmRefsToAdd, vm)
+		}
 	}
 
 	// Add the VM to the VM group
