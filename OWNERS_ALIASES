@@ -3,11 +3,13 @@
 
 aliases:
   machine-controller-maintainers:
+    - yaa110
+  sig-cluster-management:
     - ahmedwaleedmalik
+    - cnvergence
     - embik
     - kron4eg
     - moadqassem
     - moelsayed
     - xmudrii
     - xrstf
-    - yaa110

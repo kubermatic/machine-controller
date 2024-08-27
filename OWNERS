@@ -2,9 +2,11 @@
 
 approvers:
   - machine-controller-maintainers
+  - sig-cluster-management
 
 reviewers:
   - machine-controller-maintainers
+  - sig-cluster-management
 
 labels:
   - sig/cluster-management
