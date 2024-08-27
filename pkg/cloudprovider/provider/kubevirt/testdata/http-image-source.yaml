@@ -28,6 +28,8 @@ spec:
   template:
     metadata:
       creationTimestamp: null
+      annotations:
+        "ovn.kubernetes.io/allow_live_migration": "true"
       labels:
         kubevirt.io/vm: http-image-source
         cluster.x-k8s.io/cluster-name: cluster-name
