@@ -648,6 +648,10 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 
 	annotations["ovn.kubernetes.io/allow_live_migration"] = "true"
 
+	for k, v := range machine.Annotations {
+		annotations[k] = v
+	}
+
 	defaultBridgeNetwork, err := defaultBridgeNetwork(macAddressGetter)
 	if err != nil {
 		return nil, fmt.Errorf("could not compute a random MAC address")
