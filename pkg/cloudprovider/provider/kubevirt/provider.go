@@ -637,16 +637,16 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 
 	var (
 		dataVolumeName = machine.Name
-		annotations    map[string]string
+		annotations    = map[string]string{}
 	)
 	// Add machineName as prefix to secondaryDisks.
 	addPrefixToSecondaryDisk(c.SecondaryDisks, dataVolumeName)
 
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
-		annotations = map[string]string{
-			"kubevirt.io/ignitiondata": userdata,
-		}
+		annotations["kubevirt.io/ignitiondata"] = userdata
 	}
+
+	annotations["ovn.kubernetes.io/allow_live_migration"] = "true"
 
 	defaultBridgeNetwork, err := defaultBridgeNetwork(macAddressGetter)
 	if err != nil {
