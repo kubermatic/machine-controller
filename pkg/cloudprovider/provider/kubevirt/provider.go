@@ -652,11 +652,6 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 		annotations[k] = v
 	}
 
-	defaultBridgeNetwork, err := defaultBridgeNetwork(macAddressGetter)
-	if err != nil {
-		return nil, fmt.Errorf("could not compute a random MAC address")
-	}
-
 	runStrategyOnce := kubevirtv1.RunStrategyOnce
 
 	virtualMachine := &kubevirtv1.VirtualMachine{
@@ -676,13 +671,9 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 				},
 				Spec: kubevirtv1.VirtualMachineInstanceSpec{
 					EvictionStrategy: &evictionStrategy,
-					Networks: []kubevirtv1.Network{
-						*kubevirtv1.DefaultPodNetwork(),
-					},
 					Domain: kubevirtv1.DomainSpec{
 						Devices: kubevirtv1.Devices{
-							Disks:      getVMDisks(c),
-							Interfaces: []kubevirtv1.Interface{*defaultBridgeNetwork},
+							Disks: getVMDisks(c),
 						},
 						Resources: resourceRequirements,
 					},
@@ -788,6 +779,7 @@ func randomMacAddressGetter() (string, error) {
 	return mac.String(), nil
 }
 
+// TODO(mq): refactor networking in VMs
 func defaultBridgeNetwork(macAddressGetter macAddressGetter) (*kubevirtv1.Interface, error) {
 	defaultBridgeNetwork := kubevirtv1.DefaultBridgeNetworkInterface()
 	mac, err := macAddressGetter()
