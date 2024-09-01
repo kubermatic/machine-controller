@@ -98,6 +98,7 @@ type Config struct {
 	Memory                    string
 	Namespace                 string
 	OSImageSource             *cdiv1beta1.DataVolumeSource
+	StorageTarget             StorageTarget
 	StorageClassName          string
 	StorageAccessType         corev1.PersistentVolumeAccessMode
 	PVCSize                   resource.Quantity
@@ -107,6 +108,14 @@ type Config struct {
 	NodeAffinityPreset        NodeAffinityPreset
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint
 }
+
+// StorageTarget represents targeted storage definition that will be used to provision VirtualMachine volumes. Currently,
+// there are two definitions, PVC and Storage. Default value is PVC.
+type StorageTarget string
+
+const (
+	Storage StorageTarget = "storage"
+)
 
 type AffinityType string
 
@@ -254,6 +263,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "osImageSource" field: %w`, err)
 	}
+
+	storageTarget, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageTarget)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "storageTarget" field: %w`, err)
+	}
+	config.StorageTarget = StorageTarget(storageTarget)
 
 	pvcSize, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.Size)
 	if err != nil {
@@ -638,6 +653,7 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 	var (
 		dataVolumeName = machine.Name
 		annotations    = map[string]string{}
+		dvAnnotations  = map[string]string{}
 	)
 	// Add machineName as prefix to secondaryDisks.
 	addPrefixToSecondaryDisk(c.SecondaryDisks, dataVolumeName)
@@ -649,6 +665,11 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 	annotations["ovn.kubernetes.io/allow_live_migration"] = "true"
 
 	for k, v := range machine.Annotations {
+		if strings.HasPrefix(k, "cdi.kubevirt.io") {
+			dvAnnotations[k] = v
+			continue
+		}
+
 		annotations[k] = v
 	}
 
@@ -681,8 +702,8 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 					},
 					Domain: kubevirtv1.DomainSpec{
 						Devices: kubevirtv1.Devices{
-							Disks:      getVMDisks(c),
 							Interfaces: []kubevirtv1.Interface{*defaultBridgeNetwork},
+							Disks:      getVMDisks(c),
 						},
 						Resources: resourceRequirements,
 					},
@@ -694,7 +715,7 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 					TopologySpreadConstraints:     getTopologySpreadConstraints(c, map[string]string{machineDeploymentLabelKey: labels[machineDeploymentLabelKey]}),
 				},
 			},
-			DataVolumeTemplates: getDataVolumeTemplates(c, dataVolumeName),
+			DataVolumeTemplates: getDataVolumeTemplates(c, dataVolumeName, dvAnnotations),
 		},
 	}
 	return virtualMachine, nil
@@ -831,27 +852,43 @@ func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName stri
 	return volumes
 }
 
-func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.DataVolumeTemplateSpec {
+func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations map[string]string) []kubevirtv1.DataVolumeTemplateSpec {
 	pvcRequest := corev1.ResourceList{corev1.ResourceStorage: config.PVCSize}
 	dataVolumeTemplates := []kubevirtv1.DataVolumeTemplateSpec{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: dataVolumeName,
+				Name:        dataVolumeName,
+				Annotations: annotations,
 			},
 			Spec: cdiv1beta1.DataVolumeSpec{
-				PVC: &corev1.PersistentVolumeClaimSpec{
-					StorageClassName: ptr.To(config.StorageClassName),
-					AccessModes: []corev1.PersistentVolumeAccessMode{
-						config.StorageAccessType,
-					},
-					Resources: corev1.VolumeResourceRequirements{
-						Requests: pvcRequest,
-					},
-				},
 				Source: config.OSImageSource,
 			},
 		},
 	}
+
+	switch config.StorageTarget {
+	case Storage:
+		dataVolumeTemplates[0].Spec.Storage = &cdiv1beta1.StorageSpec{
+			StorageClassName: ptr.To(config.StorageClassName),
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				config.StorageAccessType,
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: pvcRequest,
+			},
+		}
+	default:
+		dataVolumeTemplates[0].Spec.PVC = &corev1.PersistentVolumeClaimSpec{
+			StorageClassName: ptr.To(config.StorageClassName),
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				config.StorageAccessType,
+			},
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: pvcRequest,
+			},
+		}
+	}
+
 	for _, sd := range config.SecondaryDisks {
 		dataVolumeTemplates = append(dataVolumeTemplates, kubevirtv1.DataVolumeTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{

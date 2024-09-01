@@ -76,6 +76,9 @@ type Template struct {
 // PrimaryDisk.
 type PrimaryDisk struct {
 	Disk
+	// StorageTarget describes which VirtualMachine storage target will be used in the DataVolumeTemplate.
+	StorageTarget providerconfigtypes.ConfigVarString `json:"storageTarget,omitempty"`
+	// OsImage describes the OS that will be installed on the VirtualMachine.
 	OsImage providerconfigtypes.ConfigVarString `json:"osImage,omitempty"`
 	// Source describes the VM Disk Image source.
 	Source providerconfigtypes.ConfigVarString `json:"source,omitempty"`

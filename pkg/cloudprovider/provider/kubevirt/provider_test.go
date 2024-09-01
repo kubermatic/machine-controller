@@ -59,6 +59,7 @@ type kubevirtProviderSpecConf struct {
 	OsImageDV                string // if OsImage from DV and not from http source
 	Instancetype             *kubevirtv1.InstancetypeMatcher
 	Preference               *kubevirtv1.PreferenceMatcher
+	StorageTarget            StorageTarget
 	OperatingSystem          string
 	TopologySpreadConstraint bool
 	Affinity                 bool
@@ -123,6 +124,9 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 					"storageClassName": "longhorn3"}],
 				{{- end }}
 				"primaryDisk": {
+					{{- if .StorageTarget }}
+					"storageTarget": "{{ .StorageTarget }}",
+					{{- end }}                    
 					{{- if .OsImageDV }}
 					"osImage": "{{ .OsImageDV }}",
 					{{- else }}
@@ -217,6 +221,9 @@ func TestNewVirtualMachine(t *testing.T) {
 		{
 			name:     "custom-local-disk",
 			specConf: kubevirtProviderSpecConf{OsImageDV: "ns/dvname"},
+		}, {
+			name:     "use-storage-as-storage-target",
+			specConf: kubevirtProviderSpecConf{StorageTarget: Storage},
 		},
 		{
 			name:     "http-image-source",
