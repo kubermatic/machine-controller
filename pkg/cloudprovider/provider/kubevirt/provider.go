@@ -50,7 +50,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -870,7 +869,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations m
 	switch config.StorageTarget {
 	case Storage:
 		dataVolumeTemplates[0].Spec.Storage = &cdiv1beta1.StorageSpec{
-			StorageClassName: pointer.String(config.StorageClassName),
+			StorageClassName: ptr.To(config.StorageClassName),
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				config.StorageAccessType,
 			},
@@ -880,7 +879,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations m
 		}
 	default:
 		dataVolumeTemplates[0].Spec.PVC = &corev1.PersistentVolumeClaimSpec{
-			StorageClassName: pointer.String(config.StorageClassName),
+			StorageClassName: ptr.To(config.StorageClassName),
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				config.StorageAccessType,
 			},
