@@ -41,7 +41,6 @@ import (
 	controllerutil "k8c.io/machine-controller/pkg/controller/util"
 	"k8c.io/machine-controller/pkg/providerconfig"
 	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
-	"k8s.io/utils/pointer"
 
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -51,6 +50,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -674,6 +674,11 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 		annotations[k] = v
 	}
 
+	defaultBridgeNetwork, err := defaultBridgeNetwork(macAddressGetter)
+	if err != nil {
+		return nil, fmt.Errorf("could not compute a random MAC address")
+	}
+
 	runStrategyOnce := kubevirtv1.RunStrategyOnce
 
 	virtualMachine := &kubevirtv1.VirtualMachine{
@@ -693,9 +698,13 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 				},
 				Spec: kubevirtv1.VirtualMachineInstanceSpec{
 					EvictionStrategy: &evictionStrategy,
+					Networks: []kubevirtv1.Network{
+						*kubevirtv1.DefaultPodNetwork(),
+					},
 					Domain: kubevirtv1.DomainSpec{
 						Devices: kubevirtv1.Devices{
-							Disks: getVMDisks(c),
+							Interfaces: []kubevirtv1.Interface{*defaultBridgeNetwork},
+							Disks:      getVMDisks(c),
 						},
 						Resources: resourceRequirements,
 					},
@@ -801,7 +810,6 @@ func randomMacAddressGetter() (string, error) {
 	return mac.String(), nil
 }
 
-// TODO(mq): refactor networking in VMs
 func defaultBridgeNetwork(macAddressGetter macAddressGetter) (*kubevirtv1.Interface, error) {
 	defaultBridgeNetwork := kubevirtv1.DefaultBridgeNetworkInterface()
 	mac, err := macAddressGetter()
@@ -846,7 +854,6 @@ func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName stri
 }
 
 func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations map[string]string) []kubevirtv1.DataVolumeTemplateSpec {
-
 	pvcRequest := corev1.ResourceList{corev1.ResourceStorage: config.PVCSize}
 	dataVolumeTemplates := []kubevirtv1.DataVolumeTemplateSpec{
 		{
