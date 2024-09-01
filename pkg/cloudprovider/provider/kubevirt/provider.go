@@ -21,7 +21,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"k8s.io/utils/pointer"
 	"net/url"
 	"os"
 	"strconv"
@@ -42,6 +41,7 @@ import (
 	controllerutil "k8c.io/machine-controller/pkg/controller/util"
 	"k8c.io/machine-controller/pkg/providerconfig"
 	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8s.io/utils/pointer"
 
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -99,6 +99,7 @@ type Config struct {
 	Memory                    string
 	Namespace                 string
 	OSImageSource             *cdiv1beta1.DataVolumeSource
+	StorageTarget             StorageTarget
 	StorageClassName          string
 	StorageAccessType         corev1.PersistentVolumeAccessMode
 	PVCSize                   resource.Quantity
@@ -108,6 +109,14 @@ type Config struct {
 	NodeAffinityPreset        NodeAffinityPreset
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint
 }
+
+// StorageTarget represents targeted storage definition that will be used to provision VirtualMachine volumes. Currently,
+// there are two definitions, PVC and Storage. Default value is PVC.
+type StorageTarget string
+
+const (
+	Storage StorageTarget = "storage"
+)
 
 type AffinityType string
 
@@ -255,6 +264,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "osImageSource" field: %w`, err)
 	}
+
+	storageTarget, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageTarget)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "storageTarget" field: %w`, err)
+	}
+	config.StorageTarget = StorageTarget(storageTarget)
 
 	pvcSize, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.Size)
 	if err != nil {
@@ -831,6 +846,7 @@ func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName stri
 }
 
 func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations map[string]string) []kubevirtv1.DataVolumeTemplateSpec {
+
 	pvcRequest := corev1.ResourceList{corev1.ResourceStorage: config.PVCSize}
 	dataVolumeTemplates := []kubevirtv1.DataVolumeTemplateSpec{
 		{
@@ -839,20 +855,34 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations m
 				Annotations: annotations,
 			},
 			Spec: cdiv1beta1.DataVolumeSpec{
-				Storage: &cdiv1beta1.StorageSpec{
-					StorageClassName: pointer.String(config.StorageClassName),
-					VolumeMode:       ptr.To(corev1.PersistentVolumeBlock),
-					AccessModes: []corev1.PersistentVolumeAccessMode{
-						config.StorageAccessType,
-					},
-					Resources: corev1.ResourceRequirements{
-						Requests: pvcRequest,
-					},
-				},
 				Source: config.OSImageSource,
 			},
 		},
 	}
+
+	switch config.StorageTarget {
+	case Storage:
+		dataVolumeTemplates[0].Spec.Storage = &cdiv1beta1.StorageSpec{
+			StorageClassName: pointer.String(config.StorageClassName),
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				config.StorageAccessType,
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: pvcRequest,
+			},
+		}
+	default:
+		dataVolumeTemplates[0].Spec.PVC = &corev1.PersistentVolumeClaimSpec{
+			StorageClassName: pointer.String(config.StorageClassName),
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				config.StorageAccessType,
+			},
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: pvcRequest,
+			},
+		}
+	}
+
 	for _, sd := range config.SecondaryDisks {
 		dataVolumeTemplates = append(dataVolumeTemplates, kubevirtv1.DataVolumeTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
