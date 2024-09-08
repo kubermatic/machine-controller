@@ -126,7 +126,7 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 				"primaryDisk": {
 					{{- if .StorageTarget }}
 					"storageTarget": "{{ .StorageTarget }}",
-					{{- end }}                    
+					{{- end }}
 					{{- if .OsImageDV }}
 					"osImage": "{{ .OsImageDV }}",
 					{{- else }}
@@ -221,7 +221,8 @@ func TestNewVirtualMachine(t *testing.T) {
 		{
 			name:     "custom-local-disk",
 			specConf: kubevirtProviderSpecConf{OsImageDV: "ns/dvname"},
-		}, {
+		},
+		{
 			name:     "use-storage-as-storage-target",
 			specConf: kubevirtProviderSpecConf{StorageTarget: Storage},
 		},
@@ -263,7 +264,7 @@ func TestNewVirtualMachine(t *testing.T) {
 			c.Namespace = testNamespace
 
 			// Check the created VirtualMachine
-			vm, _ := p.newVirtualMachine(context.TODO(), c, pc, machine, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter(), fixedMacAddressGetter)
+			vm, _ := p.newVirtualMachine(context.TODO(), c, pc, machine, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter())
 			vm.TypeMeta.APIVersion, vm.TypeMeta.Kind = kubevirtv1.VirtualMachineGroupVersionKind.ToAPIVersionAndKind()
 
 			if !equality.Semantic.DeepEqual(vm, expectedVms[tt.name]) {
@@ -287,10 +288,6 @@ func toVirtualMachines(objects []runtime.Object) map[string]*kubevirtv1.VirtualM
 		}
 	}
 	return vms
-}
-
-func fixedMacAddressGetter() (string, error) {
-	return "b6:f5:b4:fe:45:1d", nil
 }
 
 // runtimeFromYaml returns a list of Kubernetes runtime objects from their yaml templates.

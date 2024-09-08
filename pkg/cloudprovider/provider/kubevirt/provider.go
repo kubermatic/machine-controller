@@ -37,7 +37,6 @@ import (
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	kubevirttypes "k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	netutil "k8c.io/machine-controller/pkg/cloudprovider/util"
 	controllerutil "k8c.io/machine-controller/pkg/controller/util"
 	"k8c.io/machine-controller/pkg/providerconfig"
 	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
@@ -597,7 +596,7 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 	userDataSecretName := fmt.Sprintf("userdata-%s-%s", machine.Name, strconv.Itoa(int(time.Now().Unix())))
 
 	virtualMachine, err := p.newVirtualMachine(ctx, c, pc, machine, userDataSecretName, userdata,
-		machineDeploymentNameAndRevisionForMachineGetter(ctx, machine, data.Client), randomMacAddressGetter)
+		machineDeploymentNameAndRevisionForMachineGetter(ctx, machine, data.Client))
 	if err != nil {
 		return nil, fmt.Errorf("could not create a VirtualMachine manifest %w", err)
 	}
@@ -621,7 +620,7 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 }
 
 func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerconfigtypes.Config, machine *clusterv1alpha1.Machine,
-	userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter, macAddressGetter macAddressGetter) (*kubevirtv1.VirtualMachine, error) {
+	userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter) (*kubevirtv1.VirtualMachine, error) {
 	// We add the timestamp because the secret name must be different when we recreate the VMI
 	// because its pod got deleted
 	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up.
@@ -663,6 +662,7 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 	}
 
 	annotations["ovn.kubernetes.io/allow_live_migration"] = "true"
+	annotations["kubevirt.io/allow-pod-bridge-network-live-migration"] = "true"
 
 	for k, v := range machine.Annotations {
 		if strings.HasPrefix(k, "cdi.kubevirt.io") {
@@ -673,11 +673,7 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 		annotations[k] = v
 	}
 
-	defaultBridgeNetwork, err := defaultBridgeNetwork(macAddressGetter)
-	if err != nil {
-		return nil, fmt.Errorf("could not compute a random MAC address")
-	}
-
+	defaultBridgeNetwork := defaultBridgeNetwork()
 	runStrategyOnce := kubevirtv1.RunStrategyOnce
 
 	virtualMachine := &kubevirtv1.VirtualMachine{
@@ -799,24 +795,8 @@ func getVMDisks(config *Config) []kubevirtv1.Disk {
 	return disks
 }
 
-type macAddressGetter func() (string, error)
-
-func randomMacAddressGetter() (string, error) {
-	mac, err := netutil.GenerateRandMAC()
-	if err != nil {
-		return "", err
-	}
-	return mac.String(), nil
-}
-
-func defaultBridgeNetwork(macAddressGetter macAddressGetter) (*kubevirtv1.Interface, error) {
-	defaultBridgeNetwork := kubevirtv1.DefaultBridgeNetworkInterface()
-	mac, err := macAddressGetter()
-	if err != nil {
-		return nil, err
-	}
-	defaultBridgeNetwork.MacAddress = mac
-	return defaultBridgeNetwork, nil
+func defaultBridgeNetwork() *kubevirtv1.Interface {
+	return kubevirtv1.DefaultBridgeNetworkInterface()
 }
 
 func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName string) []kubevirtv1.Volume {

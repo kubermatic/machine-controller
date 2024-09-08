@@ -31,6 +31,7 @@ spec:
       creationTimestamp: null
       annotations:
         "ovn.kubernetes.io/allow_live_migration": "true"
+        "kubevirt.io/allow-pod-bridge-network-live-migration": "true"
       labels:
         kubevirt.io/vm: pvc-image-source
         cluster.x-k8s.io/cluster-name: cluster-name
@@ -48,8 +49,7 @@ spec:
                 bus: virtio
               name: cloudinitdisk
           interfaces:
-            - macAddress: b6:f5:b4:fe:45:1d
-              name: default
+            - name: default
               bridge: {}
         resources:
           limits:

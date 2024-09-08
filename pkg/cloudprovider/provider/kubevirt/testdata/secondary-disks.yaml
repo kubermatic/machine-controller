@@ -56,6 +56,7 @@ spec:
       creationTimestamp: null
       annotations:
         "ovn.kubernetes.io/allow_live_migration": "true"
+        "kubevirt.io/allow-pod-bridge-network-live-migration": "true"
       labels:
         cluster.x-k8s.io/cluster-name: cluster-name
         cluster.x-k8s.io/role: worker
@@ -79,8 +80,7 @@ spec:
                 bus: virtio
               name: secondary-disks-secondarydisk1
           interfaces:
-            - macAddress: b6:f5:b4:fe:45:1d
-              name: default
+            - name: default
               bridge: {}
         resources:
           limits:
