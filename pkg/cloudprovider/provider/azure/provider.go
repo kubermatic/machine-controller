@@ -149,8 +149,8 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 	},
 	providerconfigtypes.OperatingSystemUbuntu: {
 		Publisher: to.StringPtr("Canonical"),
-		Offer:     to.StringPtr("0001-com-ubuntu-server-jammy"),
-		Sku:       to.StringPtr("22_04-lts"),
+		Offer:     to.StringPtr("ubuntu-24_04-lts"),
+		Sku:       to.StringPtr("server-gen1"),
 		Version:   to.StringPtr("latest"),
 	},
 	providerconfigtypes.OperatingSystemRHEL: {

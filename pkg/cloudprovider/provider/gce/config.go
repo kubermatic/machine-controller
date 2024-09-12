@@ -51,7 +51,7 @@ var imageProjects = map[providerconfigtypes.OperatingSystem]string{
 
 // imageFamilies maps the OS to the Google Cloud image projects.
 var imageFamilies = map[providerconfigtypes.OperatingSystem]string{
-	providerconfigtypes.OperatingSystemUbuntu:  "ubuntu-2204-lts",
+	providerconfigtypes.OperatingSystemUbuntu:  "ubuntu-2404-lts-amd64",
 	providerconfigtypes.OperatingSystemFlatcar: "flatcar-stable",
 }
 
