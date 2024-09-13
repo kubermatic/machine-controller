@@ -853,7 +853,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations m
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				config.StorageAccessType,
 			},
-			Resources: corev1.ResourceRequirements{
+			Resources: corev1.VolumeResourceRequirements{
 				Requests: pvcRequest,
 			},
 		}
