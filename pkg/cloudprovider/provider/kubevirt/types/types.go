@@ -57,6 +57,7 @@ type VirtualMachine struct {
 	Template   Template                            `json:"template,omitempty"`
 	DNSPolicy  providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
 	DNSConfig  *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
+	Location   *Location                           `json:"location,omitempty"`
 }
 
 // Flavor.
@@ -123,6 +124,12 @@ type TopologySpreadConstraint struct {
 	// WhenUnsatisfiable indicates how to deal with a VM if it doesn't satisfy
 	// the spread constraint.
 	WhenUnsatisfiable providerconfigtypes.ConfigVarString `json:"whenUnsatisfiable,omitempty"`
+}
+
+// Location describes the region and zone where the machines are created at and where the deployed resources will reside.
+type Location struct {
+	Region string `json:"region,omitempty"`
+	Zone   string `json:"zone,omitempty"`
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
