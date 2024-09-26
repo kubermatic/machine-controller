@@ -42,6 +42,7 @@ import (
 	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -561,6 +562,15 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 }
 
 func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+	c, _, err := p.getConfig(spec.ProviderSpec)
+	if err != nil {
+		return spec, err
+	}
+
+	if err := appendTopologiesLabels(context.TODO(), c, spec.Labels); err != nil {
+		return spec, err
+	}
+
 	return spec, nil
 }
 
@@ -630,7 +640,7 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 	return &kubeVirtServer{}, nil
 }
 
-func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerconfigtypes.Config, machine *clusterv1alpha1.Machine,
+func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *providerconfigtypes.Config, machine *clusterv1alpha1.Machine,
 	userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter) (*kubevirtv1.VirtualMachine, error) {
 	// We add the timestamp because the secret name must be different when we recreate the VMI
 	// because its pod got deleted
@@ -660,12 +670,8 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 	labels["cluster.x-k8s.io/cluster-name"] = c.ClusterName
 	labels["cluster.x-k8s.io/role"] = "worker"
 
-	if c.Region != "" {
-		labels[topologyRegionKey] = c.Region
-	}
-
-	if c.Zone != "" {
-		labels[topologyZoneKey] = c.Zone
+	if err := appendTopologiesLabels(ctx, c, labels); err != nil {
+		return nil, err
 	}
 
 	var (
@@ -976,4 +982,59 @@ func getTopologySpreadConstraints(config *Config, matchLabels map[string]string)
 			LabelSelector:     &metav1.LabelSelector{MatchLabels: matchLabels},
 		},
 	}
+}
+
+func appendTopologiesLabels(ctx context.Context, c *Config, labels map[string]string) error {
+	// trying to get region and zone from the storage class
+	err := getStorageTopologies(ctx, c.StorageClassName, c, labels)
+	if err != nil {
+		return fmt.Errorf("failed to get storage topologies: %w", err)
+	}
+
+	// if regions are explicitly set then we read them from the configs
+	if c.Region != "" {
+		labels[topologyRegionKey] = c.Region
+	}
+
+	if c.Zone != "" {
+		labels[topologyZoneKey] = c.Zone
+	}
+
+	return nil
+}
+
+func getStorageTopologies(ctx context.Context, storageClasName string, c *Config, labels map[string]string) error {
+	kubeClient, err := client.New(c.RestConfig, client.Options{})
+	if err != nil {
+		return fmt.Errorf("failed to get kubevirt client: %w", err)
+	}
+
+	sc := &storagev1.StorageClass{}
+	if err := kubeClient.Get(ctx, types.NamespacedName{Name: storageClasName}, sc); err != nil {
+		return err
+	}
+
+	//topologies := make(map[string]string)
+	for _, topology := range sc.AllowedTopologies {
+		for _, exp := range topology.MatchLabelExpressions {
+			if exp.Key == topologyRegionKey {
+				if exp.Values == nil || len(exp.Values) != 1 {
+					return errors.New("found multiple or no regions available. One zone/region is allowed")
+				}
+
+				labels[topologyRegionKey] = exp.Values[0]
+				continue
+			}
+
+			if exp.Key == topologyZoneKey {
+				if exp.Values == nil || len(exp.Values) != 1 {
+					return errors.New("found multiple or no zones available. One zone/region is allowed")
+				}
+
+				labels[topologyZoneKey] = exp.Values[0]
+			}
+		}
+	}
+
+	return nil
 }
