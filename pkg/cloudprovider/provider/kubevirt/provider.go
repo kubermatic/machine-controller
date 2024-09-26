@@ -977,21 +977,3 @@ func getTopologySpreadConstraints(config *Config, matchLabels map[string]string)
 		},
 	}
 }
-
-//func getStorageTopologies(ctx context.Context, storageClasName string, client client.Client) (map[string]string, error) {
-//	sc := &storagev1.StorageClass{}
-//	if err := client.Get(ctx, types.NamespacedName{Name: storageClasName}, sc); err != nil {
-//		return err, nil
-//	}
-//
-//	topologies := make(map[string]string)
-//	for _, topology := range sc.AllowedTopologies {
-//		for _, exp := range topology.MatchLabelExpressions {
-//			if len(exp.Values) > 1 {
-//				return nil, errors.New("found multiple regions or zones. One zone/region is allowed  ")
-//			}
-//
-//			topologies[exp.Key] =
-//		}
-//	}
-//}
