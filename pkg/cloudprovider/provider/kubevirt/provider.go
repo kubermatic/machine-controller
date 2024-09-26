@@ -76,6 +76,10 @@ const (
 	registrySource imageSource = "registry"
 	// pvcSource defines the pvc source type for VM Disk Image.
 	pvcSource imageSource = "pvc"
+	// topologyRegionKey and topologyZoneKey  on PVC is a topology-aware volume provisioners will automatically set
+	// node affinity constraints on a PersistentVolume.
+	topologyRegionKey = "topology.kubernetes.io/region"
+	topologyZoneKey   = "topology.kubernetes.io/zone"
 )
 
 type provider struct {
@@ -106,6 +110,8 @@ type Config struct {
 	SecondaryDisks            []SecondaryDisks
 	NodeAffinityPreset        NodeAffinityPreset
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint
+	Region                    string
+	Zone                      string
 }
 
 // StorageTarget represents targeted storage definition that will be used to provision VirtualMachine volumes. Currently,
@@ -329,6 +335,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	config.TopologySpreadConstraints, err = p.parseTopologySpreadConstraint(rawConfig.TopologySpreadConstraints)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to parse "topologySpreadConstraints" field: %w`, err)
+	}
+
+	if rawConfig.VirtualMachine.Location != nil {
+		config.Zone = rawConfig.VirtualMachine.Location.Zone
+		config.Region = rawConfig.VirtualMachine.Location.Region
 	}
 
 	return &config, pconfig, nil
@@ -648,6 +659,14 @@ func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerc
 	// Add cluster labels
 	labels["cluster.x-k8s.io/cluster-name"] = c.ClusterName
 	labels["cluster.x-k8s.io/role"] = "worker"
+
+	if c.Region != "" {
+		labels[topologyRegionKey] = c.Region
+	}
+
+	if c.Zone != "" {
+		labels[topologyZoneKey] = c.Zone
+	}
 
 	var (
 		dataVolumeName = machine.Name
