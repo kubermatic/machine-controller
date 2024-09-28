@@ -265,7 +265,7 @@ func TestNewVirtualMachine(t *testing.T) {
 			labels := map[string]string{}
 
 			// Check the created VirtualMachine
-			vm, _ := p.newVirtualMachine(context.TODO(), c, pc, machine, labels, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter())
+			vm, _ := p.newVirtualMachine(c, pc, machine, labels, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter())
 			vm.TypeMeta.APIVersion, vm.TypeMeta.Kind = kubevirtv1.VirtualMachineGroupVersionKind.ToAPIVersionAndKind()
 
 			if !equality.Semantic.DeepEqual(vm, expectedVms[tt.name]) {

@@ -620,7 +620,7 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 		return nil, fmt.Errorf("failed to append labels: %w", err)
 	}
 
-	virtualMachine, err := p.newVirtualMachine(ctx, c, pc, machine, labels, userDataSecretName, userdata,
+	virtualMachine, err := p.newVirtualMachine(c, pc, machine, labels, userDataSecretName, userdata,
 		machineDeploymentNameAndRevisionForMachineGetter(ctx, machine, data.Client))
 	if err != nil {
 		return nil, fmt.Errorf("could not create a VirtualMachine manifest %w", err)
@@ -644,7 +644,7 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 	return &kubeVirtServer{}, nil
 }
 
-func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *providerconfigtypes.Config, machine *clusterv1alpha1.Machine,
+func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, machine *clusterv1alpha1.Machine,
 	labels map[string]string, userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter) (*kubevirtv1.VirtualMachine, error) {
 	// We add the timestamp because the secret name must be different when we recreate the VMI
 	// because its pod got deleted
