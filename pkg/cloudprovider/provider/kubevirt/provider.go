@@ -615,8 +615,12 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 	}
 
 	userDataSecretName := fmt.Sprintf("userdata-%s-%s", machine.Name, strconv.Itoa(int(time.Now().Unix())))
+	labels := map[string]string{}
+	if err := appendTopologiesLabels(ctx, c, labels); err != nil {
+		return nil, fmt.Errorf("failed to append labels: %w", err)
+	}
 
-	virtualMachine, err := p.newVirtualMachine(ctx, c, pc, machine, userDataSecretName, userdata,
+	virtualMachine, err := p.newVirtualMachine(ctx, c, pc, machine, labels, userDataSecretName, userdata,
 		machineDeploymentNameAndRevisionForMachineGetter(ctx, machine, data.Client))
 	if err != nil {
 		return nil, fmt.Errorf("could not create a VirtualMachine manifest %w", err)
@@ -641,7 +645,7 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 }
 
 func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *providerconfigtypes.Config, machine *clusterv1alpha1.Machine,
-	userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter) (*kubevirtv1.VirtualMachine, error) {
+	labels map[string]string, userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter) (*kubevirtv1.VirtualMachine, error) {
 	// We add the timestamp because the secret name must be different when we recreate the VMI
 	// because its pod got deleted
 	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up.
@@ -650,7 +654,7 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 	evictionStrategy := kubevirtv1.EvictionStrategyExternal
 
 	resourceRequirements := kubevirtv1.ResourceRequirements{}
-	labels := map[string]string{"kubevirt.io/vm": machine.Name}
+	labels["kubevirt.io/vm"] = machine.Name
 	//Add a common label to all VirtualMachines spawned by the same MachineDeployment (= MachineDeployment name).
 	if mdName, err := mdNameGetter(); err == nil {
 		labels[machineDeploymentLabelKey] = mdName
@@ -669,10 +673,6 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 	// Add cluster labels
 	labels["cluster.x-k8s.io/cluster-name"] = c.ClusterName
 	labels["cluster.x-k8s.io/role"] = "worker"
-
-	if err := appendTopologiesLabels(ctx, c, labels); err != nil {
-		return nil, err
-	}
 
 	var (
 		dataVolumeName = machine.Name
@@ -985,6 +985,9 @@ func getTopologySpreadConstraints(config *Config, matchLabels map[string]string)
 }
 
 func appendTopologiesLabels(ctx context.Context, c *Config, labels map[string]string) error {
+	if labels == nil {
+		labels = map[string]string{}
+	}
 	// trying to get region and zone from the storage class
 	err := getStorageTopologies(ctx, c.StorageClassName, c, labels)
 	if err != nil {
@@ -1014,7 +1017,6 @@ func getStorageTopologies(ctx context.Context, storageClasName string, c *Config
 		return err
 	}
 
-	//topologies := make(map[string]string)
 	for _, topology := range sc.AllowedTopologies {
 		for _, exp := range topology.MatchLabelExpressions {
 			if exp.Key == topologyRegionKey {

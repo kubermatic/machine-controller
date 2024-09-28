@@ -279,9 +279,10 @@ func TestNewVirtualMachine(t *testing.T) {
 			}
 			// Do not rely on POD_NAMESPACE env variable, force to known value
 			c.Namespace = testNamespace
+			labels := map[string]string{}
 
 			// Check the created VirtualMachine
-			vm, _ := p.newVirtualMachine(context.TODO(), c, pc, machine, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter())
+			vm, _ := p.newVirtualMachine(context.TODO(), c, pc, machine, labels, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter())
 			vm.TypeMeta.APIVersion, vm.TypeMeta.Kind = kubevirtv1.VirtualMachineGroupVersionKind.ToAPIVersionAndKind()
 
 			if !equality.Semantic.DeepEqual(vm, expectedVms[tt.name]) {
