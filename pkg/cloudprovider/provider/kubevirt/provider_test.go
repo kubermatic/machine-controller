@@ -21,7 +21,6 @@ import (
 	"context"
 	"embed"
 	"html/template"
-	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
 	"path"
 	"reflect"
 	"testing"
@@ -69,7 +68,6 @@ type kubevirtProviderSpecConf struct {
 	OsImageSource            imageSource
 	OsImageSourceURL         string
 	PullMethod               cdiv1beta1.RegistryPullMethod
-	Location                 *types.Location
 }
 
 func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -103,12 +101,6 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		},
 		{{- end }}
 		"virtualMachine": {
-            {{- if .Location }}
-            "location": {
-               "zone": "{{ .Location.Zone }}",
-               "region": "{{ .Location.Region }}"
-            },
-            {{- end }}
 			{{- if .Instancetype }}
 			"instancetype": {
 				"name": "{{ .Instancetype.Name }}",
@@ -207,15 +199,6 @@ func TestNewVirtualMachine(t *testing.T) {
 				Preference: &kubevirtv1.PreferenceMatcher{
 					Name: "custom-pref",
 					Kind: "VirtualMachineClusterPreference",
-				},
-			},
-		},
-		{
-			name: "location-zone-and-region-aware",
-			specConf: kubevirtProviderSpecConf{
-				Location: &types.Location{
-					Region: "europe-central",
-					Zone:   "hh",
 				},
 			},
 		},
