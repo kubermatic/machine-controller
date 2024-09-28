@@ -1019,7 +1019,8 @@ func getStorageTopologies(ctx context.Context, storageClasName string, c *Config
 		for _, exp := range topology.MatchLabelExpressions {
 			if exp.Key == topologyRegionKey {
 				if exp.Values == nil || len(exp.Values) != 1 {
-					return errors.New("found multiple or no regions available. One zone/region is allowed")
+					// found multiple or no regions available. One zone/region is allowed
+					return nil
 				}
 
 				labels[topologyRegionKey] = exp.Values[0]
@@ -1028,7 +1029,8 @@ func getStorageTopologies(ctx context.Context, storageClasName string, c *Config
 
 			if exp.Key == topologyZoneKey {
 				if exp.Values == nil || len(exp.Values) != 1 {
-					return errors.New("found multiple or no zones available. One zone/region is allowed")
+					// found multiple or no zones available. One zone/region is allowed
+					return nil
 				}
 
 				labels[topologyZoneKey] = exp.Values[0]
