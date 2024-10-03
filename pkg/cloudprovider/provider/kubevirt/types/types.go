@@ -135,7 +135,14 @@ type Location struct {
 
 // ProviderNetwork describes the infra cluster network fabric that is being used.
 type ProviderNetwork struct {
-	Name   string  `json:"name,omitempty"`
+	Name string `json:"name"`
+	VPC  VPC    `json:"vpc"`
+}
+
+// VPC  is a virtual network dedicated to a single tenant within a KubeVirt, where the resources in the VPC
+// is isolated from any other resources within the KubeVirt infra cluster.
+type VPC struct {
+	Name   string  `json:"name"`
 	Subnet *Subnet `json:"subnet,omitempty"`
 }
 

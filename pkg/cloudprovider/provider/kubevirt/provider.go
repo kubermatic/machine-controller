@@ -350,10 +350,10 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	if rawConfig.VirtualMachine.ProviderNetwork != nil {
 		config.ProviderNetworkName = rawConfig.VirtualMachine.ProviderNetwork.Name
-		if rawConfig.VirtualMachine.ProviderNetwork.Subnet != nil {
-			config.SubnetName = rawConfig.VirtualMachine.ProviderNetwork.Subnet.Name
-			config.SubnetCIDRBlock = rawConfig.VirtualMachine.ProviderNetwork.Subnet.CIDRBlock
-			config.SubnetGatewayIP = rawConfig.VirtualMachine.ProviderNetwork.Subnet.GatewayIP
+		if rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet != nil {
+			config.SubnetName = rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet.Name
+			config.SubnetCIDRBlock = rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet.CIDRBlock
+			config.SubnetGatewayIP = rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet.GatewayIP
 		}
 	}
 
