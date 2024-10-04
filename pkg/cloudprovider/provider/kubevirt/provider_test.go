@@ -21,7 +21,6 @@ import (
 	"context"
 	"embed"
 	"html/template"
-	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
 	"path"
 	"reflect"
 	"testing"
@@ -69,7 +68,6 @@ type kubevirtProviderSpecConf struct {
 	OsImageSource            imageSource
 	OsImageSourceURL         string
 	PullMethod               cdiv1beta1.RegistryPullMethod
-	Location                 *types.Location
 }
 
 func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -103,12 +101,6 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		},
 		{{- end }}
 		"virtualMachine": {
-            {{- if .Location }}
-            "location": {
-               "zone": "{{ .Location.Zone }}",
-               "region": "{{ .Location.Region }}"
-            },
-            {{- end }}
 			{{- if .Instancetype }}
 			"instancetype": {
 				"name": "{{ .Instancetype.Name }}",
@@ -211,15 +203,6 @@ func TestNewVirtualMachine(t *testing.T) {
 			},
 		},
 		{
-			name: "location-zone-and-region-aware",
-			specConf: kubevirtProviderSpecConf{
-				Location: &types.Location{
-					Region: "europe-central",
-					Zone:   "hh",
-				},
-			},
-		},
-		{
 			name:     "topologyspreadconstraints",
 			specConf: kubevirtProviderSpecConf{TopologySpreadConstraint: true},
 		},
@@ -279,9 +262,10 @@ func TestNewVirtualMachine(t *testing.T) {
 			}
 			// Do not rely on POD_NAMESPACE env variable, force to known value
 			c.Namespace = testNamespace
+			labels := map[string]string{}
 
 			// Check the created VirtualMachine
-			vm, _ := p.newVirtualMachine(context.TODO(), c, pc, machine, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter())
+			vm, _ := p.newVirtualMachine(c, pc, machine, labels, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter())
 			vm.TypeMeta.APIVersion, vm.TypeMeta.Kind = kubevirtv1.VirtualMachineGroupVersionKind.ToAPIVersionAndKind()
 
 			if !equality.Semantic.DeepEqual(vm, expectedVms[tt.name]) {
