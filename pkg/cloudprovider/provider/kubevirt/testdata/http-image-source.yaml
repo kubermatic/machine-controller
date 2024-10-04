@@ -29,7 +29,6 @@ spec:
     metadata:
       creationTimestamp: null
       annotations:
-        "ovn.kubernetes.io/allow_live_migration": "true"
         "kubevirt.io/allow-pod-bridge-network-live-migration": "true"
       labels:
         kubevirt.io/vm: http-image-source
