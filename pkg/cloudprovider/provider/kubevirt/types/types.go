@@ -53,11 +53,12 @@ type VirtualMachine struct {
 	// Instancetype is optional.
 	Instancetype *kubevirtv1.InstancetypeMatcher `json:"instancetype,omitempty"`
 	// Preference is optional.
-	Preference *kubevirtv1.PreferenceMatcher       `json:"preference,omitempty"`
-	Template   Template                            `json:"template,omitempty"`
-	DNSPolicy  providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
-	DNSConfig  *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
-	Location   *Location                           `json:"location,omitempty"`
+	Preference      *kubevirtv1.PreferenceMatcher       `json:"preference,omitempty"`
+	Template        Template                            `json:"template,omitempty"`
+	DNSPolicy       providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
+	DNSConfig       *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
+	Location        *Location                           `json:"location,omitempty"`
+	ProviderNetwork *ProviderNetwork                    `json:"providerNetwork,omitempty"`
 }
 
 // Flavor.
@@ -130,6 +131,26 @@ type TopologySpreadConstraint struct {
 type Location struct {
 	Region string `json:"region,omitempty"`
 	Zone   string `json:"zone,omitempty"`
+}
+
+// ProviderNetwork describes the infra cluster network fabric that is being used.
+type ProviderNetwork struct {
+	Name string `json:"name"`
+	VPC  VPC    `json:"vpc"`
+}
+
+// VPC  is a virtual network dedicated to a single tenant within a KubeVirt, where the resources in the VPC
+// is isolated from any other resources within the KubeVirt infra cluster.
+type VPC struct {
+	Name   string  `json:"name"`
+	Subnet *Subnet `json:"subnet,omitempty"`
+}
+
+// Subnet a smaller, segmented portion of a larger network, like a Virtual Private Cloud (VPC).
+type Subnet struct {
+	Name      string `json:"name"`
+	CIDRBlock string `json:"cidrBlock"`
+	GatewayIP string `json:"gatewayIP,omitempty"`
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {

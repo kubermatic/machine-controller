@@ -21,6 +21,7 @@ import (
 	"context"
 	"embed"
 	"html/template"
+	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
 	"path"
 	"reflect"
 	"testing"
@@ -68,6 +69,7 @@ type kubevirtProviderSpecConf struct {
 	OsImageSource            imageSource
 	OsImageSourceURL         string
 	PullMethod               cdiv1beta1.RegistryPullMethod
+	ProviderNetwork          *types.ProviderNetwork
 }
 
 func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -101,6 +103,18 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		},
 		{{- end }}
 		"virtualMachine": {
+            {{- if .ProviderNetwork }}
+            "providerNetwork": {
+               "name": "kubeovn",
+               "vpc": {
+                 "name": "test-vpc",
+                 "subnet": {
+                   "name": "test-subnet",
+                   "cidrBlock": "10.10.0.0/16"
+                 }
+               }
+            },
+            {{- end }}
 			{{- if .Instancetype }}
 			"instancetype": {
 				"name": "{{ .Instancetype.Name }}",
@@ -201,6 +215,14 @@ func TestNewVirtualMachine(t *testing.T) {
 					Kind: "VirtualMachineClusterPreference",
 				},
 			},
+		},
+		{
+			name: "kubeovn-provider-network",
+			specConf: kubevirtProviderSpecConf{
+				ProviderNetwork: &types.ProviderNetwork{Name: "KubeOVN", VPC: types.VPC{Name: "test-vpc", Subnet: &types.Subnet{
+					Name:      "test-subnet",
+					CIDRBlock: "10.10.0.0/24",
+				}}}},
 		},
 		{
 			name:     "topologyspreadconstraints",

@@ -19,8 +19,10 @@ package kubevirt
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -113,6 +115,11 @@ type Config struct {
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint
 	Region                    string
 	Zone                      string
+
+	ProviderNetworkName string
+	SubnetName          string
+	SubnetCIDRBlock     string
+	SubnetGatewayIP     string
 }
 
 // StorageTarget represents targeted storage definition that will be used to provision VirtualMachine volumes. Currently,
@@ -341,6 +348,15 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if rawConfig.VirtualMachine.Location != nil {
 		config.Zone = rawConfig.VirtualMachine.Location.Zone
 		config.Region = rawConfig.VirtualMachine.Location.Region
+	}
+
+	if rawConfig.VirtualMachine.ProviderNetwork != nil {
+		config.ProviderNetworkName = rawConfig.VirtualMachine.ProviderNetwork.Name
+		if rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet != nil {
+			config.SubnetName = rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet.Name
+			config.SubnetCIDRBlock = rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet.CIDRBlock
+			config.SubnetGatewayIP = rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet.GatewayIP
+		}
 	}
 
 	return &config, pconfig, nil
@@ -686,8 +702,13 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 		annotations["kubevirt.io/ignitiondata"] = userdata
 	}
 
-	annotations["ovn.kubernetes.io/allow_live_migration"] = "true"
 	annotations["kubevirt.io/allow-pod-bridge-network-live-migration"] = "true"
+
+	if strings.ToLower(c.ProviderNetworkName) == "kubeovn" {
+		if err := setOVNAnnotations(c, annotations); err != nil {
+			return nil, fmt.Errorf("failed to set OVN annotations: %w", err)
+		}
+	}
 
 	for k, v := range machine.Annotations {
 		if strings.HasPrefix(k, "cdi.kubevirt.io") {
@@ -1039,6 +1060,48 @@ func getStorageTopologies(ctx context.Context, storageClasName string, c *Config
 			}
 		}
 	}
+
+	return nil
+}
+
+func setOVNAnnotations(c *Config, annotations map[string]string) error {
+	annotations["ovn.kubernetes.io/allow_live_migration"] = "true"
+
+	if c.SubnetName != "" {
+		annotations["ovn.kubernetes.io/logical_switch"] = c.SubnetName
+	}
+
+	var subnetGatewayIP string
+	if c.SubnetGatewayIP == "" {
+		_, ipNet, err := net.ParseCIDR(c.SubnetCIDRBlock)
+		if err != nil {
+			return err
+		}
+
+		firstIP := ipNet.IP.To4()
+		if firstIP == nil {
+			return errors.New("invalid IPv4 address")
+		}
+
+		firstIP[3]++
+		subnetGatewayIP = firstIP.String()
+	} else {
+		subnetGatewayIP = c.SubnetGatewayIP
+	}
+
+	routes := []struct {
+		Gw string `json:"gw"`
+	}{
+		{
+			Gw: subnetGatewayIP,
+		},
+	}
+	marshalledRoutes, err := json.Marshal(routes)
+	if err != nil {
+		return err
+	}
+
+	annotations["ovn.kubernetes.io/routes"] = string(marshalledRoutes)
 
 	return nil
 }
