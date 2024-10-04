@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -703,7 +704,9 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 	annotations["kubevirt.io/allow-pod-bridge-network-live-migration"] = "true"
 
 	if c.ProviderNetworkName == "KubeOVN" {
-		setOVNAnnotations(c, annotations)
+		if err := setOVNAnnotations(c, annotations); err != nil {
+			return nil, fmt.Errorf("failed to set OVN annotations: %w", err)
+		}
 	}
 
 	for k, v := range machine.Annotations {
@@ -1060,18 +1063,36 @@ func getStorageTopologies(ctx context.Context, storageClasName string, c *Config
 	return nil
 }
 
-func setOVNAnnotations(c *Config, annotations map[string]string) {
+func setOVNAnnotations(c *Config, annotations map[string]string) error {
 	annotations["ovn.kubernetes.io/allow_live_migration"] = "true"
 
 	if c.SubnetName != "" {
 		annotations["ovn.kubernetes.io/logical_switch"] = c.SubnetName
 	}
 
-	if c.SubnetGatewayIP != "" {
-		annotations["ovn.kubernetes.io/routes"] = fmt.Sprintf(`|
+	var subnetGatewayIP string
+	if c.SubnetGatewayIP == "" {
+		_, ipNet, err := net.ParseCIDR(c.SubnetCIDRBlock)
+		if err != nil {
+			return err
+		}
+
+		firstIP := ipNet.IP.To4()
+		if firstIP == nil {
+			return fmt.Errorf("invalid IPv4 address")
+		}
+
+		firstIP[3]++
+		subnetGatewayIP = firstIP.String()
+	} else {
+		subnetGatewayIP = c.SubnetGatewayIP
+	}
+
+	annotations["ovn.kubernetes.io/routes"] = fmt.Sprintf(`|
   [{
     "gw": "%s"
   }]
-`, c.SubnetGatewayIP)
-	}
+`, subnetGatewayIP)
+
+	return nil
 }
