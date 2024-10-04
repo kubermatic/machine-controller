@@ -19,6 +19,7 @@ package kubevirt
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -703,7 +704,7 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 
 	annotations["kubevirt.io/allow-pod-bridge-network-live-migration"] = "true"
 
-	if c.ProviderNetworkName == "KubeOVN" {
+	if strings.ToLower(c.ProviderNetworkName) == "kubeovn" {
 		if err := setOVNAnnotations(c, annotations); err != nil {
 			return nil, fmt.Errorf("failed to set OVN annotations: %w", err)
 		}
@@ -1079,7 +1080,7 @@ func setOVNAnnotations(c *Config, annotations map[string]string) error {
 
 		firstIP := ipNet.IP.To4()
 		if firstIP == nil {
-			return fmt.Errorf("invalid IPv4 address")
+			return errors.New("invalid IPv4 address")
 		}
 
 		firstIP[3]++
@@ -1088,11 +1089,19 @@ func setOVNAnnotations(c *Config, annotations map[string]string) error {
 		subnetGatewayIP = c.SubnetGatewayIP
 	}
 
-	annotations["ovn.kubernetes.io/routes"] = fmt.Sprintf(`|
-  [{
-    "gw": "%s"
-  }]
-`, subnetGatewayIP)
+	routes := []struct {
+		Gw string `json:"gw"`
+	}{
+		{
+			Gw: subnetGatewayIP,
+		},
+	}
+	marshalledRoutes, err := json.Marshal(routes)
+	if err != nil {
+		return err
+	}
+
+	annotations["ovn.kubernetes.io/routes"] = string(marshalledRoutes)
 
 	return nil
 }
