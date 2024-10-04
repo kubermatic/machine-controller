@@ -1,0 +1,81 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  annotations:
+  labels:
+    cluster.x-k8s.io/cluster-name: cluster-name
+    cluster.x-k8s.io/role: worker
+    kubevirt.io/vm: kubeovn-provider-network
+    md: md-name
+  name: kubeovn-provider-network
+  namespace: test-namespace
+spec:
+  dataVolumeTemplates:
+    - metadata:
+        name: kubeovn-provider-network
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+          storageClassName: longhorn
+        source:
+          http:
+            url: http://x.y.z.t/ubuntu.img
+  runStrategy: Once
+  template:
+    metadata:
+      creationTimestamp: null
+      annotations:
+        ovn.kubernetes.io/allow_live_migration: "true"
+        ovn.kubernetes.io/logical_switch: test-subnet
+        ovn.kubernetes.io/routes: '[{"gw":"10.10.0.1"}]'
+        "kubevirt.io/allow-pod-bridge-network-live-migration": "true"
+      labels:
+        cluster.x-k8s.io/cluster-name: cluster-name
+        cluster.x-k8s.io/role: worker
+        kubevirt.io/vm: kubeovn-provider-network
+        md: md-name
+    spec:
+      affinity: {}
+      domain:
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: datavolumedisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          interfaces:
+            - name: default
+              bridge: {}
+        resources:
+          limits:
+            cpu: "2"
+            memory: 2Gi
+          requests:
+            cpu: "2"
+            memory: 2Gi
+      networks:
+        - name: default
+          pod: {}
+      terminationGracePeriodSeconds: 30
+      topologyspreadconstraints:
+        - maxskew: 1
+          topologykey: kubernetes.io/hostname
+          whenunsatisfiable: ScheduleAnyway
+          labelselector:
+            matchlabels:
+              md: md-name
+      volumes:
+        - dataVolume:
+            name: kubeovn-provider-network
+          name: datavolumedisk
+        - cloudInitNoCloud:
+            secretRef:
+              name: udsn
+          name: cloudinitdisk
+      evictionStrategy: External
