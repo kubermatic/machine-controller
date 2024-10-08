@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/providernetworks/kubeovn"
 	"net"
 	"net/url"
 	"os"
@@ -354,7 +355,26 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		config.ProviderNetworkName = rawConfig.VirtualMachine.ProviderNetwork.Name
 		if rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet != nil {
 			config.SubnetName = rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet.Name
+			kvClient, err := client.New(config.RestConfig, client.Options{})
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to create kubevirt client: %w", err)
+			}
+
+			providerNetworks, err := kubeovn.New(kvClient)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to create kubeovn providerNetworks: %w", err)
+			}
+
 			config.SubnetCIDRBlock = rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet.CIDRBlock
+			if config.SubnetCIDRBlock == "" {
+				subnet, err := providerNetworks.GetVPCSubnet(context.Background(), config.SubnetName)
+				if err != nil {
+					return nil, nil, fmt.Errorf("failed to get vpcSubnet: %w", err)
+				}
+
+				config.SubnetCIDRBlock = subnet.CIDRBlock
+			}
+
 			config.SubnetGatewayIP = rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet.GatewayIP
 		}
 	}
