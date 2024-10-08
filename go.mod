@@ -1,6 +1,6 @@
 module k8c.io/machine-controller
 
-go 1.22.3
+go 1.22.7
 
 toolchain go1.23.1
 
@@ -28,6 +28,7 @@ require (
 	github.com/gophercloud/gophercloud v1.14.0
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
 	github.com/hetznercloud/hcloud-go/v2 v2.13.1
+	github.com/kubeovn/kube-ovn v1.12.26
 	github.com/linode/linodego v1.40.0
 	github.com/nutanix-cloud-native/prism-go-client v0.5.1
 	github.com/packethost/packngo v0.31.0
@@ -52,7 +53,7 @@ require (
 	k8s.io/api v0.31.1
 	k8s.io/apiextensions-apiserver v0.31.1
 	k8s.io/apimachinery v0.31.1
-	k8s.io/client-go v0.31.1
+	k8s.io/client-go v1.5.2
 	k8s.io/cloud-provider v0.31.1
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.31.1
@@ -114,7 +115,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/gnostic-models v0.6.8 // indirect
+	github.com/google/gnostic-models v0.6.9-0.20230804172637-c7be7c783f49 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -146,6 +147,7 @@ require (
 	github.com/onsi/gomega v1.34.1 // indirect
 	github.com/openshift/custom-resource-status v1.1.2 // indirect
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
+	github.com/ovn-org/libovsdb v0.7.0 // indirect
 	github.com/peterhellberg/link v1.2.0 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.59.1 // indirect
@@ -181,8 +183,13 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20240903163716-9e1beecbcb38 // indirect
+	k8s.io/kube-openapi v0.30.0 // indirect
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
+)
+
+replace (
+	k8s.io/client-go v1.5.2 => k8s.io/client-go v0.31.1
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20240812233141-91dab695df6f
 )
