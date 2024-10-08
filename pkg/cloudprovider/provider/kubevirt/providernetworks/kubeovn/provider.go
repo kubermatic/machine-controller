@@ -1,5 +1,3 @@
-package kubeovn
-
 /*
    Copyright 2024 The Kubermatic Kubernetes Platform contributors.
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,15 +11,17 @@ package kubeovn
    limitations under the License.
 */
 
+package kubeovn
+
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
-	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/providernetworks"
-	"k8s.io/apimachinery/pkg/types"
 
 	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 
+	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/providernetworks"
+
+	"k8s.io/apimachinery/pkg/types"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -36,7 +36,7 @@ func New(client ctrlruntimeclient.Client) (providernetworks.ProviderNetwork, err
 func (k *kubeOVNProviderNetwork) GetVPC(ctx context.Context, vpcName string) (*providernetworks.VPC, error) {
 	vpc := &kubeovnv1.Vpc{}
 	if err := k.client.Get(ctx, types.NamespacedName{Name: vpcName}, vpc); err != nil {
-		return nil, fmt.Errorf("failed to get VPC %s: %w", vpcName, zap.Error(err))
+		return nil, fmt.Errorf("failed to get VPC %s: %w", vpcName, err)
 	}
 
 	return &providernetworks.VPC{

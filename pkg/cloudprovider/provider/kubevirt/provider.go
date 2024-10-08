@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/providernetworks"
 	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/providernetworks/kubeovn"
 	"net"
 	"net/url"
@@ -724,7 +725,7 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 
 	annotations["kubevirt.io/allow-pod-bridge-network-live-migration"] = "true"
 
-	if strings.ToLower(c.ProviderNetworkName) == "kubeovn" {
+	if strings.ToLower(c.ProviderNetworkName) == string(providernetworks.KubeOVN) {
 		if err := setOVNAnnotations(c, annotations); err != nil {
 			return nil, fmt.Errorf("failed to set OVN annotations: %w", err)
 		}

@@ -1,5 +1,3 @@
-package providernetworks
-
 /*
  Copyright 2024 The Kubermatic Kubernetes Platform contributors.
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +11,8 @@ package providernetworks
  limitations under the License.
 */
 
+package providernetworks
+
 import (
 	"context"
 )
@@ -20,8 +20,7 @@ import (
 type SupportedProviderNetworks string
 
 const (
-	KubeOVN SupportedProviderNetworks = "KubeOVN"
-	Static                            = "Static"
+	KubeOVN SupportedProviderNetworks = "kubeovn"
 )
 
 // ProviderNetwork describes the infra cluster network fabric that is being used. These fabrics could be a as simple cni

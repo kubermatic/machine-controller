@@ -20,7 +20,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	"log"
 	"net/http"
 	"net/http/pprof"
@@ -28,6 +27,7 @@ import (
 	"time"
 
 	"github.com/go-logr/zapr"
+	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
