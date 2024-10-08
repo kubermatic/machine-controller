@@ -55,10 +55,10 @@ type Template struct {
 }
 
 const (
-	fsType             = "ext4"
-	defaultInterpreter = "/bin/sh -c"
-	hardwareDisk1      = "{{ index .Hardware.Disks 0 }}"
-
+	fsType                      = "ext4"
+	defaultInterpreter          = "/bin/sh -c"
+	hardwareDisk1               = "{{ index .Hardware.Disks 0 }}"
+	hardwareName                = "{{.hardware_name}}"
 	ProvisionWorkerNodeTemplate = "provision-worker-node"
 )
 
@@ -90,14 +90,14 @@ func (t *TemplateClient) Delete(ctx context.Context, namespacedName types.Namesp
 }
 
 // CreateTemplate creates a Tinkerbell Template in the Kubernetes cluster.
-func (t *TemplateClient) CreateTemplate(ctx context.Context, hardware *tinkv1alpha1.Hardware, namespace, osImageURL string) error {
+func (t *TemplateClient) CreateTemplate(ctx context.Context, namespace, osImageURL string) error {
 	template := &tinkv1alpha1.Template{}
 	if err := t.tinkclient.Get(ctx, types.NamespacedName{
 		Name:      ProvisionWorkerNodeTemplate,
 		Namespace: namespace,
 	}, template); err != nil {
 		if kerrors.IsNotFound(err) {
-			data, err := getTemplate(hardware, osImageURL)
+			data, err := getTemplate(osImageURL)
 			if err != nil {
 				return err
 			}
@@ -122,14 +122,15 @@ func (t *TemplateClient) CreateTemplate(ctx context.Context, hardware *tinkv1alp
 	return nil
 }
 
-func getTemplate(hardware *tinkv1alpha1.Hardware, osImageURL string) (string, error) {
+func getTemplate(osImageURL string) (string, error) {
 	actions := []Action{
 		createWipeDiskAction(),
 		createStreamUbuntuImageAction(hardwareDisk1, osImageURL),
 		createGrowPartitionAction(hardwareDisk1),
 		createNetworkConfigAction(),
 		createCloudInitConfigAction(),
-		decodeCloudInitFile(hardware.Name),
+		decodeCloudInitFile(hardwareName),
+		createRebootAction(),
 	}
 
 	task := Task{
@@ -244,7 +245,7 @@ func createCloudInitConfigAction() Action {
 		Environment: map[string]string{
 			"DEST_DISK": "{{ index .Hardware.Disks 0 }}3",
 			"FS_TYPE":   fsType,
-			"DEST_PATH": "{{.dst_path}}",
+			"DEST_PATH": fmt.Sprintf("/tmp/%s-bootstrap-config", hardwareName),
 			"CONTENTS":  "{{.cloud_init_script}}",
 			"UID":       "0",
 			"GID":       "0",
@@ -264,7 +265,24 @@ func decodeCloudInitFile(hardwareName string) Action {
 			"FS_TYPE":             fsType,
 			"CHROOT":              "y",
 			"DEFAULT_INTERPRETER": "/bin/sh -c",
-			"CMD_LINE":            fmt.Sprintf("cat /tmp/%s-bootstrap-config | base64 -d > /etc/cloud/cloud.cfg.d/%s-cloud-init.cfg", hardwareName, hardwareName),
+			"CMD_LINE":            fmt.Sprintf("cat /tmp/%s-bootstrap-config | base64 -d > '/etc/cloud/cloud.cfg.d/%s-cloud-init.cfg'", hardwareName, hardwareName),
+		},
+	}
+}
+
+func createRebootAction() Action {
+	return Action{
+		Name:    "reboot-action",
+		Image:   "ghcr.io/jacobweinstock/waitdaemon:0.1.1",
+		Pid:     "host",
+		Timeout: 90,
+		Command: []string{"reboot"},
+		Environment: map[string]string{
+			"IMAGE":        "alpine",
+			"WAIT_SECONDS": "10",
+		},
+		Volumes: []string{
+			"/var/run/docker.sock:/var/run/docker.sock",
 		},
 	}
 }

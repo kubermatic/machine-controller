@@ -67,7 +67,7 @@ func (w *WorkflowClient) CreateWorkflow(ctx context.Context, userData, templateR
 			HardwareRef: hardware.GetName(),
 			HardwareMap: map[string]string{
 				"device_1":          hardware.GetMACAddress(),
-				"dst_path":          fmt.Sprintf("/tmp/%s-bootstrap-config", hardware.Name),
+				"hardware_name":     hardware.GetName(),
 				"cloud_init_script": base64.StdEncoding.EncodeToString([]byte(userData)),
 				"interface_name":    ifaceConfig.IfaceName,
 				"cidr":              convertNetmaskToCIDR(ifaceConfig.IP),
