@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	"log"
 	"net/http"
 	"net/http/pprof"
@@ -226,6 +227,9 @@ func main() {
 	}
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		log.Fatalw("Failed to add api to scheme", "api", clusterv1alpha1.SchemeGroupVersion, zap.Error(err))
+	}
+	if err := kubeovnv1.AddToScheme(scheme.Scheme); err != nil {
+		log.Fatalw("Failed to add kubeovn api to scheme", "api", clusterv1alpha1.SchemeGroupVersion, zap.Error(err))
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
