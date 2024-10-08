@@ -123,7 +123,7 @@ func (d *driver) ProvisionServer(ctx context.Context, _ *zap.SugaredLogger, meta
 	}
 
 	// Create template if it doesn't exist
-	err = d.TemplateClient.CreateTemplate(ctx, hardware, d.HardwareRef.Namespace, d.OSImageURL)
+	err = d.TemplateClient.CreateTemplate(ctx, d.HardwareRef.Namespace, d.OSImageURL)
 	if err != nil {
 		return nil, err
 	}
