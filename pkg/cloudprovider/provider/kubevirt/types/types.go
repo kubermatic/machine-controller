@@ -148,9 +148,7 @@ type VPC struct {
 
 // Subnet a smaller, segmented portion of a larger network, like a Virtual Private Cloud (VPC).
 type Subnet struct {
-	Name      string `json:"name"`
-	CIDRBlock string `json:"cidrBlock"`
-	GatewayIP string `json:"gatewayIP,omitempty"`
+	Name string `json:"name"`
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
