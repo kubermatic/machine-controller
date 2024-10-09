@@ -31,7 +31,7 @@ spec:
       creationTimestamp: null
       annotations:
         "kubevirt.io/allow-pod-bridge-network-live-migration": "true"
-        "ovn.kubernetes.io/allow_live_migration":              "true"
+        "ovn.kubernetes.io/allow_live_migration": "true"
       labels:
         kubevirt.io/vm: registry-image-source-pod
         cluster.x-k8s.io/cluster-name: cluster-name
