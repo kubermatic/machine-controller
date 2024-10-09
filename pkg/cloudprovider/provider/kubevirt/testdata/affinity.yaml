@@ -30,6 +30,7 @@ spec:
     metadata:
       annotations:
         "kubevirt.io/allow-pod-bridge-network-live-migration": "true"
+        "ovn.kubernetes.io/allow_live_migration":              "true"
       labels:
         cluster.x-k8s.io/cluster-name: cluster-name
         cluster.x-k8s.io/role: worker

@@ -31,7 +31,6 @@ spec:
       annotations:
         ovn.kubernetes.io/allow_live_migration: "true"
         ovn.kubernetes.io/logical_switch: test-subnet
-        ovn.kubernetes.io/routes: '[{"gw":"10.10.0.1"}]'
         "kubevirt.io/allow-pod-bridge-network-live-migration": "true"
       labels:
         cluster.x-k8s.io/cluster-name: cluster-name
