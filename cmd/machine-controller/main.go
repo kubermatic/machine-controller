@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/go-logr/zapr"
-	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
@@ -227,9 +226,6 @@ func main() {
 	}
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		log.Fatalw("Failed to add api to scheme", "api", clusterv1alpha1.SchemeGroupVersion, zap.Error(err))
-	}
-	if err := kubeovnv1.AddToScheme(scheme.Scheme); err != nil {
-		log.Fatalw("Failed to add kubeovn api to scheme", "api", clusterv1alpha1.SchemeGroupVersion, zap.Error(err))
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)

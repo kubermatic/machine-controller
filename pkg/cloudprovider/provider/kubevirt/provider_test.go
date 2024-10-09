@@ -109,8 +109,7 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
                "vpc": {
                  "name": "test-vpc",
                  "subnet": {
-                   "name": "test-subnet",
-                   "cidrBlock": "10.10.0.0/16"
+                   "name": "test-subnet"
                  }
                }
             },
@@ -220,8 +219,7 @@ func TestNewVirtualMachine(t *testing.T) {
 			name: "kubeovn-provider-network",
 			specConf: kubevirtProviderSpecConf{
 				ProviderNetwork: &types.ProviderNetwork{Name: "KubeOVN", VPC: types.VPC{Name: "test-vpc", Subnet: &types.Subnet{
-					Name:      "test-subnet",
-					CIDRBlock: "10.10.0.0/24",
+					Name: "test-subnet",
 				}}}},
 		},
 		{
