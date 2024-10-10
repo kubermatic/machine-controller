@@ -128,7 +128,7 @@ func getTemplate(osImageURL string) (string, error) {
 		createStreamUbuntuImageAction(hardwareDisk1, osImageURL),
 		createGrowPartitionAction(hardwareDisk1),
 		createNetworkConfigAction(),
-		createCloudInitConfigAction(),
+		configureCloudInitAction(),
 		decodeCloudInitFile(hardwareName),
 		createRebootAction(),
 	}
@@ -237,20 +237,25 @@ network:
 	}
 }
 
-func createCloudInitConfigAction() Action {
+func configureCloudInitAction() Action {
+
+	commands := `mkdir -p /var/lib/cloud/seed/nocloud && chmod 755 /var/lib/cloud/seed/nocloud
+echo 'datasource_list: [ NoCloud ]' > /etc/cloud/cloud.cfg.d/01_ds-identify.cfg
+echo '{{.cloud_init_script}}' > /tmp/{{.hardware_name}}-bootstrap-config
+echo 'instance-id: {{.hardware_name}}' > /var/lib/cloud/seed/nocloud/meta-data
+echo 'local-hostname: {{.hardware_name}}' >> /var/lib/cloud/seed/nocloud/meta-data
+`
+
 	return Action{
-		Name:    "add-cloud-init-config",
-		Image:   "quay.io/tinkerbell-actions/writefile:v1.0.0",
+		Name:    "configure-cloud-init",
+		Image:   "quay.io/tinkerbell-actions/cexec:v1.0.0",
 		Timeout: 90,
 		Environment: map[string]string{
-			"DEST_DISK": "{{ index .Hardware.Disks 0 }}3",
-			"FS_TYPE":   fsType,
-			"DEST_PATH": fmt.Sprintf("/tmp/%s-bootstrap-config", hardwareName),
-			"CONTENTS":  "{{.cloud_init_script}}",
-			"UID":       "0",
-			"GID":       "0",
-			"MODE":      "0644",
-			"DIRMODE":   "0755",
+			"BLOCK_DEVICE":        "{{ index .Hardware.Disks 0 }}3",
+			"FS_TYPE":             fsType,
+			"CHROOT":              "y",
+			"DEFAULT_INTERPRETER": defaultInterpreter,
+			"CMD_LINE":            commands,
 		},
 	}
 }
@@ -265,7 +270,7 @@ func decodeCloudInitFile(hardwareName string) Action {
 			"FS_TYPE":             fsType,
 			"CHROOT":              "y",
 			"DEFAULT_INTERPRETER": "/bin/sh -c",
-			"CMD_LINE":            fmt.Sprintf("cat /tmp/%s-bootstrap-config | base64 -d > '/etc/cloud/cloud.cfg.d/%s-cloud-init.cfg'", hardwareName, hardwareName),
+			"CMD_LINE":            fmt.Sprintf("cat /tmp/%s-bootstrap-config | base64 -d > ''/var/lib/cloud/seed/nocloud/user-data'", hardwareName),
 		},
 	}
 }
