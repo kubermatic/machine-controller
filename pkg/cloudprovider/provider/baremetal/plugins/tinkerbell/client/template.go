@@ -238,7 +238,6 @@ network:
 }
 
 func configureCloudInitAction() Action {
-
 	commands := `mkdir -p /var/lib/cloud/seed/nocloud && chmod 755 /var/lib/cloud/seed/nocloud
 echo 'datasource_list: [ NoCloud ]' > /etc/cloud/cloud.cfg.d/01_ds-identify.cfg
 echo '{{.cloud_init_script}}' > /tmp/{{.hardware_name}}-bootstrap-config
