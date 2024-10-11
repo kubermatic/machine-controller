@@ -70,7 +70,7 @@ spec:
                 # least one Prefix, because we have to know (and thus, reserve)
                 # at least one IP address for each Machine.
                 prefixes:
-                - "<< ANEXIA_PREFIX_ID >>"
+                  - "<< ANEXIA_PREFIX_ID >>"
 
             # You may have this old disk config attribute in your config - please migrate to the disks attribute.
             # For now it is still recognized though.
@@ -83,4 +83,4 @@ spec:
             distUpgradeOnBoot: false
             disableAutoUpdate: true
       versions:
-        kubelet: 1.30.4
+        kubelet: 1.30.5
