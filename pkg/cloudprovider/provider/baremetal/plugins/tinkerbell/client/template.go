@@ -269,7 +269,7 @@ func decodeCloudInitFile(hardwareName string) Action {
 			"FS_TYPE":             fsType,
 			"CHROOT":              "y",
 			"DEFAULT_INTERPRETER": "/bin/sh -c",
-			"CMD_LINE":            fmt.Sprintf("cat /tmp/%s-bootstrap-config | base64 -d > ''/var/lib/cloud/seed/nocloud/user-data'", hardwareName),
+			"CMD_LINE":            fmt.Sprintf("cat /tmp/%s-bootstrap-config | base64 -d > '/var/lib/cloud/seed/nocloud/user-data'", hardwareName),
 		},
 	}
 }
