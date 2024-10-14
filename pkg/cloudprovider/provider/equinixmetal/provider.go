@@ -466,7 +466,7 @@ func getDeviceByTag(client *packngo.Client, projectID, tag string) (*packngo.Dev
 func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
-		return "ubuntu_22_04", nil
+		return "ubuntu_24_04", nil
 	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos_7", nil
 	case providerconfigtypes.OperatingSystemFlatcar:
