@@ -21,10 +21,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
+	"net/http"
+	"slices"
 	"strings"
 
-	"github.com/packethost/packngo"
+	"github.com/equinix/equinix-sdk-go/services/metalv1"
 	"go.uber.org/zap"
 
 	"k8c.io/machine-controller/pkg/apis/cluster/common"
@@ -36,9 +37,10 @@ import (
 	"k8c.io/machine-controller/pkg/providerconfig"
 	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const (
@@ -148,7 +150,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *e
 	return &c, rawConfig, pconfig, err
 }
 
-func (p *provider) getMetalDevice(machine *clusterv1alpha1.Machine) (*packngo.Device, *packngo.Client, error) {
+func (p *provider) getMetalDevice(ctx context.Context, machine *clusterv1alpha1.Machine) (*metalv1.Device, *metalv1.APIClient, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, nil, cloudprovidererrors.TerminalError{
@@ -158,14 +160,14 @@ func (p *provider) getMetalDevice(machine *clusterv1alpha1.Machine) (*packngo.De
 	}
 
 	client := getClient(c.Token)
-	device, err := getDeviceByTag(client, c.ProjectID, generateTag(string(machine.UID)))
+	device, err := getDeviceByTag(ctx, client, c.ProjectID, generateTag(string(machine.UID)))
 	if err != nil {
 		return nil, nil, err
 	}
 	return device, client, nil
 }
 
-func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	c, _, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -194,49 +196,65 @@ func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec cluste
 
 	if c.Facilities != nil && (len(c.Facilities) > 0 || c.Facilities[0] != "") {
 		// get all valid facilities
-		facilities, _, err := client.Facilities.List(nil)
+		request := client.FacilitiesApi.FindFacilitiesByProject(ctx, c.ProjectID)
+		facilities, resp, err := client.FacilitiesApi.FindFacilitiesByProjectExecute(request)
 		if err != nil {
 			return fmt.Errorf("failed to list facilities: %w", err)
 		}
+		resp.Body.Close()
+
+		expectedFacilities := sets.New(c.Facilities...)
+		availableFacilities := sets.New[string]()
+		for _, facility := range facilities.Facilities {
+			availableFacilities.Insert(*facility.Code)
+		}
+
 		// ensure our requested facilities are in those facilities
-		if missingFacilities := itemsNotInList(facilityProp(facilities, "Code"), c.Facilities); len(missingFacilities) > 0 {
-			return fmt.Errorf("unknown facilities: %s", strings.Join(missingFacilities, ","))
+		if diff := expectedFacilities.Difference(availableFacilities); diff.Len() > 0 {
+			return fmt.Errorf("unknown facilities: %v", sets.List(diff))
 		}
 	}
 
 	if c.Metro != "" {
-		metros, _, err := client.Metros.List(nil)
+		request := client.MetrosApi.FindMetros(ctx)
+		metros, resp, err := client.MetrosApi.FindMetrosExecute(request)
 		if err != nil {
 			return fmt.Errorf("failed to list metros: %w", err)
 		}
+		resp.Body.Close()
 
-		var metroExists bool
-		for _, metro := range metros {
-			if strings.EqualFold(metro.Code, c.Metro) {
-				metroExists = true
-			}
-		}
+		metroExists := slices.ContainsFunc(metros.Metros, func(m metalv1.Metro) bool {
+			return strings.EqualFold(*m.Code, c.Metro)
+		})
 
 		if !metroExists {
-			return fmt.Errorf("unknown metro: %s", c.Metro)
+			return fmt.Errorf("unknown metro %q", c.Metro)
 		}
 	}
 
 	// get all valid plans a.k.a. instance types
-	plans, _, err := client.Plans.List(nil)
+	request := client.PlansApi.FindPlansByProject(ctx, c.ProjectID)
+	plans, resp, err := client.PlansApi.FindPlansByProjectExecute(request)
 	if err != nil {
 		return fmt.Errorf("failed to list instance types / plans: %w", err)
 	}
+	resp.Body.Close()
+
 	// ensure our requested plan is in those plans
-	validPlanNames := planProp(plans, "Name")
-	if missingPlans := itemsNotInList(validPlanNames, []string{c.InstanceType}); len(missingPlans) > 0 {
-		return fmt.Errorf("unknown instance type / plan: %s, acceptable plans: %s", strings.Join(missingPlans, ","), strings.Join(validPlanNames, ","))
+	expectedPlans := sets.New(c.InstanceType)
+	availablePlans := sets.New[string]()
+	for _, plan := range plans.Plans {
+		availablePlans.Insert(*plan.Name)
+	}
+
+	if diff := expectedPlans.Difference(availablePlans); diff.Len() > 0 {
+		return fmt.Errorf("unknown instance type / plan: %s, acceptable plans: %v", c.InstanceType, sets.List(availablePlans))
 	}
 
 	return nil
 }
 
-func (p *provider) Create(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, _, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -246,6 +264,7 @@ func (p *provider) Create(_ context.Context, _ *zap.SugaredLogger, machine *clus
 	}
 
 	client := getClient(c.Token)
+	request := client.DevicesApi.CreateDevice(ctx, c.ProjectID)
 
 	imageName, err := getNameForOS(pc.OperatingSystem)
 	if err != nil {
@@ -255,24 +274,43 @@ func (p *provider) Create(_ context.Context, _ *zap.SugaredLogger, machine *clus
 		}
 	}
 
-	serverCreateOpts := &packngo.DeviceCreateRequest{
-		Hostname:     machine.Spec.Name,
-		UserData:     userdata,
-		ProjectID:    c.ProjectID,
-		Facility:     c.Facilities,
-		Metro:        c.Metro,
-		BillingCycle: c.BillingCycle,
-		Plan:         c.InstanceType,
-		OS:           imageName,
-		Tags: []string{
-			generateTag(string(machine.UID)),
-		},
+	billingCycle := metalv1.DeviceCreateInputBillingCycle(c.BillingCycle)
+
+	if c.Metro != "" {
+		request = request.CreateDeviceRequest(metalv1.CreateDeviceRequest{
+			DeviceCreateInMetroInput: &metalv1.DeviceCreateInMetroInput{
+				Hostname:        &machine.Spec.Name,
+				Userdata:        &userdata,
+				Metro:           c.Metro,
+				BillingCycle:    &billingCycle,
+				Plan:            c.InstanceType,
+				OperatingSystem: imageName,
+				Tags: []string{
+					generateTag(string(machine.UID)),
+				},
+			},
+		})
+	} else {
+		request = request.CreateDeviceRequest(metalv1.CreateDeviceRequest{
+			DeviceCreateInFacilityInput: &metalv1.DeviceCreateInFacilityInput{
+				Hostname:        &machine.Spec.Name,
+				Userdata:        &userdata,
+				Facility:        c.Facilities,
+				BillingCycle:    &billingCycle,
+				Plan:            c.InstanceType,
+				OperatingSystem: imageName,
+				Tags: []string{
+					generateTag(string(machine.UID)),
+				},
+			},
+		})
 	}
 
-	device, res, err := client.Devices.Create(serverCreateOpts)
+	device, resp, err := client.DevicesApi.CreateDeviceExecute(request)
 	if err != nil {
-		return nil, metalErrorToTerminalError(err, res, "failed to create server")
+		return nil, metalErrorToTerminalError(err, resp, "failed to create server")
 	}
+	resp.Body.Close()
 
 	return &metalDevice{device: device}, nil
 }
@@ -295,10 +333,13 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 	}
 
 	client := getClient(c.Token)
-	res, err := client.Devices.Delete(instance.(*metalDevice).device.ID, false)
+	request := client.DevicesApi.DeleteDevice(ctx, *instance.(*metalDevice).device.Id)
+
+	resp, err := client.DevicesApi.DeleteDeviceExecute(request)
 	if err != nil {
-		return false, metalErrorToTerminalError(err, res, "failed to delete the server")
+		return false, metalErrorToTerminalError(err, resp, "failed to delete the server")
 	}
+	resp.Body.Close()
 
 	return false, nil
 }
@@ -316,8 +357,8 @@ func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.Machin
 	return spec, nil
 }
 
-func (p *provider) Get(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	device, _, err := p.getMetalDevice(machine)
+func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	device, _, err := p.getMetalDevice(ctx, machine)
 	if err != nil {
 		return nil, err
 	}
@@ -328,8 +369,8 @@ func (p *provider) Get(_ context.Context, _ *zap.SugaredLogger, machine *cluster
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(_ context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, newID types.UID) error {
-	device, client, err := p.getMetalDevice(machine)
+func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, newID types.UID) error {
+	device, client, err := p.getMetalDevice(ctx, machine)
 	if err != nil {
 		return err
 	}
@@ -351,13 +392,19 @@ func (p *provider) MigrateUID(_ context.Context, log *zap.SugaredLogger, machine
 	tags = append(tags, generateTag(string(newID)))
 
 	log.Info("Setting UID label for machine")
-	dur := &packngo.DeviceUpdateRequest{
-		Tags: &tags,
-	}
-	_, response, err := client.Devices.Update(device.ID, dur)
+
+	dur := client.DevicesApi.
+		UpdateDevice(ctx, *device.Id).
+		DeviceUpdateInput(metalv1.DeviceUpdateInput{
+			Tags: tags,
+		})
+
+	_, response, err := client.DevicesApi.UpdateDeviceExecute(dur)
 	if err != nil {
 		return metalErrorToTerminalError(err, response, "failed to update UID label")
 	}
+	response.Body.Close()
+
 	log.Info("Successfully set UID label for machine")
 
 	return nil
@@ -380,43 +427,48 @@ func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 }
 
 type metalDevice struct {
-	device *packngo.Device
+	device *metalv1.Device
 }
 
 func (s *metalDevice) Name() string {
-	return s.device.Hostname
+	return *s.device.Hostname
 }
 
 func (s *metalDevice) ID() string {
-	return s.device.ID
+	return *s.device.Id
 }
 
 func (s *metalDevice) ProviderID() string {
-	if s.device == nil || s.device.ID == "" {
+	if s.device == nil || *s.device.Id == "" {
 		return ""
 	}
-	return "equinixmetal://" + s.device.ID
+	return "equinixmetal://" + *s.device.Id
 }
 
-func (s *metalDevice) Addresses() map[string]v1.NodeAddressType {
-	// returns addresses in CIDR format
-	addresses := map[string]v1.NodeAddressType{}
-	for _, ip := range s.device.Network {
-		if ip.Public {
-			addresses[ip.Address] = v1.NodeExternalIP
-			continue
+// Addresses returns addresses in CIDR format.
+func (s *metalDevice) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
+	for _, ip := range s.device.IpAddresses {
+		kind := corev1.NodeInternalIP
+		if *ip.Public {
+			kind = corev1.NodeExternalIP
 		}
-		addresses[ip.Address] = v1.NodeInternalIP
+
+		addresses[*ip.Address] = kind
 	}
 
 	return addresses
 }
 
 func (s *metalDevice) Status() instance.Status {
-	switch s.device.State {
-	case "provisioning":
+	if s.device.State == nil {
+		return instance.StatusUnknown
+	}
+
+	switch *s.device.State {
+	case metalv1.DEVICESTATE_PROVISIONING:
 		return instance.StatusCreating
-	case "active":
+	case metalv1.DEVICESTATE_ACTIVE:
 		return instance.StatusRunning
 	default:
 		return instance.StatusUnknown
@@ -448,17 +500,23 @@ func setProviderSpec(rawConfig equinixmetaltypes.RawConfig, s clusterv1alpha1.Pr
 	return &runtime.RawExtension{Raw: rawPconfig}, nil
 }
 
-func getDeviceByTag(client *packngo.Client, projectID, tag string) (*packngo.Device, error) {
-	devices, response, err := client.Devices.List(projectID, nil)
+func getDeviceByTag(ctx context.Context, client *metalv1.APIClient, projectID, tag string) (*metalv1.Device, error) {
+	request := client.DevicesApi.
+		FindProjectDevices(ctx, projectID).
+		Tag(tag)
+
+	devices, response, err := client.DevicesApi.FindProjectDevicesExecute(request)
 	if err != nil {
 		return nil, metalErrorToTerminalError(err, response, "failed to list devices")
 	}
+	response.Body.Close()
 
-	for _, device := range devices {
-		if itemInList(device.Tags, tag) {
+	for _, device := range devices.Devices {
+		if slices.Contains(device.Tags, tag) {
 			return &device, nil
 		}
 	}
+
 	return nil, nil
 }
 
@@ -477,10 +535,12 @@ func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	return "", providerconfigtypes.ErrOSNotSupported
 }
 
-func getClient(apiKey string) *packngo.Client {
-	client := packngo.NewClientWithAuth("kubermatic", apiKey, nil)
-	client.UserAgent = fmt.Sprintf("kubermatic/machine-controller %s", client.UserAgent)
-	return client
+func getClient(apiKey string) *metalv1.APIClient {
+	configuration := metalv1.NewConfiguration()
+	configuration.UserAgent = fmt.Sprintf("kubermatic/machine-controller %s", configuration.UserAgent)
+	configuration.AddDefaultHeader("X-Auth-Token", apiKey)
+
+	return metalv1.NewAPIClient(configuration)
 }
 
 func generateTag(ID string) string {
@@ -499,13 +559,13 @@ func getTagUID(tag string) (string, error) {
 // can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
 //
 // if the given error doesn't qualify the error passed as an argument will be returned.
-func metalErrorToTerminalError(err error, response *packngo.Response, msg string) error {
+func metalErrorToTerminalError(err error, response *http.Response, msg string) error {
 	prepareAndReturnError := func() error {
-		return fmt.Errorf("%s, due to %w", msg, err)
+		return fmt.Errorf("%s: %w", msg, err)
 	}
 
 	if err != nil {
-		if response != nil && response.Response != nil && response.Response.StatusCode == 403 {
+		if response != nil && response.StatusCode == http.StatusForbidden {
 			// authorization primitives come from MachineSpec
 			// thus we are setting InvalidConfigurationMachineError
 			return cloudprovidererrors.TerminalError{
@@ -518,45 +578,4 @@ func metalErrorToTerminalError(err error, response *packngo.Response, msg string
 	}
 
 	return err
-}
-
-func itemInList(list []string, item string) bool {
-	for _, elm := range list {
-		if elm == item {
-			return true
-		}
-	}
-	return false
-}
-
-func itemsNotInList(list, items []string) []string {
-	listMap := make(map[string]bool)
-	missing := make([]string, 0)
-	for _, item := range list {
-		listMap[item] = true
-	}
-	for _, item := range items {
-		if _, ok := listMap[item]; !ok {
-			missing = append(missing, item)
-		}
-	}
-	return missing
-}
-
-func facilityProp(vs []packngo.Facility, field string) []string {
-	vsm := make([]string, len(vs))
-	for i, v := range vs {
-		val := reflect.ValueOf(v)
-		vsm[i] = val.FieldByName(field).String()
-	}
-	return vsm
-}
-
-func planProp(vs []packngo.Plan, field string) []string {
-	vsm := make([]string, len(vs))
-	for i, v := range vs {
-		val := reflect.ValueOf(v)
-		vsm[i] = val.FieldByName(field).String()
-	}
-	return vsm
 }

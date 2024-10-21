@@ -21,6 +21,7 @@ require (
 	github.com/aws/smithy-go v1.20.4
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/digitalocean/godo v1.124.0
+	github.com/equinix/equinix-sdk-go v0.46.0
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zapr v1.3.0
 	github.com/go-test/deep v1.1.0
@@ -30,7 +31,6 @@ require (
 	github.com/hetznercloud/hcloud-go/v2 v2.13.1
 	github.com/linode/linodego v1.40.0
 	github.com/nutanix-cloud-native/prism-go-client v0.5.1
-	github.com/packethost/packngo v0.31.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pborman/uuid v1.2.1
 	github.com/pkg/errors v0.9.1
