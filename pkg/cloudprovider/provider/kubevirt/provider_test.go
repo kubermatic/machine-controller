@@ -132,11 +132,14 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 				{{- if .SecondaryDisks }}
 				"secondaryDisks": [{
 					"size": "20Gi",
+                    "storageAccessType": "ReadWriteMany",
 					"storageClassName": "longhorn2"},{
 					"size": "30Gi",
+                    "storageAccessType": "ReadWriteMany",
 					"storageClassName": "longhorn3"}],
 				{{- end }}
 				"primaryDisk": {
+                    "storageAccessType": "ReadWriteMany",
 					{{- if .StorageTarget }}
 					"storageTarget": "{{ .StorageTarget }}",
 					{{- end }}

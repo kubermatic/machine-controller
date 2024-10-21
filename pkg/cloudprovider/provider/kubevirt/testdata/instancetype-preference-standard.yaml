@@ -14,9 +14,9 @@ spec:
     - metadata:
         name: instancetype-preference-standard
       spec:
-        pvc:
+        storage:
           accessModes:
-            - ReadWriteOnce
+            - ReadWriteMany
           resources:
             requests:
               storage: 10Gi

@@ -353,8 +353,8 @@ func (p *provider) getStorageAccessType(ctx context.Context, accessType provider
 		// choose RWO as a default access mode and if RWX is supported then choose it instead.
 		accessMode := corev1.ReadWriteOnce
 		for _, claimProperty := range sp.Status.ClaimPropertySets {
-			for _, accessMode := range claimProperty.AccessModes {
-				if accessMode == corev1.ReadWriteMany {
+			for _, am := range claimProperty.AccessModes {
+				if am == corev1.ReadWriteMany {
 					accessMode = corev1.ReadWriteMany
 				}
 			}
