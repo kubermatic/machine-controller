@@ -124,6 +124,7 @@ type StorageTarget string
 
 const (
 	Storage StorageTarget = "storage"
+	PVC     StorageTarget = "pvc"
 )
 
 type AffinityType string
@@ -308,6 +309,10 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if rawConfig.VirtualMachine.DNSConfig != nil {
 		config.DNSConfig = rawConfig.VirtualMachine.DNSConfig
 	}
+	infraClient, err := client.New(config.RestConfig, client.Options{})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get kubevirt client: %w", err)
+	}
 	config.SecondaryDisks = make([]SecondaryDisks, 0, len(rawConfig.VirtualMachine.Template.SecondaryDisks))
 	for i, sd := range rawConfig.VirtualMachine.Template.SecondaryDisks {
 		sdSizeString, err := p.configVarResolver.GetConfigVarStringValue(sd.Size)
@@ -323,15 +328,26 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		if err != nil {
 			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.storageClass" field: %w`, err)
 		}
+		storageAccessMode, err := p.getStorageAccessType(context.TODO(), sd.StorageAccessType, infraClient, scString)
+		if err != nil {
+			return nil, nil, fmt.Errorf(`failed to get value of storageAccessMode: %w`, err)
+		}
 		config.SecondaryDisks = append(config.SecondaryDisks, SecondaryDisks{
 			Name:              fmt.Sprintf("secondarydisk%d", i),
 			Size:              pvc,
 			StorageClassName:  scString,
-			StorageAccessType: p.getStorageAccessType(sd.StorageAccessType),
+			StorageAccessType: storageAccessMode,
 		})
 	}
-	config.StorageAccessType = p.getStorageAccessType(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageAccessType)
-
+	scString, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageClassName)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to parse value of "primaryDisk.storageClass" field: %w`, err)
+	}
+	config.StorageAccessType, err = p.getStorageAccessType(context.TODO(), rawConfig.VirtualMachine.Template.PrimaryDisk.StorageAccessType,
+		infraClient, scString)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of primaryDiskstorageAccessType: %w`, err)
+	}
 	config.NodeAffinityPreset, err = p.parseNodeAffinityPreset(rawConfig.Affinity.NodeAffinityPreset)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to parse "nodeAffinityPreset" field: %w`, err)
@@ -356,12 +372,29 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	return &config, pconfig, nil
 }
 
-func (p *provider) getStorageAccessType(accessType providerconfigtypes.ConfigVarString) corev1.PersistentVolumeAccessMode {
+func (p *provider) getStorageAccessType(ctx context.Context, accessType providerconfigtypes.ConfigVarString,
+	infraClient client.Client, storageClassName string) (corev1.PersistentVolumeAccessMode, error) {
 	at, _ := p.configVarResolver.GetConfigVarStringValue(accessType)
 	if at == "" {
-		return corev1.ReadWriteOnce
+		sp := &cdiv1beta1.StorageProfile{}
+		if err := infraClient.Get(ctx, types.NamespacedName{Name: storageClassName}, sp); err != nil {
+			return "", fmt.Errorf(`failed to get cdi storageprofile: %w`, err)
+		}
+
+		// choose RWO as a default access mode and if RWX is supported then choose it instead.
+		accessMode := corev1.ReadWriteOnce
+		for _, claimProperty := range sp.Status.ClaimPropertySets {
+			for _, accessMode := range claimProperty.AccessModes {
+				if accessMode == corev1.ReadWriteMany {
+					accessMode = corev1.ReadWriteMany
+				}
+			}
+		}
+
+		return accessMode, nil
 	}
-	return corev1.PersistentVolumeAccessMode(at)
+
+	return corev1.PersistentVolumeAccessMode(at), nil
 }
 
 func (p *provider) parseNodeAffinityPreset(nodeAffinityPreset kubevirttypes.NodeAffinityPreset) (NodeAffinityPreset, error) {
@@ -712,7 +745,13 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 	}
 
 	defaultBridgeNetwork := defaultBridgeNetwork()
-	runStrategyOnce := kubevirtv1.RunStrategyOnce
+	runStrategy := kubevirtv1.RunStrategyOnce
+	// currently we only support KubeOvn as a ProviderNetwork and KubeOvn has the ability to pin the IP of the VM(static ip)
+	// even if the VMi was stopped or deleted thus we can have the VM always running and in the events of VM restarts the
+	// ip address of the VMI will not change.
+	if c.SubnetName != "" {
+		runStrategy = kubevirtv1.RunStrategyAlways
+	}
 
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
@@ -721,7 +760,7 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 			Labels:    labels,
 		},
 		Spec: kubevirtv1.VirtualMachineSpec{
-			RunStrategy:  &runStrategyOnce,
+			RunStrategy:  &runStrategy,
 			Instancetype: c.Instancetype,
 			Preference:   c.Preference,
 			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
@@ -885,8 +924,8 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations m
 	}
 
 	switch config.StorageTarget {
-	case Storage:
-		dataVolumeTemplates[0].Spec.Storage = &cdiv1beta1.StorageSpec{
+	case PVC:
+		dataVolumeTemplates[0].Spec.PVC = &corev1.PersistentVolumeClaimSpec{
 			StorageClassName: ptr.To(config.StorageClassName),
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				config.StorageAccessType,
@@ -896,7 +935,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations m
 			},
 		}
 	default:
-		dataVolumeTemplates[0].Spec.PVC = &corev1.PersistentVolumeClaimSpec{
+		dataVolumeTemplates[0].Spec.Storage = &cdiv1beta1.StorageSpec{
 			StorageClassName: ptr.To(config.StorageClassName),
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				config.StorageAccessType,
