@@ -313,40 +313,9 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
-	config.SecondaryDisks = make([]SecondaryDisks, 0, len(rawConfig.VirtualMachine.Template.SecondaryDisks))
-	for i, sd := range rawConfig.VirtualMachine.Template.SecondaryDisks {
-		sdSizeString, err := p.configVarResolver.GetConfigVarStringValue(sd.Size)
-		if err != nil {
-			return nil, nil, fmt.Errorf(`failed to parse "secondaryDisks.size" field: %w`, err)
-		}
-		pvc, err := resource.ParseQuantity(sdSizeString)
-		if err != nil {
-			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.size" field: %w`, err)
-		}
-
-		scString, err := p.configVarResolver.GetConfigVarStringValue(sd.StorageClassName)
-		if err != nil {
-			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.storageClass" field: %w`, err)
-		}
-		storageAccessMode, err := p.getStorageAccessType(context.TODO(), sd.StorageAccessType, infraClient, scString)
-		if err != nil {
-			return nil, nil, fmt.Errorf(`failed to get value of storageAccessMode: %w`, err)
-		}
-		config.SecondaryDisks = append(config.SecondaryDisks, SecondaryDisks{
-			Name:              fmt.Sprintf("secondarydisk%d", i),
-			Size:              pvc,
-			StorageClassName:  scString,
-			StorageAccessType: storageAccessMode,
-		})
-	}
-	scString, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageClassName)
+	config.StorageAccessType, config.SecondaryDisks, err = p.configureStorage(infraClient, rawConfig.VirtualMachine.Template)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse value of "primaryDisk.storageClass" field: %w`, err)
-	}
-	config.StorageAccessType, err = p.getStorageAccessType(context.TODO(), rawConfig.VirtualMachine.Template.PrimaryDisk.StorageAccessType,
-		infraClient, scString)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of primaryDiskstorageAccessType: %w`, err)
+		return nil, nil, fmt.Errorf(`failed to configure storage: %w`, err)
 	}
 	config.NodeAffinityPreset, err = p.parseNodeAffinityPreset(rawConfig.Affinity.NodeAffinityPreset)
 	if err != nil {
@@ -1102,4 +1071,45 @@ func setOVNAnnotations(c *Config, annotations map[string]string) error {
 	}
 
 	return nil
+}
+
+func (p *provider) configureStorage(infraClient client.Client, template kubevirttypes.Template) (corev1.PersistentVolumeAccessMode, []SecondaryDisks, error) {
+	secondaryDisks := make([]SecondaryDisks, 0, len(template.SecondaryDisks))
+	for i, sd := range template.SecondaryDisks {
+		sdSizeString, err := p.configVarResolver.GetConfigVarStringValue(sd.Size)
+		if err != nil {
+			return "", nil, fmt.Errorf(`failed to parse "secondaryDisks.size" field: %w`, err)
+		}
+		pvc, err := resource.ParseQuantity(sdSizeString)
+		if err != nil {
+			return "", nil, fmt.Errorf(`failed to parse value of "secondaryDisks.size" field: %w`, err)
+		}
+
+		scString, err := p.configVarResolver.GetConfigVarStringValue(sd.StorageClassName)
+		if err != nil {
+			return "", nil, fmt.Errorf(`failed to parse value of "secondaryDisks.storageClass" field: %w`, err)
+		}
+		storageAccessMode, err := p.getStorageAccessType(context.TODO(), sd.StorageAccessType, infraClient, scString)
+		if err != nil {
+			return "", nil, fmt.Errorf(`failed to get value of storageAccessMode: %w`, err)
+		}
+		secondaryDisks = append(secondaryDisks, SecondaryDisks{
+			Name:              fmt.Sprintf("secondarydisk%d", i),
+			Size:              pvc,
+			StorageClassName:  scString,
+			StorageAccessType: storageAccessMode,
+		})
+	}
+	scString, err := p.configVarResolver.GetConfigVarStringValue(template.PrimaryDisk.StorageClassName)
+	if err != nil {
+		return "", nil, fmt.Errorf(`failed to parse value of "primaryDisk.storageClass" field: %w`, err)
+	}
+
+	primaryDisk, err := p.getStorageAccessType(context.TODO(), template.PrimaryDisk.StorageAccessType,
+		infraClient, scString)
+	if err != nil {
+		return "", nil, fmt.Errorf(`failed to get value of primaryDiskstorageAccessType: %w`, err)
+	}
+
+	return primaryDisk, secondaryDisks, nil
 }
