@@ -14,9 +14,9 @@ spec:
     - metadata:
         name: kubeovn-provider-network
       spec:
-        pvc:
+        storage:
           accessModes:
-            - ReadWriteOnce
+            - ReadWriteMany
           resources:
             requests:
               storage: 10Gi
@@ -24,7 +24,7 @@ spec:
         source:
           http:
             url: http://x.y.z.t/ubuntu.img
-  runStrategy: Once
+  runStrategy: Always
   template:
     metadata:
       creationTimestamp: null

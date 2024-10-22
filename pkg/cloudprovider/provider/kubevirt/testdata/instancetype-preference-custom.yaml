@@ -15,9 +15,9 @@ spec:
         creationTimestamp: null
         name: instancetype-preference-custom
       spec:
-        pvc:
+        storage:
           accessModes:
-            - ReadWriteOnce
+            - ReadWriteMany
           resources:
             requests:
               storage: 10Gi

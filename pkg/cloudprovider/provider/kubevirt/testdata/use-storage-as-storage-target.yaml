@@ -20,7 +20,7 @@ spec:
             url: "http://x.y.z.t/ubuntu.img"
         storage:
           accessModes:
-            - ReadWriteOnce
+            - ReadWriteMany
           resources:
             requests:
               storage: 10Gi

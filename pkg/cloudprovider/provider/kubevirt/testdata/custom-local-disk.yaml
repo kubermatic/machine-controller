@@ -14,9 +14,9 @@ spec:
     - metadata:
         name: custom-local-disk
       spec:
-        pvc:
+        storage:
           accessModes:
-            - ReadWriteOnce
+            - ReadWriteMany
           resources:
             requests:
               storage: 10Gi

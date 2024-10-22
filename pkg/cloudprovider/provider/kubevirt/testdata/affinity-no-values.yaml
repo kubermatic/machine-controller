@@ -15,9 +15,9 @@ spec:
         creationTimestamp: null
         name: affinity-no-values
       spec:
-        pvc:
+        storage:
           accessModes:
-            - ReadWriteOnce
+            - ReadWriteMany
           resources:
             requests:
               storage: 10Gi

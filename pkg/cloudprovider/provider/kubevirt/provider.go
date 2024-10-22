@@ -124,6 +124,7 @@ type StorageTarget string
 
 const (
 	Storage StorageTarget = "storage"
+	PVC     StorageTarget = "pvc"
 )
 
 type AffinityType string
@@ -308,30 +309,14 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if rawConfig.VirtualMachine.DNSConfig != nil {
 		config.DNSConfig = rawConfig.VirtualMachine.DNSConfig
 	}
-	config.SecondaryDisks = make([]SecondaryDisks, 0, len(rawConfig.VirtualMachine.Template.SecondaryDisks))
-	for i, sd := range rawConfig.VirtualMachine.Template.SecondaryDisks {
-		sdSizeString, err := p.configVarResolver.GetConfigVarStringValue(sd.Size)
-		if err != nil {
-			return nil, nil, fmt.Errorf(`failed to parse "secondaryDisks.size" field: %w`, err)
-		}
-		pvc, err := resource.ParseQuantity(sdSizeString)
-		if err != nil {
-			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.size" field: %w`, err)
-		}
-
-		scString, err := p.configVarResolver.GetConfigVarStringValue(sd.StorageClassName)
-		if err != nil {
-			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.storageClass" field: %w`, err)
-		}
-		config.SecondaryDisks = append(config.SecondaryDisks, SecondaryDisks{
-			Name:              fmt.Sprintf("secondarydisk%d", i),
-			Size:              pvc,
-			StorageClassName:  scString,
-			StorageAccessType: p.getStorageAccessType(sd.StorageAccessType),
-		})
+	infraClient, err := client.New(config.RestConfig, client.Options{})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
-	config.StorageAccessType = p.getStorageAccessType(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageAccessType)
-
+	config.StorageAccessType, config.SecondaryDisks, err = p.configureStorage(infraClient, rawConfig.VirtualMachine.Template)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to configure storage: %w`, err)
+	}
 	config.NodeAffinityPreset, err = p.parseNodeAffinityPreset(rawConfig.Affinity.NodeAffinityPreset)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to parse "nodeAffinityPreset" field: %w`, err)
@@ -356,12 +341,29 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	return &config, pconfig, nil
 }
 
-func (p *provider) getStorageAccessType(accessType providerconfigtypes.ConfigVarString) corev1.PersistentVolumeAccessMode {
+func (p *provider) getStorageAccessType(ctx context.Context, accessType providerconfigtypes.ConfigVarString,
+	infraClient client.Client, storageClassName string) (corev1.PersistentVolumeAccessMode, error) {
 	at, _ := p.configVarResolver.GetConfigVarStringValue(accessType)
 	if at == "" {
-		return corev1.ReadWriteOnce
+		sp := &cdiv1beta1.StorageProfile{}
+		if err := infraClient.Get(ctx, types.NamespacedName{Name: storageClassName}, sp); err != nil {
+			return "", fmt.Errorf(`failed to get cdi storageprofile: %w`, err)
+		}
+
+		// choose RWO as a default access mode and if RWX is supported then choose it instead.
+		accessMode := corev1.ReadWriteOnce
+		for _, claimProperty := range sp.Status.ClaimPropertySets {
+			for _, am := range claimProperty.AccessModes {
+				if am == corev1.ReadWriteMany {
+					accessMode = corev1.ReadWriteMany
+				}
+			}
+		}
+
+		return accessMode, nil
 	}
-	return corev1.PersistentVolumeAccessMode(at)
+
+	return corev1.PersistentVolumeAccessMode(at), nil
 }
 
 func (p *provider) parseNodeAffinityPreset(nodeAffinityPreset kubevirttypes.NodeAffinityPreset) (NodeAffinityPreset, error) {
@@ -712,7 +714,13 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 	}
 
 	defaultBridgeNetwork := defaultBridgeNetwork()
-	runStrategyOnce := kubevirtv1.RunStrategyOnce
+	runStrategy := kubevirtv1.RunStrategyOnce
+	// currently we only support KubeOvn as a ProviderNetwork and KubeOvn has the ability to pin the IP of the VM(static ip)
+	// even if the VMi was stopped or deleted thus we can have the VM always running and in the events of VM restarts the
+	// ip address of the VMI will not change.
+	if c.SubnetName != "" {
+		runStrategy = kubevirtv1.RunStrategyAlways
+	}
 
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
@@ -721,7 +729,7 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 			Labels:    labels,
 		},
 		Spec: kubevirtv1.VirtualMachineSpec{
-			RunStrategy:  &runStrategyOnce,
+			RunStrategy:  &runStrategy,
 			Instancetype: c.Instancetype,
 			Preference:   c.Preference,
 			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
@@ -885,8 +893,8 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations m
 	}
 
 	switch config.StorageTarget {
-	case Storage:
-		dataVolumeTemplates[0].Spec.Storage = &cdiv1beta1.StorageSpec{
+	case PVC:
+		dataVolumeTemplates[0].Spec.PVC = &corev1.PersistentVolumeClaimSpec{
 			StorageClassName: ptr.To(config.StorageClassName),
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				config.StorageAccessType,
@@ -896,7 +904,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations m
 			},
 		}
 	default:
-		dataVolumeTemplates[0].Spec.PVC = &corev1.PersistentVolumeClaimSpec{
+		dataVolumeTemplates[0].Spec.Storage = &cdiv1beta1.StorageSpec{
 			StorageClassName: ptr.To(config.StorageClassName),
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				config.StorageAccessType,
@@ -1063,4 +1071,45 @@ func setOVNAnnotations(c *Config, annotations map[string]string) error {
 	}
 
 	return nil
+}
+
+func (p *provider) configureStorage(infraClient client.Client, template kubevirttypes.Template) (corev1.PersistentVolumeAccessMode, []SecondaryDisks, error) {
+	secondaryDisks := make([]SecondaryDisks, 0, len(template.SecondaryDisks))
+	for i, sd := range template.SecondaryDisks {
+		sdSizeString, err := p.configVarResolver.GetConfigVarStringValue(sd.Size)
+		if err != nil {
+			return "", nil, fmt.Errorf(`failed to parse "secondaryDisks.size" field: %w`, err)
+		}
+		pvc, err := resource.ParseQuantity(sdSizeString)
+		if err != nil {
+			return "", nil, fmt.Errorf(`failed to parse value of "secondaryDisks.size" field: %w`, err)
+		}
+
+		scString, err := p.configVarResolver.GetConfigVarStringValue(sd.StorageClassName)
+		if err != nil {
+			return "", nil, fmt.Errorf(`failed to parse value of "secondaryDisks.storageClass" field: %w`, err)
+		}
+		storageAccessMode, err := p.getStorageAccessType(context.TODO(), sd.StorageAccessType, infraClient, scString)
+		if err != nil {
+			return "", nil, fmt.Errorf(`failed to get value of storageAccessMode: %w`, err)
+		}
+		secondaryDisks = append(secondaryDisks, SecondaryDisks{
+			Name:              fmt.Sprintf("secondarydisk%d", i),
+			Size:              pvc,
+			StorageClassName:  scString,
+			StorageAccessType: storageAccessMode,
+		})
+	}
+	scString, err := p.configVarResolver.GetConfigVarStringValue(template.PrimaryDisk.StorageClassName)
+	if err != nil {
+		return "", nil, fmt.Errorf(`failed to parse value of "primaryDisk.storageClass" field: %w`, err)
+	}
+
+	primaryDisk, err := p.getStorageAccessType(context.TODO(), template.PrimaryDisk.StorageAccessType,
+		infraClient, scString)
+	if err != nil {
+		return "", nil, fmt.Errorf(`failed to get value of primaryDiskstorageAccessType: %w`, err)
+	}
+
+	return primaryDisk, secondaryDisks, nil
 }
