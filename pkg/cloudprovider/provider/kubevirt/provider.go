@@ -744,9 +744,9 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 					},
 					Domain: kubevirtv1.DomainSpec{
 						Devices: kubevirtv1.Devices{
-							Interfaces:      []kubevirtv1.Interface{*defaultBridgeNetwork},
-							Disks:           getVMDisks(c),
-							BlockMultiQueue: pointerToBool(true),
+							Interfaces:                 []kubevirtv1.Interface{*defaultBridgeNetwork},
+							Disks:                      getVMDisks(c),
+							NetworkInterfaceMultiQueue: pointerToBool(true),
 						},
 						Resources: resourceRequirements,
 					},
