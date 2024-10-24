@@ -744,8 +744,9 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 					},
 					Domain: kubevirtv1.DomainSpec{
 						Devices: kubevirtv1.Devices{
-							Interfaces: []kubevirtv1.Interface{*defaultBridgeNetwork},
-							Disks:      getVMDisks(c),
+							Interfaces:      []kubevirtv1.Interface{*defaultBridgeNetwork},
+							Disks:           getVMDisks(c),
+							BlockMultiQueue: pointerToBool(true),
 						},
 						Resources: resourceRequirements,
 					},
@@ -761,6 +762,10 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 		},
 	}
 	return virtualMachine, nil
+}
+
+func pointerToBool(b bool) *bool {
+	return &b
 }
 
 func (p *provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
