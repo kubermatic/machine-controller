@@ -746,7 +746,7 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 						Devices: kubevirtv1.Devices{
 							Interfaces:                 []kubevirtv1.Interface{*defaultBridgeNetwork},
 							Disks:                      getVMDisks(c),
-							NetworkInterfaceMultiQueue: pointerToBool(true),
+							NetworkInterfaceMultiQueue: ptr.To(true),
 						},
 						Resources: resourceRequirements,
 					},
@@ -762,10 +762,6 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 		},
 	}
 	return virtualMachine, nil
-}
-
-func pointerToBool(b bool) *bool {
-	return &b
 }
 
 func (p *provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
