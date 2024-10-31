@@ -21,10 +21,11 @@ import (
 	"context"
 	"embed"
 	"html/template"
-	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
 	"path"
 	"reflect"
 	"testing"
+
+	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
 
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
@@ -290,6 +291,11 @@ func TestNewVirtualMachine(t *testing.T) {
 			// Check the created VirtualMachine
 			vm, _ := p.newVirtualMachine(c, pc, machine, labels, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter())
 			vm.TypeMeta.APIVersion, vm.TypeMeta.Kind = kubevirtv1.VirtualMachineGroupVersionKind.ToAPIVersionAndKind()
+
+			// Added assertion for multiqueuing
+			if vm.Spec.Template.Spec.Domain.Devices.NetworkInterfaceMultiQueue == nil || *vm.Spec.Template.Spec.Domain.Devices.NetworkInterfaceMultiQueue != true {
+				t.Errorf("expected NetworkInterfaceMultiQueue to be true, but got %v", vm.Spec.Template.Spec.Domain.Devices.NetworkInterfaceMultiQueue)
+			}
 
 			if !equality.Semantic.DeepEqual(vm, expectedVms[tt.name]) {
 				t.Errorf("Diff %v", diff.ObjectGoPrintDiff(expectedVms[tt.name], vm))
