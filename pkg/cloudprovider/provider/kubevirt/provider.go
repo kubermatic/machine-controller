@@ -113,6 +113,7 @@ type Config struct {
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint
 	Region                    string
 	Zone                      string
+	EnableNetworkMultiQueue   bool
 
 	ProviderNetworkName string
 	SubnetName          string
@@ -247,6 +248,16 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		if err == nil {
 			config.Kubeconfig = string(val)
 		}
+	}
+
+	var enableNetworkMultiQueueSet bool
+	config.EnableNetworkMultiQueue, enableNetworkMultiQueueSet, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.VirtualMachine.EnableNetworkMultiQueue)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "enableNetworkMultiQueue" field: %w`, err)
+	}
+
+	if !enableNetworkMultiQueueSet {
+		config.EnableNetworkMultiQueue = true
 	}
 
 	config.ClusterName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ClusterName)
@@ -744,8 +755,9 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 					},
 					Domain: kubevirtv1.DomainSpec{
 						Devices: kubevirtv1.Devices{
-							Interfaces: []kubevirtv1.Interface{*defaultBridgeNetwork},
-							Disks:      getVMDisks(c),
+							Interfaces:                 []kubevirtv1.Interface{*defaultBridgeNetwork},
+							Disks:                      getVMDisks(c),
+							NetworkInterfaceMultiQueue: ptr.To(c.EnableNetworkMultiQueue),
 						},
 						Resources: resourceRequirements,
 					},
