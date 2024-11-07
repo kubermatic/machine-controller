@@ -50,6 +50,7 @@ spec:
           interfaces:
             - name: default
               bridge: {}
+          networkInterfaceMultiqueue: true
         resources:
           limits:
             cpu: "2"
