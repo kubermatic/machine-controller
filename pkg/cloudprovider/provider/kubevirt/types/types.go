@@ -53,12 +53,13 @@ type VirtualMachine struct {
 	// Instancetype is optional.
 	Instancetype *kubevirtv1.InstancetypeMatcher `json:"instancetype,omitempty"`
 	// Preference is optional.
-	Preference      *kubevirtv1.PreferenceMatcher       `json:"preference,omitempty"`
-	Template        Template                            `json:"template,omitempty"`
-	DNSPolicy       providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
-	DNSConfig       *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
-	Location        *Location                           `json:"location,omitempty"`
-	ProviderNetwork *ProviderNetwork                    `json:"providerNetwork,omitempty"`
+	Preference              *kubevirtv1.PreferenceMatcher       `json:"preference,omitempty"`
+	Template                Template                            `json:"template,omitempty"`
+	DNSPolicy               providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
+	DNSConfig               *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
+	Location                *Location                           `json:"location,omitempty"`
+	ProviderNetwork         *ProviderNetwork                    `json:"providerNetwork,omitempty"`
+	EnableNetworkMultiQueue providerconfigtypes.ConfigVarBool   `json:"enableNetworkMultiQueue,omitempty"`
 }
 
 // Flavor.
