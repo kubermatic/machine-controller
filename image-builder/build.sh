@@ -23,7 +23,7 @@ TARGET_OS=""
 
 usage() {
 	echo -e "usage:"
-	echo -e "\t$0 --target-os centos7|debian9|ubuntu-xenial|ubuntu-bionic [--release K8S-RELEASE]"
+	echo -e "\t$0 --target-os debian9|ubuntu-xenial|ubuntu-bionic [--release K8S-RELEASE]"
 }
 
 while [ $# -gt 0 ]; do
@@ -34,7 +34,7 @@ while [ $# -gt 0 ]; do
 		;;
 	--target-os)
 		if [[ -z $2 ]]; then
-			echo "You must specify target OS. Currently 'centos7' is supported."
+			echo "You must specify target OS."
 			exit 1
 		fi
 		TARGET_OS="$2"
@@ -79,29 +79,6 @@ TARGETFS="$TEMPDIR/targetfs"
 mkdir -p "$TARGETFS" "$SCRIPT_DIR/downloads"
 # on failure unmount target filesystem (if mounted) and delete the temporary directory
 trap "sudo mountpoint --quiet $TARGETFS && sudo umount --recursive $TARGETFS; rm -rf $TEMPDIR" EXIT SIGINT
-
-get_centos7_image() {
-	CENTOS7_BUILD="1802"
-	echo " * Downloading vanilla CentOS image."
-	wget "https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-$CENTOS7_BUILD.qcow2.xz" -P "$TEMPDIR"
-
-	echo " * Verifying GPG signature"
-	wget --quiet "https://cloud.centos.org/centos/7/images/sha256sum.txt.asc" -O "$TEMPDIR/centos7-sha256sum.txt.asc"
-	gpg2 --quiet --import "$SCRIPT_DIR/RPM-GPG-KEY-CentOS-7"
-	gpg2 "$TEMPDIR/centos7-sha256sum.txt.asc"
-
-	echo " * Verifying SHA256 digest"
-	EXPECTED_SHA256="$(grep "CentOS-7-x86_64-GenericCloud-$CENTOS7_BUILD.qcow2.xz$" <"$TEMPDIR/centos7-sha256sum.txt" | cut -f1 -d ' ')"
-	CALCULATED_SHA256="$(sha256sum "$TEMPDIR/CentOS-7-x86_64-GenericCloud-$CENTOS7_BUILD.qcow2.xz" | cut -f1 -d ' ')"
-	if [[ $CALCULATED_SHA256 != "$EXPECTED_SHA256" ]]; then
-		echo " * SHA256 digest verification failed. '$CALCULATED_SHA256' != '$EXPECTED_SHA256'"
-		exit 1
-	fi
-
-	echo " * Decompressing"
-	unxz --keep "$TEMPDIR/CentOS-7-x86_64-GenericCloud-$CENTOS7_BUILD.qcow2.xz"
-	mv "$TEMPDIR/CentOS-7-x86_64-GenericCloud-$CENTOS7_BUILD.qcow2" "$SCRIPT_DIR/downloads/CentOS-7-x86_64-GenericCloud.qcow2"
-}
 
 get_debian9_image() {
 	DEBIAN_CD_SIGNING_KEY_FINGERPRINT="DF9B9C49EAA9298432589D76DA87E80D6294BE9B"
@@ -167,7 +144,7 @@ mount_rootfs() {
 	local IMAGE="$1"
 	local FOLDER="$2"
 	case $TARGET_OS in
-	debian9 | centos7 | ubuntu-*)
+	debian9 | ubuntu-*)
 		echo "  * /"
 		sudo guestmount -a "$IMAGE" -m "/dev/sda1" "$TARGETFS"
 		;;
@@ -180,12 +157,6 @@ mount_rootfs() {
 }
 
 case $TARGET_OS in
-centos7)
-	CLEAN_IMAGE="$SCRIPT_DIR/downloads/CentOS-7-x86_64-GenericCloud.qcow2"
-	if [[ ! -f $CLEAN_IMAGE ]]; then
-		get_centos7_image
-	fi
-	;;
 debian9)
 	CLEAN_IMAGE="$SCRIPT_DIR/downloads/debian-9-openstack-amd64.qcow2"
 	if [[ ! -f $CLEAN_IMAGE ]]; then

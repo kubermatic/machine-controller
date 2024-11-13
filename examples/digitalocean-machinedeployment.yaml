@@ -52,7 +52,6 @@ spec:
             monitoring: false
             tags:
               - "machine-controller"
-          # Can be 'ubuntu' or 'centos'
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             disableAutoUpdate: true

@@ -81,8 +81,6 @@ func getImageNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 		// ubuntu_focal doesn't work (see https://bugs.launchpad.net/ubuntu/+source/linux-kvm/+bug/1880522)
 		// modprobe ip_vs will fail
 		return "ubuntu_bionic", nil
-	case providerconfigtypes.OperatingSystemCentOS:
-		return "centos_7.6", nil
 	}
 	return "", providerconfigtypes.ErrOSNotSupported
 }

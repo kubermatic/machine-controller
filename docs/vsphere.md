@@ -154,7 +154,7 @@ Procedure:
 
     ```
     # The URL below is just an example
-    image_url="https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2"
+    image_url="https://cloud-images.ubuntu.com/releases/20.04/release/ubuntu-20.04-server-cloudimg-amd64.img"
     image_name="$(basename -- "${image_url}" | sed 's/.qcow2$//g')"
     curl -sL "${image_url}" -O .
     ```
@@ -200,12 +200,6 @@ Follow [OVA](#create-template-vm-from-ova) template VM creation guide.
 #### RHEL
 
 Red Hat Enterprise Linux 8.x KVM Guest Image can be found at [Red Hat Customer Portal][rh_portal_rhel8].
-
-Follow [qcow2](#create-template-vm-from-qcow2) template VM creation guide.
-
-#### CentOS
-
-CentOS 7 image can be found at the following link: <https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2r>.
 
 Follow [qcow2](#create-template-vm-from-qcow2) template VM creation guide.
 

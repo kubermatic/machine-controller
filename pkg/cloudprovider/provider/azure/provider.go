@@ -141,12 +141,6 @@ func (vm *azureVM) Status() instance.Status {
 }
 
 var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageReference{
-	providerconfigtypes.OperatingSystemCentOS: {
-		Publisher: to.StringPtr("OpenLogic"),
-		Offer:     to.StringPtr("CentOS"),
-		Sku:       to.StringPtr("7_9"), // https://docs.microsoft.com/en-us/azure/virtual-machines/linux/using-cloud-init
-		Version:   to.StringPtr("latest"),
-	},
 	providerconfigtypes.OperatingSystemUbuntu: {
 		Publisher: to.StringPtr("Canonical"),
 		Offer:     to.StringPtr("ubuntu-24_04-lts"),
