@@ -219,7 +219,7 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 	}
 
 	serverType, _, err := client.ServerType.Get(ctx, c.ServerType)
-	if err != nil {
+	if err != nil || serverType == nil {
 		return fmt.Errorf("failed to get server type: %w", err)
 	}
 
