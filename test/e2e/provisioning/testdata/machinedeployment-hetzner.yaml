@@ -27,7 +27,7 @@ spec:
           cloudProvider: "hetzner"
           cloudProviderSpec:
             token: << HETZNER_TOKEN >>
-            serverType: "cx11"
+            serverType: "cx22"
             datacenter: ""
             location: "nbg1"
             networks:
