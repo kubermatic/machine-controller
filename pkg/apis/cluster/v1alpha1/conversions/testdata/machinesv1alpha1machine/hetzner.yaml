@@ -13,7 +13,7 @@ spec:
           namespace: kube-system
           name: machine-controller-hetzner
           key: token
-      serverType: "cx11"
+      serverType: "cx22"
       datacenter: ""
       location: "fsn1"
     operatingSystem: "ubuntu"

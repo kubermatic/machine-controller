@@ -221,6 +221,10 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 		return fmt.Errorf("failed to get server type: %w", err)
 	}
 
+	if serverType == nil {
+		return fmt.Errorf("server type %q not found", c.ServerType)
+	}
+
 	image := c.Image
 	if image == "" {
 		image, err = getNameForOS(pc.OperatingSystem)

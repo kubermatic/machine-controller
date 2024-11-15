@@ -224,7 +224,7 @@ labels:
 ### machine.spec.providerConfig.cloudProviderSpec
 ```yaml
 token: "<< HETZNER_API_TOKEN >>"
-serverType: "cx11"
+serverType: "cx22"
 datacenter: ""
 location: "fsn1"
 # Optional: network IDs or names
