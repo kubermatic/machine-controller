@@ -21,7 +21,6 @@ import (
 	"context"
 	"embed"
 	"html/template"
-	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
 	"path"
 	"reflect"
 	"testing"
@@ -29,6 +28,7 @@ import (
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
+	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
 	cloudprovidertesting "k8c.io/machine-controller/pkg/cloudprovider/testing"
 	"k8c.io/machine-controller/pkg/providerconfig"
 
@@ -70,6 +70,7 @@ type kubevirtProviderSpecConf struct {
 	OsImageSourceURL         string
 	PullMethod               cdiv1beta1.RegistryPullMethod
 	ProviderNetwork          *types.ProviderNetwork
+	ExtraHeadersSet          bool
 }
 
 func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -139,6 +140,9 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 					"storageClassName": "longhorn3"}],
 				{{- end }}
 				"primaryDisk": {
+                    {{- if .ExtraHeadersSet }}
+                    "extraHeaders": ["authorization: Basic bXE6cGFzc3dvcmQ="],
+                    {{- end }}
                     "storageAccessType": "ReadWriteMany",
 					{{- if .StorageTarget }}
 					"storageTarget": "{{ .StorageTarget }}",
@@ -191,6 +195,12 @@ func TestNewVirtualMachine(t *testing.T) {
 		{
 			name:     "nominal-case",
 			specConf: kubevirtProviderSpecConf{},
+		},
+		{
+			name: "extra-headers-set",
+			specConf: kubevirtProviderSpecConf{
+				ExtraHeadersSet: true,
+			},
 		},
 		{
 			name: "instancetype-preference-standard",
