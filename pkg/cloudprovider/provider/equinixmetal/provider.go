@@ -525,8 +525,6 @@ func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
 		return "ubuntu_24_04", nil
-	case providerconfigtypes.OperatingSystemCentOS:
-		return "centos_7", nil
 	case providerconfigtypes.OperatingSystemFlatcar:
 		return "flatcar_stable", nil
 	case providerconfigtypes.OperatingSystemRockyLinux:
