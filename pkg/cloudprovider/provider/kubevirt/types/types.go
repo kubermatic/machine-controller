@@ -78,6 +78,12 @@ type Template struct {
 // PrimaryDisk.
 type PrimaryDisk struct {
 	Disk
+	// ExtraHeaders is a list of strings containing extra headers to include with HTTP transfer requests
+	// +optional
+	ExtraHeaders []string `json:"extraHeaders,omitempty"`
+	// ExtraHeadersSecretRef is a secret that contains a list of strings containing extra headers to include with HTTP transfer requests
+	// +optional
+	ExtraHeadersSecretRef providerconfigtypes.ConfigVarString `json:"extraHeadersSecretRef,omitempty"`
 	// StorageTarget describes which VirtualMachine storage target will be used in the DataVolumeTemplate.
 	StorageTarget providerconfigtypes.ConfigVarString `json:"storageTarget,omitempty"`
 	// OsImage describes the OS that will be installed on the VirtualMachine.

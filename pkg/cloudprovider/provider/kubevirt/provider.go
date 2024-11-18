@@ -114,6 +114,8 @@ type Config struct {
 	Region                    string
 	Zone                      string
 	EnableNetworkMultiQueue   bool
+	ExtraHeaders              []string
+	ExtraHeadersSecretRef     string
 
 	ProviderNetworkName string
 	SubnetName          string
@@ -279,8 +281,18 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %w`, err)
 	}
 	config.Namespace = getNamespace()
-
-	config.OSImageSource, err = p.parseOSImageSource(rawConfig.VirtualMachine.Template.PrimaryDisk, config.Namespace)
+	if len(rawConfig.VirtualMachine.Template.PrimaryDisk.ExtraHeaders) > 0 {
+		config.ExtraHeaders = rawConfig.VirtualMachine.Template.PrimaryDisk.ExtraHeaders
+	}
+	extraHeadersSecretRef, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.ExtraHeadersSecretRef)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "extraHeadersSecretRef" field: %w`, err)
+	}
+	config.ExtraHeadersSecretRef = extraHeadersSecretRef
+	if len(config.ExtraHeaders) > 0 && extraHeadersSecretRef != "" {
+		return nil, nil, errors.New(`field "extraHeaders" and "extraHeadersSecretRef" are mutually exclusive`)
+	}
+	config.OSImageSource, err = p.parseOSImageSource(rawConfig.VirtualMachine.Template.PrimaryDisk, &config)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "osImageSource" field: %w`, err)
 	}
@@ -302,7 +314,6 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "storageClassName" field: %w`, err)
 	}
-
 	// Instancetype and Preference
 	config.Instancetype = rawConfig.VirtualMachine.Instancetype
 	config.Preference = rawConfig.VirtualMachine.Preference
@@ -427,7 +438,7 @@ func (p *provider) parseTopologySpreadConstraint(topologyConstraints []kubevirtt
 	return parsedTopologyConstraints, nil
 }
 
-func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, namespace string) (*cdiv1beta1.DataVolumeSource, error) {
+func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, config *Config) (*cdiv1beta1.DataVolumeSource, error) {
 	osImage, err := p.configVarResolver.GetConfigVarStringValue(primaryDisk.OsImage)
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "primaryDisk.osImage" field: %w`, err)
@@ -442,27 +453,65 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, nam
 	}
 	switch imageSource(osImageSource) {
 	case httpSource:
-		return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage}}, nil
+		extraHeaders, err := getHTTPExtraHeaders(config)
+		if err != nil {
+			return nil, fmt.Errorf(`failed to get value of "primaryDisk.extraHeaders" field: %w`, err)
+		}
+
+		return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage, ExtraHeaders: extraHeaders}}, nil
 	case registrySource:
 		return registryDataVolume(osImage, pullMethod), nil
 	case pvcSource:
 		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
 			return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
 		}
-		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: namespace}}, nil
+		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: config.Namespace}}, nil
 	default:
 		// handle old API for backward compatibility.
 		if srcURL, err := url.ParseRequestURI(osImage); err == nil {
 			if srcURL.Scheme == cdiv1beta1.RegistrySchemeDocker || srcURL.Scheme == cdiv1beta1.RegistrySchemeOci {
 				return registryDataVolume(osImage, pullMethod), nil
 			}
-			return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage}}, nil
+
+			extraHeaders, err := getHTTPExtraHeaders(config)
+			if err != nil {
+				return nil, fmt.Errorf(`failed to get value of "primaryDisk.extraHeaders" field: %w`, err)
+			}
+
+			return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage, ExtraHeaders: extraHeaders}}, nil
 		}
 		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
 			return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
 		}
-		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: namespace}}, nil
+		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: config.Namespace}}, nil
 	}
+}
+
+func getHTTPExtraHeaders(config *Config) ([]string, error) {
+	var extraHeaders []string
+	if config.ExtraHeadersSecretRef != "" {
+		sigClient, err := client.New(config.RestConfig, client.Options{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get kubevirt client: %w", err)
+		}
+
+		extraHeadersSecretRef := &corev1.Secret{}
+		if err := sigClient.Get(context.TODO(), types.NamespacedName{Namespace: config.Namespace, Name: config.ExtraHeadersSecretRef},
+			extraHeadersSecretRef); err != nil {
+			return nil, fmt.Errorf("failed to get extra headers secret: %w", err)
+		}
+
+		for key, val := range extraHeadersSecretRef.Data {
+			trimmedVal := strings.TrimSuffix(string(val), "\n")
+			extraHeaders = append(extraHeaders, fmt.Sprintf("%v: %v", key, trimmedVal))
+		}
+	}
+
+	if len(config.ExtraHeaders) > 0 {
+		extraHeaders = config.ExtraHeaders
+	}
+
+	return extraHeaders, nil
 }
 
 // getNamespace returns the namespace where the VM is created.

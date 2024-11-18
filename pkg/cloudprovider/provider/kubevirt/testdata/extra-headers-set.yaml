@@ -1,0 +1,82 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  annotations:
+  labels:
+    cluster.x-k8s.io/cluster-name: cluster-name
+    cluster.x-k8s.io/role: worker
+    kubevirt.io/vm: extra-headers-set
+    md: md-name
+  name: extra-headers-set
+  namespace: test-namespace
+spec:
+  dataVolumeTemplates:
+    - metadata:
+        name: extra-headers-set
+      spec:
+        storage:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 10Gi
+          storageClassName: longhorn
+        source:
+          http:
+            url: http://x.y.z.t/ubuntu.img
+            extraHeaders:
+              - 'authorization: Basic bXE6cGFzc3dvcmQ='
+  runStrategy: Once
+  template:
+    metadata:
+      creationTimestamp: null
+      annotations:
+        "kubevirt.io/allow-pod-bridge-network-live-migration": "true"
+        "ovn.kubernetes.io/allow_live_migration": "true"
+      labels:
+        cluster.x-k8s.io/cluster-name: cluster-name
+        cluster.x-k8s.io/role: worker
+        kubevirt.io/vm: extra-headers-set
+        md: md-name
+    spec:
+      affinity: {}
+      domain:
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: datavolumedisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          interfaces:
+            - name: default
+              bridge: {}
+          networkInterfaceMultiqueue: true
+        resources:
+          limits:
+            cpu: "2"
+            memory: 2Gi
+          requests:
+            cpu: "2"
+            memory: 2Gi
+      networks:
+        - name: default
+          pod: {}
+      terminationGracePeriodSeconds: 30
+      topologyspreadconstraints:
+        - maxskew: 1
+          topologykey: kubernetes.io/hostname
+          whenunsatisfiable: ScheduleAnyway
+          labelselector:
+            matchlabels:
+              md: md-name
+      volumes:
+        - dataVolume:
+            name: extra-headers-set
+          name: datavolumedisk
+        - cloudInitNoCloud:
+            secretRef:
+              name: udsn
+          name: cloudinitdisk
+      evictionStrategy: External
