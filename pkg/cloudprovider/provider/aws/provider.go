@@ -138,7 +138,7 @@ var (
 			},
 			awstypes.CPUArchitectureARM64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
-				description: "Canonical, Ubuntu, 24.04 LTS, arm64 noble image build on 2024-05-29 ????-??-??",
+				description: "Canonical, Ubuntu, 24.04, arm64 noble image",
 				// The AWS marketplace ID from Canonical
 				owner: "099720109477",
 			},
