@@ -78,6 +78,8 @@ type Template struct {
 // PrimaryDisk.
 type PrimaryDisk struct {
 	Disk
+	// DataVolumeSecretRef is the name of the secret that will be sent to the CDI data importer pod to read basic auth parameters.
+	DataVolumeSecretRef providerconfigtypes.ConfigVarString `json:"dataVolumeSecretRef,omitempty"`
 	// ExtraHeaders is a list of strings containing extra headers to include with HTTP transfer requests
 	// +optional
 	ExtraHeaders []string `json:"extraHeaders,omitempty"`

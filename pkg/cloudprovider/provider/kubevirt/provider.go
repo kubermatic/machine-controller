@@ -116,6 +116,7 @@ type Config struct {
 	EnableNetworkMultiQueue   bool
 	ExtraHeaders              []string
 	ExtraHeadersSecretRef     string
+	DataVolumeSecretRef       string
 
 	ProviderNetworkName string
 	SubnetName          string
@@ -284,6 +285,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if len(rawConfig.VirtualMachine.Template.PrimaryDisk.ExtraHeaders) > 0 {
 		config.ExtraHeaders = rawConfig.VirtualMachine.Template.PrimaryDisk.ExtraHeaders
 	}
+	dataVolumeSecretRef, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.DataVolumeSecretRef)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "dataVolumeSecretRef" field: %w`, err)
+	}
+	config.DataVolumeSecretRef = dataVolumeSecretRef
 	extraHeadersSecretRef, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.ExtraHeadersSecretRef)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "extraHeadersSecretRef" field: %w`, err)
@@ -457,8 +463,7 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, con
 		if err != nil {
 			return nil, fmt.Errorf(`failed to get value of "primaryDisk.extraHeaders" field: %w`, err)
 		}
-
-		return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage, ExtraHeaders: extraHeaders}}, nil
+		return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage, ExtraHeaders: extraHeaders, SecretRef: config.DataVolumeSecretRef}}, nil
 	case registrySource:
 		return registryDataVolume(osImage, pullMethod), nil
 	case pvcSource:
@@ -478,7 +483,7 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, con
 				return nil, fmt.Errorf(`failed to get value of "primaryDisk.extraHeaders" field: %w`, err)
 			}
 
-			return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage, ExtraHeaders: extraHeaders}}, nil
+			return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage, ExtraHeaders: extraHeaders, SecretRef: config.DataVolumeSecretRef}}, nil
 		}
 		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
 			return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
