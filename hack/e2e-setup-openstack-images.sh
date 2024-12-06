@@ -20,6 +20,5 @@ set -o pipefail
 cd $(dirname $0)/
 
 export UBUNTU_IMAGE_NAME="machine-controller-e2e-ubuntu"
-export CENTOS_IMAGE_NAME="machine-controller-e2e-centos"
 
 ./setup-openstack-images.sh

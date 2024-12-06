@@ -36,7 +36,6 @@ type OperatingSystem string
 
 const (
 	OperatingSystemUbuntu       OperatingSystem = "ubuntu"
-	OperatingSystemCentOS       OperatingSystem = "centos"
 	OperatingSystemAmazonLinux2 OperatingSystem = "amzn2"
 	OperatingSystemRHEL         OperatingSystem = "rhel"
 	OperatingSystemFlatcar      OperatingSystem = "flatcar"
@@ -85,7 +84,6 @@ var (
 	// AllOperatingSystems is a slice containing all supported operating system identifiers.
 	AllOperatingSystems = []OperatingSystem{
 		OperatingSystemUbuntu,
-		OperatingSystemCentOS,
 		OperatingSystemAmazonLinux2,
 		OperatingSystemRHEL,
 		OperatingSystemFlatcar,

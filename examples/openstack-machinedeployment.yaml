@@ -153,7 +153,6 @@ spec:
             # the list of metadata you would like to attach to the instance
             tags:
               tagKey: tagValue
-          # Can be 'ubuntu' or 'centos'
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: true

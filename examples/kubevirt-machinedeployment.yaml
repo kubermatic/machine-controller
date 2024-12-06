@@ -56,7 +56,7 @@ spec:
               - maxSkew: "1"
                 topologyKey: "kubernetes.io/hostname"
                 whenUnsatisfiable: "" # Allowed values: "DoNotSchedule", "ScheduleAnyway"
-          # Can also be `centos`, must align with he configured registryImage above
+          # Must align with the configured registryImage above
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: false

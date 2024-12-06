@@ -85,12 +85,6 @@ func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
 		return "linode/ubuntu18.04", nil
-
-		/**
-		// StackScript for CloudInit is not centos7 ready
-		case providerconfigtypes.OperatingSystemCentOS:
-			return "linode/centos7", nil
-		**/
 	}
 	return "", providerconfigtypes.ErrOSNotSupported
 }

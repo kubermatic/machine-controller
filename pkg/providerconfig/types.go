@@ -26,7 +26,6 @@ import (
 
 	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
 	"k8c.io/machine-controller/pkg/userdata/amzn2"
-	"k8c.io/machine-controller/pkg/userdata/centos"
 	"k8c.io/machine-controller/pkg/userdata/flatcar"
 	"k8c.io/machine-controller/pkg/userdata/rhel"
 	"k8c.io/machine-controller/pkg/userdata/rockylinux"
@@ -186,8 +185,6 @@ func DefaultOperatingSystemSpec(
 	switch osys {
 	case providerconfigtypes.OperatingSystemAmazonLinux2:
 		return amzn2.DefaultConfig(operatingSystemSpec), nil
-	case providerconfigtypes.OperatingSystemCentOS:
-		return centos.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemFlatcar:
 		return flatcar.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemRHEL:

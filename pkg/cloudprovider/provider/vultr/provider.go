@@ -82,9 +82,6 @@ func getIDForOS(os providerconfigtypes.OperatingSystem) (int, error) {
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
 		return 1743, nil
-		// name: CentOS 7 x64
-	case providerconfigtypes.OperatingSystemCentOS:
-		return 167, nil
 		// name: Rocky Linux 9 x64
 	case providerconfigtypes.OperatingSystemRockyLinux:
 		return 1869, nil
