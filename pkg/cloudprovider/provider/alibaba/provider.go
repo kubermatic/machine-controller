@@ -44,7 +44,6 @@ import (
 
 const (
 	machineUIDTag   = "machine_uid"
-	centosImageName = "CentOS  7.9 64 bit"
 	ubuntuImageName = "Ubuntu  22.04 64 bit"
 
 	finalizerInstance = "kubermatic.io/cleanup-alibaba-instance"
@@ -456,8 +455,6 @@ func (p *provider) getImageIDForOS(machineSpec clusterv1alpha1.MachineSpec, os p
 		switch image.OSNameEn {
 		case ubuntuImageName:
 			availableImage[providerconfigtypes.OperatingSystemUbuntu] = image.ImageId
-		case centosImageName:
-			availableImage[providerconfigtypes.OperatingSystemCentOS] = image.ImageId
 		}
 	}
 
