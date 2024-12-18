@@ -185,7 +185,14 @@ func GetConfig(driverConfig tinktypes.TinkerbellPluginSpec, valueFromStringOrEnv
 		if err != nil {
 			return nil, fmt.Errorf(`failed to get value of "kubeconfig" field: %w`, err)
 		}
+		val, err := base64.StdEncoding.DecodeString(config.Kubeconfig)
+		// We intentionally ignore errors here with an assumption that an unencoded YAML or JSON must have been passed on
+		// in this case.
+		if err == nil {
+			config.Kubeconfig = string(val)
+		}
 	}
+
 	config.ClusterName, err = valueFromStringOrEnvVar(driverConfig.ClusterName, "CLUSTER_NAME")
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "clusterName" field: %w`, err)
