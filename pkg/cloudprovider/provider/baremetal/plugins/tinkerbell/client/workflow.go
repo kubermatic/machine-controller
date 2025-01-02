@@ -50,7 +50,7 @@ func NewWorkflowClient(k8sClient client.Client) *WorkflowClient {
 }
 
 // CreateWorkflow creates a new Tinkerbell Workflow resource in the cluster.
-func (w *WorkflowClient) CreateWorkflow(ctx context.Context, userData, templateRef string, hardware tink.Hardware) error {
+func (w *WorkflowClient) CreateWorkflow(ctx context.Context, userData, templateRef, OSImageURL string, hardware tink.Hardware) error {
 	// Construct the Workflow object
 	ifaceConfig := hardware.Spec.Interfaces[0].DHCP
 	dnsNameservers := "1.1.1.1"
@@ -80,6 +80,7 @@ func (w *WorkflowClient) CreateWorkflow(ctx context.Context, userData, templateR
 				"ns":                dnsNameservers,
 				"default_route":     ifaceConfig.IP.Gateway,
 				"partition_number":  w.getPartitionNumber(hardware),
+				"os_image":          OSImageURL,
 			},
 		},
 	}
