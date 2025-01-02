@@ -123,14 +123,14 @@ func (d *driver) ProvisionServer(ctx context.Context, _ *zap.SugaredLogger, meta
 	}
 
 	// Create template if it doesn't exist
-	err = d.TemplateClient.CreateTemplate(ctx, d.HardwareRef.Namespace, d.OSImageURL)
+	err = d.TemplateClient.CreateTemplate(ctx, d.HardwareRef.Namespace)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create Workflow to match the template and server
 	server := tinktypes.Hardware{Hardware: hardware}
-	if err = d.WorkflowClient.CreateWorkflow(ctx, userdata, client.ProvisionWorkerNodeTemplate, server); err != nil {
+	if err = d.WorkflowClient.CreateWorkflow(ctx, userdata, client.ProvisionWorkerNodeTemplate, d.OSImageURL, server); err != nil {
 		return nil, err
 	}
 

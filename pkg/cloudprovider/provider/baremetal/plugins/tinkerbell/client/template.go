@@ -61,6 +61,7 @@ const (
 	hardwareName                = "{{.hardware_name}}"
 	ProvisionWorkerNodeTemplate = "provision-worker-node"
 	PartitionNumber             = "{{.partition_number}}"
+	OSImageURL                  = "{{.os_image}}"
 )
 
 // TemplateClient handles interactions with the Tinkerbell Templates in the Tinkerbell cluster.
@@ -91,14 +92,14 @@ func (t *TemplateClient) Delete(ctx context.Context, namespacedName types.Namesp
 }
 
 // CreateTemplate creates a Tinkerbell Template in the Kubernetes cluster.
-func (t *TemplateClient) CreateTemplate(ctx context.Context, namespace, osImageURL string) error {
+func (t *TemplateClient) CreateTemplate(ctx context.Context, namespace string) error {
 	template := &tinkv1alpha1.Template{}
 	if err := t.tinkclient.Get(ctx, types.NamespacedName{
 		Name:      ProvisionWorkerNodeTemplate,
 		Namespace: namespace,
 	}, template); err != nil {
 		if kerrors.IsNotFound(err) {
-			data, err := getTemplate(osImageURL)
+			data, err := getTemplate(OSImageURL)
 			if err != nil {
 				return err
 			}
