@@ -60,6 +60,7 @@ const (
 	hardwareDisk1               = "{{ index .Hardware.Disks 0 }}"
 	hardwareName                = "{{.hardware_name}}"
 	ProvisionWorkerNodeTemplate = "provision-worker-node"
+	PartitionNumber             = "{{.partition_number}}"
 )
 
 // TemplateClient handles interactions with the Tinkerbell Templates in the Tinkerbell cluster.
@@ -195,11 +196,11 @@ func createGrowPartitionAction(destDisk string) Action {
 		Image:   "quay.io/tinkerbell/actions/cexec:c5bde803d9f6c90f1a9d5e06930d856d1481854c",
 		Timeout: 90,
 		Environment: map[string]string{
-			"BLOCK_DEVICE":        "{{ index .Hardware.Disks 0 }}3",
+			"BLOCK_DEVICE":        fmt.Sprintf("{{ index .Hardware.Disks 0 }}%s", PartitionNumber),
 			"FS_TYPE":             fsType,
 			"CHROOT":              "y",
 			"DEFAULT_INTERPRETER": defaultInterpreter,
-			"CMD_LINE":            fmt.Sprintf("growpart %s 3 && resize2fs %s3", destDisk, destDisk),
+			"CMD_LINE":            fmt.Sprintf("growpart %s %s && resize2fs %s%s", destDisk, PartitionNumber, destDisk, PartitionNumber),
 		},
 	}
 }
@@ -225,7 +226,7 @@ network:
 		Image:   "quay.io/tinkerbell-actions/writefile:v1.0.0",
 		Timeout: 90,
 		Environment: map[string]string{
-			"DEST_DISK": "{{ index .Hardware.Disks 0 }}3",
+			"DEST_DISK": fmt.Sprintf("{{ index .Hardware.Disks 0 }}%s", PartitionNumber),
 			"FS_TYPE":   fsType,
 			"DEST_PATH": "/etc/netplan/config.yaml",
 			"CONTENTS":  netplaneConfig,
@@ -250,7 +251,7 @@ echo 'local-hostname: {{.hardware_name}}' >> /var/lib/cloud/seed/nocloud/meta-da
 		Image:   "quay.io/tinkerbell-actions/cexec:v1.0.0",
 		Timeout: 90,
 		Environment: map[string]string{
-			"BLOCK_DEVICE":        "{{ index .Hardware.Disks 0 }}3",
+			"BLOCK_DEVICE":        fmt.Sprintf("{{ index .Hardware.Disks 0 }}%s", PartitionNumber),
 			"FS_TYPE":             fsType,
 			"CHROOT":              "y",
 			"DEFAULT_INTERPRETER": defaultInterpreter,
@@ -265,7 +266,7 @@ func decodeCloudInitFile(hardwareName string) Action {
 		Image:   "quay.io/tinkerbell/actions/cexec:latest",
 		Timeout: 90,
 		Environment: map[string]string{
-			"BLOCK_DEVICE":        "{{ index .Hardware.Disks 0 }}3",
+			"BLOCK_DEVICE":        fmt.Sprintf("{{ index .Hardware.Disks 0 }}%s", PartitionNumber),
 			"FS_TYPE":             fsType,
 			"CHROOT":              "y",
 			"DEFAULT_INTERPRETER": "/bin/sh -c",
