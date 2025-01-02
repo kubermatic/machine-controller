@@ -34,7 +34,7 @@ import (
 // DefaultPartitionNumber defines the default value for the "partition_number" field.
 const DefaultPartitionNumber = "3"
 
-// PartitionNumberAnnotation is used to specify the main partition number of the disk device
+// PartitionNumberAnnotation is used to specify the main partition number of the disk device.
 const PartitionNumberAnnotation = "hardware.kubermatic.io/partition-number"
 
 // WorkflowClient handles interactions with the Tinkerbell Workflows.
