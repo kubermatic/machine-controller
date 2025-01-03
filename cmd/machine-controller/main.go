@@ -393,6 +393,9 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 	machineCollector := machinecontroller.NewMachineCollector(ctx, bs.mgr.GetClient())
 	metrics.Registry.MustRegister(machineCollector)
 
+	machineDeploymentCollector := machinedeploymentcontroller.NewCollector(ctx, bs.mgr.GetClient())
+	metrics.Registry.MustRegister(machineDeploymentCollector)
+
 	if err := machinecontroller.Add(
 		ctx,
 		bs.opt.log,
