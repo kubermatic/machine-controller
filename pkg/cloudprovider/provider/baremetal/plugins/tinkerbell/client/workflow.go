@@ -31,6 +31,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// DefaultPartitionNumber defines the default value for the "partition_number" field.
+const DefaultPartitionNumber = "3"
+
+// PartitionNumberAnnotation is used to specify the main partition number of the disk device.
+const PartitionNumberAnnotation = "hardware.kubermatic.io/partition-number"
+
 // WorkflowClient handles interactions with the Tinkerbell Workflows.
 type WorkflowClient struct {
 	tinkclient client.Client
@@ -73,6 +79,7 @@ func (w *WorkflowClient) CreateWorkflow(ctx context.Context, userData, templateR
 				"cidr":              convertNetmaskToCIDR(ifaceConfig.IP),
 				"ns":                dnsNameservers,
 				"default_route":     ifaceConfig.IP.Gateway,
+				"partition_number":  w.getPartitionNumber(hardware),
 			},
 		},
 	}
@@ -123,4 +130,12 @@ func (w *WorkflowClient) CleanupWorkflows(ctx context.Context, hardwareName, nam
 	}
 
 	return nil
+}
+
+func (w *WorkflowClient) getPartitionNumber(hardware tink.Hardware) string {
+	partitionNumber, exists := hardware.Annotations[PartitionNumberAnnotation]
+	if !exists {
+		partitionNumber = DefaultPartitionNumber // Use the default value
+	}
+	return partitionNumber
 }
