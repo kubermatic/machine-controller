@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Machine Controller Authors.
+Copyright 2025 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package machinedeployment
 
 import (
 	"context"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,7 +36,7 @@ type Collector struct {
 	updatedReplicas   *prometheus.Desc
 }
 
-// NewCollector creates new machine deployment collector for metrics collection
+// NewCollector creates new machine deployment collector for metrics collection.
 func NewCollector(ctx context.Context, client ctrlruntimeclient.Client) *Collector {
 	return &Collector{
 		ctx:    ctx,
