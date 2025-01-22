@@ -19,8 +19,6 @@ package types
 import (
 	"time"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/jsonutil"
 	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
 
@@ -41,11 +39,6 @@ const (
 	VmxNet3NIC       = "vmxnet3"
 	MachinePoweredOn = "poweredOn"
 )
-
-var StatusUpdateFailed = cloudprovidererrors.TerminalError{
-	Reason:  common.UpdateMachineError,
-	Message: "Failed to update the machine status",
-}
 
 // RawDisk specifies a single disk, with some values maybe being fetched from secrets.
 type RawDisk struct {
