@@ -640,6 +640,13 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 		return fmt.Errorf("failed to request VirtualMachineInstances: %w", err)
 	}
 
+	if c.EvictionStrategy != "" {
+		if c.EvictionStrategy != kubevirtv1.EvictionStrategyExternal &&
+			c.EvictionStrategy != kubevirtv1.EvictionStrategyLiveMigrate {
+			return fmt.Errorf("unsupported vm eviction strategy: %s", c.EvictionStrategy)
+		}
+	}
+
 	return nil
 }
 
