@@ -59,6 +59,7 @@ type VirtualMachine struct {
 	Location                *Location                           `json:"location,omitempty"`
 	ProviderNetwork         *ProviderNetwork                    `json:"providerNetwork,omitempty"`
 	EnableNetworkMultiQueue providerconfigtypes.ConfigVarBool   `json:"enableNetworkMultiQueue,omitempty"`
+	EvictionStrategy        string                              `json:"evictionStrategy,omitempty"`
 }
 
 // Flavor.
