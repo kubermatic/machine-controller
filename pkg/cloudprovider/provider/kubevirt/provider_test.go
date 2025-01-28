@@ -71,6 +71,7 @@ type kubevirtProviderSpecConf struct {
 	PullMethod               cdiv1beta1.RegistryPullMethod
 	ProviderNetwork          *types.ProviderNetwork
 	ExtraHeadersSet          bool
+	EvictStrategy            string
 }
 
 func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -104,6 +105,9 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		},
 		{{- end }}
 		"virtualMachine": {
+            {{- if .EvictStrategy }}
+            "evictionStrategy": "LiveMigrate",        
+            {{- end }}
             {{- if .ProviderNetwork }}
             "providerNetwork": {
                "name": "kubeovn",
@@ -274,6 +278,10 @@ func TestNewVirtualMachine(t *testing.T) {
 		{
 			name:     "pvc-image-source",
 			specConf: kubevirtProviderSpecConf{OsImageSource: pvcSource, OsImageDV: "ns/dvname"},
+		},
+		{
+			name:     "eviction-strategy-live-migrate",
+			specConf: kubevirtProviderSpecConf{EvictStrategy: "LiveMigrate"},
 		},
 	}
 	for _, tt := range tests {

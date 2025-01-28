@@ -117,6 +117,7 @@ type Config struct {
 	ExtraHeaders              []string
 	ExtraHeadersSecretRef     string
 	DataVolumeSecretRef       string
+	EvictionStrategy          kubevirtv1.EvictionStrategy
 
 	ProviderNetworkName string
 	SubnetName          string
@@ -364,6 +365,10 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		if rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet != nil {
 			config.SubnetName = rawConfig.VirtualMachine.ProviderNetwork.VPC.Subnet.Name
 		}
+	}
+
+	if rawConfig.VirtualMachine.EvictionStrategy != "" {
+		config.EvictionStrategy = kubevirtv1.EvictionStrategy(rawConfig.VirtualMachine.EvictionStrategy)
 	}
 
 	return &config, pconfig, nil
@@ -635,6 +640,13 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 		return fmt.Errorf("failed to request VirtualMachineInstances: %w", err)
 	}
 
+	if c.EvictionStrategy != "" {
+		if c.EvictionStrategy != kubevirtv1.EvictionStrategyExternal &&
+			c.EvictionStrategy != kubevirtv1.EvictionStrategyLiveMigrate {
+			return fmt.Errorf("unsupported vm eviction strategy: %s", c.EvictionStrategy)
+		}
+	}
+
 	return nil
 }
 
@@ -729,6 +741,9 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 	terminationGracePeriodSeconds := int64(30)
 
 	evictionStrategy := kubevirtv1.EvictionStrategyExternal
+	if c.EvictionStrategy != "" {
+		evictionStrategy = c.EvictionStrategy
+	}
 
 	resourceRequirements := kubevirtv1.ResourceRequirements{}
 	labels["kubevirt.io/vm"] = machine.Name
