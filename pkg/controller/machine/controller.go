@@ -751,8 +751,14 @@ func (r *Reconciler) deleteCloudProviderInstance(ctx context.Context, log *zap.S
 
 	return nil, r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		finalizers := sets.NewString(m.Finalizers...)
-		finalizers.Delete(FinalizerDeleteInstance)
-		m.Finalizers = finalizers.List()
+		// If a machine deployment belongs to an external cloud provider, the 'machine-delete-finalizer' must be manually
+		// removed by an administrator or an external service. This is because the machine controller lacks access to cloud
+		// instances and cannot ensure their deletion. If the external service fails to delete the instance, it may result
+		// in orphaned resources or nodes without a machine reference.
+		if machineConfig.CloudProvider != providerconfigtypes.CloudProviderExternal {
+			finalizers.Delete(FinalizerDeleteInstance)
+			m.Finalizers = finalizers.List()
+		}
 	})
 }
 

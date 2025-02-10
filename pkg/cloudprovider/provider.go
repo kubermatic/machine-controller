@@ -28,6 +28,7 @@ import (
 	"k8c.io/machine-controller/pkg/cloudprovider/provider/digitalocean"
 	"k8c.io/machine-controller/pkg/cloudprovider/provider/edge"
 	"k8c.io/machine-controller/pkg/cloudprovider/provider/equinixmetal"
+	"k8c.io/machine-controller/pkg/cloudprovider/provider/external"
 	"k8c.io/machine-controller/pkg/cloudprovider/provider/fake"
 	"k8c.io/machine-controller/pkg/cloudprovider/provider/gce"
 	"k8c.io/machine-controller/pkg/cloudprovider/provider/hetzner"
@@ -110,6 +111,9 @@ var (
 		},
 		providerconfigtypes.CloudProviderVMwareCloudDirector: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return vcd.New(cvr)
+		},
+		providerconfigtypes.CloudProviderExternal: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return external.New(cvr)
 		},
 	}
 

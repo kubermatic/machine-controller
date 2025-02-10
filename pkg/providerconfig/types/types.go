@@ -113,6 +113,7 @@ var (
 		CloudProviderBaremetal,
 		CloudProviderVultr,
 		CloudProviderOpenNebula,
+		CloudProviderExternal,
 	}
 )
 
