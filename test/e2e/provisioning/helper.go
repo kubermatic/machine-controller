@@ -63,7 +63,7 @@ var (
 		string(providerconfigtypes.OperatingSystemFlatcar):    "kkp-flatcar-3139.2.0",
 		string(providerconfigtypes.OperatingSystemRHEL):       "kkp-rhel-8.6",
 		string(providerconfigtypes.OperatingSystemRockyLinux): "kkp-rockylinux-8",
-		string(providerconfigtypes.OperatingSystemUbuntu):     "kubeone-ubuntu-22.04",
+		string(providerconfigtypes.OperatingSystemUbuntu):     "kkp-ubuntu-24.04",
 	}
 
 	kubevirtImages = map[string]string{
