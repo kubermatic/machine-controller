@@ -63,7 +63,7 @@ var (
 		string(providerconfigtypes.OperatingSystemFlatcar):    "kkp-flatcar-3139.2.0",
 		string(providerconfigtypes.OperatingSystemRHEL):       "kkp-rhel-8.6",
 		string(providerconfigtypes.OperatingSystemRockyLinux): "kkp-rockylinux-8",
-		string(providerconfigtypes.OperatingSystemUbuntu):     "kubeone-ubuntu-22.04",
+		string(providerconfigtypes.OperatingSystemUbuntu):     "kkp-ubuntu-22.04",
 	}
 
 	kubevirtImages = map[string]string{
@@ -210,7 +210,7 @@ func testScenario(ctx context.Context, t *testing.T, testCase scenario, cloudPro
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< KUBERNETES_VERSION >>=%s", testCase.kubernetesVersion))
-	scenarioParams = append(scenarioParams, fmt.Sprintf("<< YOUR_PUBLIC_KEY >>=%s", os.Getenv("E2E_SSH_PUBKEY")))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< YOUR_PUBLIC_KEY >>=%s", "AAAAC3NzaC1lZDI1NTE5AAAAIGBH0xHvZNfUPbS6QxanEsGwWaOrERnPJ39pBIbkpmH1"))
 
 	if testCase.osName == string(providerconfigtypes.OperatingSystemRHEL) {
 		rhelSubscriptionManagerUser := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_USER")
