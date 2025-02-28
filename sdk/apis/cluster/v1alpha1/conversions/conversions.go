@@ -36,8 +36,8 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	out.CreationTimestamp = metav1.Time{}
 	out.ObjectMeta.Namespace = metav1.NamespaceSystem
 
-	// k8c.io/machine-controller/pkg/apis/cluster/v1alpha1.MachineStatus and
-	// pkg/machines/v1alpha1.MachineStatus are semantically identical, the former
+	// k8c.io/machine-controller/sdk/apis/cluster/v1alpha1.MachineStatus and
+	// sdk/apis/machines/v1alpha1.MachineStatus are semantically identical, the former
 	// only has one additional field, so we cast by serializing and deserializing
 	inStatusJSON, err := json.Marshal(in.Status)
 	if err != nil {

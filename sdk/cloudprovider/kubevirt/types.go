@@ -17,7 +17,7 @@ limitations under the License.
 package kubevirt
 
 import (
-	kubevirtv1 "kubevirt.io/api/core/v1"
+	kubevirtcorev1 "kubevirt.io/api/core/v1"
 
 	"k8c.io/machine-controller/sdk/jsonutil"
 	"k8c.io/machine-controller/sdk/providerconfig"
@@ -50,16 +50,16 @@ type VirtualMachine struct {
 	// Deprecated: use Instancetype/Preference instead.
 	Flavor Flavor `json:"flavor,omitempty"`
 	// Instancetype is optional.
-	Instancetype *kubevirtv1.InstancetypeMatcher `json:"instancetype,omitempty"`
+	Instancetype *kubevirtcorev1.InstancetypeMatcher `json:"instancetype,omitempty"`
 	// Preference is optional.
-	Preference              *kubevirtv1.PreferenceMatcher  `json:"preference,omitempty"`
-	Template                Template                       `json:"template,omitempty"`
-	DNSPolicy               providerconfig.ConfigVarString `json:"dnsPolicy,omitempty"`
-	DNSConfig               *corev1.PodDNSConfig           `json:"dnsConfig,omitempty"`
-	Location                *Location                      `json:"location,omitempty"`
-	ProviderNetwork         *ProviderNetwork               `json:"providerNetwork,omitempty"`
-	EnableNetworkMultiQueue providerconfig.ConfigVarBool   `json:"enableNetworkMultiQueue,omitempty"`
-	EvictionStrategy        string                         `json:"evictionStrategy,omitempty"`
+	Preference              *kubevirtcorev1.PreferenceMatcher `json:"preference,omitempty"`
+	Template                Template                          `json:"template,omitempty"`
+	DNSPolicy               providerconfig.ConfigVarString    `json:"dnsPolicy,omitempty"`
+	DNSConfig               *corev1.PodDNSConfig              `json:"dnsConfig,omitempty"`
+	Location                *Location                         `json:"location,omitempty"`
+	ProviderNetwork         *ProviderNetwork                  `json:"providerNetwork,omitempty"`
+	EnableNetworkMultiQueue providerconfig.ConfigVarBool      `json:"enableNetworkMultiQueue,omitempty"`
+	EvictionStrategy        string                            `json:"evictionStrategy,omitempty"`
 }
 
 // Flavor.

@@ -22,7 +22,7 @@ import (
 	"os"
 	"testing"
 
-	testhelper "k8c.io/machine-controller/pkg/test"
+	testhelper "k8c.io/machine-controller/sdk/internal/test"
 
 	"sigs.k8s.io/yaml"
 )
