@@ -48,7 +48,7 @@ import (
 	"k8c.io/machine-controller/sdk/net"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -978,12 +978,12 @@ func (d *awsInstance) ProviderID() string {
 	return "aws:///" + *d.instance.Placement.AvailabilityZone + "/" + *d.instance.InstanceId
 }
 
-func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{
-		ptr.Deref(d.instance.PublicIpAddress, ""):  v1.NodeExternalIP,
-		ptr.Deref(d.instance.PublicDnsName, ""):    v1.NodeExternalDNS,
-		ptr.Deref(d.instance.PrivateIpAddress, ""): v1.NodeInternalIP,
-		ptr.Deref(d.instance.PrivateDnsName, ""):   v1.NodeInternalDNS,
+func (d *awsInstance) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{
+		ptr.Deref(d.instance.PublicIpAddress, ""):  corev1.NodeExternalIP,
+		ptr.Deref(d.instance.PublicDnsName, ""):    corev1.NodeExternalDNS,
+		ptr.Deref(d.instance.PrivateIpAddress, ""): corev1.NodeInternalIP,
+		ptr.Deref(d.instance.PrivateDnsName, ""):   corev1.NodeInternalDNS,
 	}
 
 	for _, netInterface := range d.instance.NetworkInterfaces {
@@ -993,7 +993,7 @@ func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
 			// link-local addresses not very useful in machine status
 			// filter them out
 			if !net.IsLinkLocal(ipAddr) {
-				addresses[ipAddr] = v1.NodeExternalIP
+				addresses[ipAddr] = corev1.NodeExternalIP
 			}
 		}
 	}

@@ -39,7 +39,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrlruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -103,7 +103,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 
 // ReconcileMachineSet reconciles a MachineSet object.
 type ReconcileMachineSet struct {
-	client.Client
+	ctrlruntimeclient.Client
 	log      *zap.SugaredLogger
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
@@ -149,7 +149,7 @@ func (r *ReconcileMachineSet) reconcile(ctx context.Context, log *zap.SugaredLog
 	log.Debug("Reconcile MachineSet")
 	allMachines := &clusterv1alpha1.MachineList{}
 
-	if err := r.Client.List(ctx, allMachines, client.InNamespace(machineSet.Namespace)); err != nil {
+	if err := r.Client.List(ctx, allMachines, ctrlruntimeclient.InNamespace(machineSet.Namespace)); err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "failed to list machines")
 	}
 
@@ -185,7 +185,7 @@ func (r *ReconcileMachineSet) reconcile(ctx context.Context, log *zap.SugaredLog
 	filteredMachines := make([]*clusterv1alpha1.Machine, 0, len(allMachines.Items))
 	for idx := range allMachines.Items {
 		machine := &allMachines.Items[idx]
-		machineLog := log.With("machine", client.ObjectKeyFromObject(machine))
+		machineLog := log.With("machine", ctrlruntimeclient.ObjectKeyFromObject(machine))
 
 		if shouldExcludeMachine(machineLog, machineSet, machine) {
 			continue
@@ -260,7 +260,7 @@ func (r *ReconcileMachineSet) syncReplicas(ctx context.Context, log *zap.Sugared
 
 			machine := r.createMachine(ms)
 			if err := r.Client.Create(ctx, machine); err != nil {
-				log.Errorw("Failed to create Machine", "machine", client.ObjectKeyFromObject(machine), zap.Error(err))
+				log.Errorw("Failed to create Machine", "machine", ctrlruntimeclient.ObjectKeyFromObject(machine), zap.Error(err))
 				errstrings = append(errstrings, err.Error())
 				continue
 			}
@@ -293,7 +293,7 @@ func (r *ReconcileMachineSet) syncReplicas(ctx context.Context, log *zap.Sugared
 				defer wg.Done()
 				err := r.Client.Delete(ctx, targetMachine)
 				if err != nil {
-					log.Errorw("Failed to delete Machine", "machine", client.ObjectKeyFromObject(targetMachine), zap.Error(err))
+					log.Errorw("Failed to delete Machine", "machine", ctrlruntimeclient.ObjectKeyFromObject(targetMachine), zap.Error(err))
 					errCh <- err
 				}
 			}(machine)
@@ -362,7 +362,7 @@ func (r *ReconcileMachineSet) adoptOrphan(ctx context.Context, machineSet *clust
 func (r *ReconcileMachineSet) waitForMachineCreation(ctx context.Context, log *zap.SugaredLogger, machineList []*clusterv1alpha1.Machine) error {
 	for _, machine := range machineList {
 		pollErr := wait.PollUntilContextTimeout(ctx, stateConfirmationInterval, stateConfirmationTimeout, false, func(ctx context.Context) (bool, error) {
-			key := client.ObjectKey{Namespace: machine.Namespace, Name: machine.Name}
+			key := ctrlruntimeclient.ObjectKey{Namespace: machine.Namespace, Name: machine.Name}
 
 			if err := r.Client.Get(ctx, key, &clusterv1alpha1.Machine{}); err != nil {
 				if apierrors.IsNotFound(err) {
@@ -387,7 +387,7 @@ func (r *ReconcileMachineSet) waitForMachineDeletion(ctx context.Context, machin
 	for _, machine := range machineList {
 		pollErr := wait.PollUntilContextTimeout(ctx, stateConfirmationInterval, stateConfirmationTimeout, false, func(ctx context.Context) (bool, error) {
 			m := &clusterv1alpha1.Machine{}
-			key := client.ObjectKey{Namespace: machine.Namespace, Name: machine.Name}
+			key := ctrlruntimeclient.ObjectKey{Namespace: machine.Namespace, Name: machine.Name}
 
 			err := r.Client.Get(ctx, key, m)
 			if apierrors.IsNotFound(err) || !m.DeletionTimestamp.IsZero() {
@@ -407,11 +407,11 @@ func (r *ReconcileMachineSet) waitForMachineDeletion(ctx context.Context, machin
 // MachineToMachineSets is a handler.ToRequestsFunc to be used to enqeue requests for reconciliation
 // for MachineSets that might adopt an orphaned Machine.
 func (r *ReconcileMachineSet) MachineToMachineSets() handler.MapFunc {
-	return func(ctx context.Context, o client.Object) []ctrlruntime.Request {
+	return func(ctx context.Context, o ctrlruntimeclient.Object) []ctrlruntime.Request {
 		result := []reconcile.Request{}
 
 		m := &clusterv1alpha1.Machine{}
-		key := client.ObjectKey{Namespace: o.GetNamespace(), Name: o.GetName()}
+		key := ctrlruntimeclient.ObjectKey{Namespace: o.GetNamespace(), Name: o.GetName()}
 		machineLog := r.log.With("machine", key)
 
 		if err := r.Client.Get(ctx, key, m); err != nil {
@@ -436,7 +436,7 @@ func (r *ReconcileMachineSet) MachineToMachineSets() handler.MapFunc {
 		}
 
 		for _, ms := range mss {
-			name := client.ObjectKey{Namespace: ms.Namespace, Name: ms.Name}
+			name := ctrlruntimeclient.ObjectKey{Namespace: ms.Namespace, Name: ms.Name}
 			result = append(result, reconcile.Request{NamespacedName: name})
 		}
 

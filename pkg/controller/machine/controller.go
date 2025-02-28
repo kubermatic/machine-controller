@@ -50,7 +50,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -364,7 +364,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	machine := &clusterv1alpha1.Machine{}
 	if err := r.client.Get(ctx, request.NamespacedName, machine); err != nil {
-		if kerrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, nil
 		}
 		log.Errorw("Failed to get Machine", zap.Error(err))
@@ -432,7 +432,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 	node, err := r.getNodeByNodeRef(ctx, machine.Status.NodeRef)
 	if err != nil {
 		// In case we cannot find a node for the NodeRef we must remove the NodeRef & recreate an instance on the next sync
-		if kerrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			log.Info("Found invalid NodeRef on machine; deleting reference...")
 			return nil, r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 				m.Status.NodeRef = nil
@@ -496,7 +496,7 @@ func (r *Reconciler) machineHasValidNode(ctx context.Context, machine *clusterv1
 
 	node := &corev1.Node{}
 	if err := r.client.Get(ctx, types.NamespacedName{Name: machine.Status.NodeRef.Name}, node); err != nil {
-		if kerrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return false, nil
 		}
 
@@ -657,7 +657,7 @@ func (r *Reconciler) retrieveNodesRelatedToMachine(ctx context.Context, log *zap
 		objKey := ctrlruntimeclient.ObjectKey{Name: machine.Status.NodeRef.Name}
 		node := &corev1.Node{}
 		if err := r.client.Get(ctx, objKey, node); err != nil {
-			if !kerrors.IsNotFound(err) {
+			if !apierrors.IsNotFound(err) {
 				return nil, fmt.Errorf("failed to get node %s: %w", machine.Status.NodeRef.Name, err)
 			}
 			log.Debugw("Node does not longer exist for machine", "node", machine.Status.NodeRef.Name)
@@ -766,7 +766,7 @@ func (r *Reconciler) deleteNodeForMachine(ctx context.Context, log *zap.SugaredL
 	// iterates on all nodes and delete them. Finally, remove the finalizer on the machine
 	for _, node := range nodes {
 		if err := r.client.Delete(ctx, node); err != nil {
-			if !kerrors.IsNotFound(err) {
+			if !apierrors.IsNotFound(err) {
 				return err
 			}
 			log.Infow("Node does not longer exist for machine", "node", machine.Status.NodeRef.Name)

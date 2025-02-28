@@ -39,7 +39,7 @@ import (
 	"k8c.io/machine-controller/sdk/net"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -502,20 +502,20 @@ func (d *doInstance) ProviderID() string {
 	return fmt.Sprintf("digitalocean://%d", d.droplet.ID)
 }
 
-func (d *doInstance) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
+func (d *doInstance) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
 	for _, n := range d.droplet.Networks.V4 {
 		if n.Type == "public" {
-			addresses[n.IPAddress] = v1.NodeExternalIP
+			addresses[n.IPAddress] = corev1.NodeExternalIP
 		} else {
-			addresses[n.IPAddress] = v1.NodeInternalIP
+			addresses[n.IPAddress] = corev1.NodeInternalIP
 		}
 	}
 	for _, n := range d.droplet.Networks.V6 {
 		if n.Type == "public" {
-			addresses[n.IPAddress] = v1.NodeExternalIP
+			addresses[n.IPAddress] = corev1.NodeExternalIP
 		} else {
-			addresses[n.IPAddress] = v1.NodeInternalIP
+			addresses[n.IPAddress] = corev1.NodeInternalIP
 		}
 	}
 	return addresses

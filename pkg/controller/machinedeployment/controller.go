@@ -26,7 +26,7 @@ import (
 	"go.uber.org/zap"
 
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
-	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,7 +36,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrlruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -48,12 +48,12 @@ const controllerName = "machinedeployment-controller"
 
 var (
 	// controllerKind contains the schema.GroupVersionKind for this controller type.
-	controllerKind = v1alpha1.SchemeGroupVersion.WithKind("MachineDeployment")
+	controllerKind = clusterv1alpha1.SchemeGroupVersion.WithKind("MachineDeployment")
 )
 
 // ReconcileMachineDeployment reconciles a MachineDeployment object.
 type ReconcileMachineDeployment struct {
-	client.Client
+	ctrlruntimeclient.Client
 	log      *zap.SugaredLogger
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
@@ -86,13 +86,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 			},
 		}).
 		// Watch for changes to MachineDeployment.
-		For(&v1alpha1.MachineDeployment{}).
+		For(&clusterv1alpha1.MachineDeployment{}).
 		// Watch for changes to MachineSet and reconcile the owner MachineDeployment.
-		Owns(&v1alpha1.MachineSet{}).
+		Owns(&clusterv1alpha1.MachineSet{}).
 		// Watch for changes to MachineSets using a mapping function to MachineDeployment.
 		// This watcher is required for use cases like adoption. In case a MachineSet doesn't have
 		// a controller reference, it'll look for potential matching MachineDeployments to reconcile.
-		Watches(&v1alpha1.MachineSet{}, handler.EnqueueRequestsFromMapFunc(mapFn)).
+		Watches(&clusterv1alpha1.MachineSet{}, handler.EnqueueRequestsFromMapFunc(mapFn)).
 		Build(r)
 
 	return err
@@ -107,7 +107,7 @@ func (r *ReconcileMachineDeployment) Reconcile(ctx context.Context, request reco
 	log.Debug("Reconciling")
 
 	// Fetch the MachineDeployment instance
-	deployment := &v1alpha1.MachineDeployment{}
+	deployment := &clusterv1alpha1.MachineDeployment{}
 	if err := r.Get(ctx, request.NamespacedName, deployment); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -134,8 +134,8 @@ func (r *ReconcileMachineDeployment) Reconcile(ctx context.Context, request reco
 	return result, err
 }
 
-func (r *ReconcileMachineDeployment) reconcile(ctx context.Context, log *zap.SugaredLogger, d *v1alpha1.MachineDeployment) (reconcile.Result, error) {
-	v1alpha1.PopulateDefaultsMachineDeployment(d)
+func (r *ReconcileMachineDeployment) reconcile(ctx context.Context, log *zap.SugaredLogger, d *clusterv1alpha1.MachineDeployment) (reconcile.Result, error) {
+	clusterv1alpha1.PopulateDefaultsMachineDeployment(d)
 
 	everything := metav1.LabelSelector{}
 	if reflect.DeepEqual(d.Spec.Selector, &everything) {
@@ -191,18 +191,18 @@ func (r *ReconcileMachineDeployment) reconcile(ctx context.Context, log *zap.Sug
 }
 
 // getMachineSetsForDeployment returns a list of MachineSets associated with a MachineDeployment.
-func (r *ReconcileMachineDeployment) getMachineSetsForDeployment(ctx context.Context, log *zap.SugaredLogger, d *v1alpha1.MachineDeployment) ([]*v1alpha1.MachineSet, error) {
+func (r *ReconcileMachineDeployment) getMachineSetsForDeployment(ctx context.Context, log *zap.SugaredLogger, d *clusterv1alpha1.MachineDeployment) ([]*clusterv1alpha1.MachineSet, error) {
 	// List all MachineSets to find those we own but that no longer match our selector.
-	machineSets := &v1alpha1.MachineSetList{}
-	listOptions := &client.ListOptions{Namespace: d.Namespace}
+	machineSets := &clusterv1alpha1.MachineSetList{}
+	listOptions := &ctrlruntimeclient.ListOptions{Namespace: d.Namespace}
 	if err := r.Client.List(ctx, machineSets, listOptions); err != nil {
 		return nil, err
 	}
 
-	filtered := make([]*v1alpha1.MachineSet, 0, len(machineSets.Items))
+	filtered := make([]*clusterv1alpha1.MachineSet, 0, len(machineSets.Items))
 	for idx := range machineSets.Items {
 		ms := &machineSets.Items[idx]
-		msLog := log.With("machineset", client.ObjectKeyFromObject(ms))
+		msLog := log.With("machineset", ctrlruntimeclient.ObjectKeyFromObject(ms))
 
 		selector, err := metav1.LabelSelectorAsSelector(&d.Spec.Selector)
 		if err != nil {
@@ -240,27 +240,27 @@ func (r *ReconcileMachineDeployment) getMachineSetsForDeployment(ctx context.Con
 }
 
 // adoptOrphan sets the MachineDeployment as a controller OwnerReference to the MachineSet.
-func (r *ReconcileMachineDeployment) adoptOrphan(ctx context.Context, deployment *v1alpha1.MachineDeployment, machineSet *v1alpha1.MachineSet) error {
+func (r *ReconcileMachineDeployment) adoptOrphan(ctx context.Context, deployment *clusterv1alpha1.MachineDeployment, machineSet *clusterv1alpha1.MachineSet) error {
 	newRef := *metav1.NewControllerRef(deployment, controllerKind)
 	machineSet.OwnerReferences = append(machineSet.OwnerReferences, newRef)
 	return r.Client.Update(ctx, machineSet)
 }
 
 // getMachineDeploymentsForMachineSet returns a list of MachineDeployments that could potentially match a MachineSet.
-func (r *ReconcileMachineDeployment) getMachineDeploymentsForMachineSet(ctx context.Context, log *zap.SugaredLogger, ms *v1alpha1.MachineSet) []*v1alpha1.MachineDeployment {
+func (r *ReconcileMachineDeployment) getMachineDeploymentsForMachineSet(ctx context.Context, log *zap.SugaredLogger, ms *clusterv1alpha1.MachineSet) []*clusterv1alpha1.MachineDeployment {
 	if len(ms.Labels) == 0 {
 		log.Info("No MachineDeployments found for MachineSet because it has no labels")
 		return nil
 	}
 
-	dList := &v1alpha1.MachineDeploymentList{}
-	listOptions := &client.ListOptions{Namespace: ms.Namespace}
+	dList := &clusterv1alpha1.MachineDeploymentList{}
+	listOptions := &ctrlruntimeclient.ListOptions{Namespace: ms.Namespace}
 	if err := r.Client.List(ctx, dList, listOptions); err != nil {
 		log.Errorw("Failed to list MachineDeployments", zap.Error(err))
 		return nil
 	}
 
-	deployments := make([]*v1alpha1.MachineDeployment, 0, len(dList.Items))
+	deployments := make([]*clusterv1alpha1.MachineDeployment, 0, len(dList.Items))
 	for idx, d := range dList.Items {
 		selector, err := metav1.LabelSelectorAsSelector(&d.Spec.Selector)
 		if err != nil {
@@ -281,11 +281,11 @@ func (r *ReconcileMachineDeployment) getMachineDeploymentsForMachineSet(ctx cont
 // MachineSetTodeployments is a handler.MapFunc to be used to enqeue requests for reconciliation
 // for MachineDeployments that might adopt an orphaned MachineSet.
 func (r *ReconcileMachineDeployment) MachineSetToDeployments() handler.MapFunc {
-	return func(ctx context.Context, o client.Object) []ctrlruntime.Request {
+	return func(ctx context.Context, o ctrlruntimeclient.Object) []ctrlruntime.Request {
 		result := []reconcile.Request{}
 
-		ms := &v1alpha1.MachineSet{}
-		key := client.ObjectKey{Namespace: o.GetNamespace(), Name: o.GetName()}
+		ms := &clusterv1alpha1.MachineSet{}
+		key := ctrlruntimeclient.ObjectKey{Namespace: o.GetNamespace(), Name: o.GetName()}
 		if err := r.Client.Get(ctx, key, ms); err != nil {
 			if !apierrors.IsNotFound(err) {
 				r.log.Errorw("Failed to retrieve MachineSet for possible MachineDeployment adoption", "machineset", key, zap.Error(err))
@@ -308,7 +308,7 @@ func (r *ReconcileMachineDeployment) MachineSetToDeployments() handler.MapFunc {
 		}
 
 		for _, md := range mds {
-			name := client.ObjectKey{Namespace: md.Namespace, Name: md.Name}
+			name := ctrlruntimeclient.ObjectKey{Namespace: md.Namespace, Name: md.Name}
 			result = append(result, reconcile.Request{NamespacedName: name})
 		}
 

@@ -33,7 +33,7 @@ import (
 	"google.golang.org/api/compute/v1"
 
 	"k8c.io/machine-controller/pkg/providerconfig"
-	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	gcetypes "k8c.io/machine-controller/sdk/cloudprovider/gce"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 )
@@ -70,7 +70,7 @@ const (
 
 // newCloudProviderSpec creates a cloud provider specification out of the
 // given ProviderSpec.
-func newCloudProviderSpec(provSpec v1alpha1.ProviderSpec) (*gcetypes.CloudProviderSpec, *providerconfigtypes.Config, error) {
+func newCloudProviderSpec(provSpec clusterv1alpha1.ProviderSpec) (*gcetypes.CloudProviderSpec, *providerconfigtypes.Config, error) {
 	// Retrieve provider configuration from machine specification.
 	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
@@ -123,7 +123,7 @@ type clientConfig struct {
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
-func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.ProviderSpec) (*config, error) {
+func newConfig(resolver *providerconfig.ConfigVarResolver, spec clusterv1alpha1.ProviderSpec) (*config, error) {
 	// Create cloud provider spec.
 	cpSpec, providerConfig, err := newCloudProviderSpec(spec)
 	if err != nil {

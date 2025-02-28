@@ -45,7 +45,7 @@ import (
 	"k8c.io/machine-controller/sdk/net"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 )
@@ -112,11 +112,11 @@ type config struct {
 
 type azureVM struct {
 	vm          *compute.VirtualMachine
-	ipAddresses map[string]v1.NodeAddressType
+	ipAddresses map[string]corev1.NodeAddressType
 	status      instance.Status
 }
 
-func (vm *azureVM) Addresses() map[string]v1.NodeAddressType {
+func (vm *azureVM) Addresses() map[string]corev1.NodeAddressType {
 	return vm.ipAddresses
 }
 
@@ -378,9 +378,9 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	return &c, pconfig, nil
 }
 
-func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm *compute.VirtualMachine, ipFamily net.IPFamily) (map[string]v1.NodeAddressType, error) {
+func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm *compute.VirtualMachine, ipFamily net.IPFamily) (map[string]corev1.NodeAddressType, error) {
 	var (
-		ipAddresses = map[string]v1.NodeAddressType{}
+		ipAddresses = map[string]corev1.NodeAddressType{}
 		err         error
 	)
 
@@ -412,7 +412,7 @@ func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm
 	return ipAddresses, nil
 }
 
-func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, ipFamily net.IPFamily, ifaceName string) (map[string]v1.NodeAddressType, error) {
+func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, ipFamily net.IPFamily, ifaceName string) (map[string]corev1.NodeAddressType, error) {
 	ifClient, err := getInterfacesClient(c)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interfaces client: %w", err)
@@ -423,7 +423,7 @@ func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, i
 		return nil, fmt.Errorf("failed to get interface %q: %w", ifaceName, err)
 	}
 
-	ipAddresses := map[string]v1.NodeAddressType{}
+	ipAddresses := map[string]corev1.NodeAddressType{}
 
 	if netIf.IPConfigurations == nil {
 		return ipAddresses, nil
@@ -448,7 +448,7 @@ func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, i
 				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %w", name, err)
 			}
 			for _, ip := range publicIPs {
-				ipAddresses[ip] = v1.NodeExternalIP
+				ipAddresses[ip] = corev1.NodeExternalIP
 			}
 
 			if ipFamily.HasIPv6() {
@@ -457,7 +457,7 @@ func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, i
 					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %w", name, err)
 				}
 				for _, ip := range publicIP6s {
-					ipAddresses[ip] = v1.NodeExternalIP
+					ipAddresses[ip] = corev1.NodeExternalIP
 				}
 			}
 		}
@@ -467,7 +467,7 @@ func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, i
 			return nil, fmt.Errorf("failed to retrieve internal IP string for IP %q: %w", name, err)
 		}
 		for _, ip := range internalIPs {
-			ipAddresses[ip] = v1.NodeInternalIP
+			ipAddresses[ip] = corev1.NodeInternalIP
 		}
 	}
 	return ipAddresses, nil

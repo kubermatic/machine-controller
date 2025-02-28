@@ -26,16 +26,16 @@ import (
 	tbtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // HardwareClient manages Tinkerbell hardware resources across two clusters.
 type HardwareClient struct {
-	TinkerbellClient client.Client
+	TinkerbellClient ctrlruntimeclient.Client
 }
 
 // NewHardwareClient creates a new instance of HardwareClient.
-func NewHardwareClient(tinkerbellClient client.Client) *HardwareClient {
+func NewHardwareClient(tinkerbellClient ctrlruntimeclient.Client) *HardwareClient {
 	return &HardwareClient{
 		TinkerbellClient: tinkerbellClient,
 	}
@@ -45,8 +45,8 @@ func NewHardwareClient(tinkerbellClient client.Client) *HardwareClient {
 // deployment object.
 func (h *HardwareClient) GetHardware(ctx context.Context, hardwareRef types.NamespacedName) (*tinkv1alpha1.Hardware, error) {
 	hardware := &tinkv1alpha1.Hardware{}
-	if err := h.TinkerbellClient.Get(ctx, client.ObjectKey{Namespace: hardwareRef.Namespace, Name: hardwareRef.Name}, hardware); err != nil {
-		return nil, fmt.Errorf("failed to get hardware '%s' in namespace '%s': %w", hardwareRef.Name, hardwareRef.Namespace, err)
+	if err := h.TinkerbellClient.Get(ctx, hardwareRef, hardware); err != nil {
+		return nil, fmt.Errorf("failed to get hardware '%v': %w", hardwareRef, err)
 	}
 
 	return hardware, nil

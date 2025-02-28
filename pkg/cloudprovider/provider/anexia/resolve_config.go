@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	"go.anx.io/go-anxcloud/pkg/api"
-	corev1 "go.anx.io/go-anxcloud/pkg/apis/core/v1"
-	vspherev1 "go.anx.io/go-anxcloud/pkg/apis/vsphere/v1"
+	anxcorev1 "go.anx.io/go-anxcloud/pkg/apis/core/v1"
+	anxvspherev1 "go.anx.io/go-anxcloud/pkg/apis/vsphere/v1"
 	"go.uber.org/zap"
 
 	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
@@ -70,7 +70,7 @@ func (p *provider) resolveTemplateID(ctx context.Context, a api.API, config anxt
 		return "", fmt.Errorf("failed to get 'templateBuild': %w", err)
 	}
 
-	template, err := vspherev1.FindNamedTemplate(ctx, a, templateName, templateBuild, corev1.Location{Identifier: locationID})
+	template, err := anxvspherev1.FindNamedTemplate(ctx, a, templateName, templateBuild, anxcorev1.Location{Identifier: locationID})
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve named template: %w", err)
 	}

@@ -24,7 +24,6 @@ import (
 	"path"
 
 	"github.com/vmware/go-vcloud-director/v2/govcd"
-	"github.com/vmware/go-vcloud-director/v2/types/v56"
 	vcdapitypes "github.com/vmware/go-vcloud-director/v2/types/v56"
 
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
@@ -77,7 +76,7 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 	}
 
 	// 2. Retrieve Sizing and Placement Compute Policy if required.
-	var computePolicy *types.ComputePolicy
+	var computePolicy *vcdapitypes.ComputePolicy
 	if c.SizingPolicy != nil || c.PlacementPolicy != nil {
 		allPolicies, err := org.GetAllVdcComputePolicies(url.Values{})
 		if err != nil {
@@ -89,7 +88,7 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 			if sizingPolicy == nil {
 				return fmt.Errorf("sizing policy '%s' doesn't exist", *c.SizingPolicy)
 			}
-			computePolicy = &types.ComputePolicy{
+			computePolicy = &vcdapitypes.ComputePolicy{
 				VmSizingPolicy: &vcdapitypes.Reference{
 					HREF: sizingPolicy.VdcComputePolicy.ID,
 				},
@@ -102,7 +101,7 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 				return fmt.Errorf("placement policy '%s' doesn't exist", *c.PlacementPolicy)
 			}
 			if computePolicy == nil {
-				computePolicy = &types.ComputePolicy{}
+				computePolicy = &vcdapitypes.ComputePolicy{}
 			}
 			computePolicy.VmPlacementPolicy = &vcdapitypes.Reference{
 				HREF: placementPolicy.VdcComputePolicy.ID,
@@ -111,7 +110,7 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 	}
 
 	// 3. Retrieve Storage Profile
-	var storageProfile *types.Reference
+	var storageProfile *vcdapitypes.Reference
 	if c.StorageProfile != nil && *c.StorageProfile != defaultStorageProfile {
 		for _, sp := range vdc.Vdc.VdcStorageProfiles.VdcStorageProfile {
 			if sp.Name == *c.StorageProfile || sp.ID == *c.StorageProfile {
@@ -131,20 +130,20 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 	//
 	// It is not possible to customize compute, disk and network for a VM at initial creation time when we are using templates. So we rely on
 	// vApp re-composition to apply the needed customization, performed at later stages.
-	vAppRecomposition := &types.ReComposeVAppParams{
-		Ovf:         types.XMLNamespaceOVF,
-		Xsi:         types.XMLNamespaceXSI,
-		Xmlns:       types.XMLNamespaceVCloud,
+	vAppRecomposition := &vcdapitypes.ReComposeVAppParams{
+		Ovf:         vcdapitypes.XMLNamespaceOVF,
+		Xsi:         vcdapitypes.XMLNamespaceXSI,
+		Xmlns:       vcdapitypes.XMLNamespaceVCloud,
 		Deploy:      false,
 		Name:        vapp.VApp.Name,
 		PowerOn:     false,
 		Description: vapp.VApp.Description,
-		SourcedItem: &types.SourcedCompositionItemParam{
-			Source: &types.Reference{
+		SourcedItem: &vcdapitypes.SourcedCompositionItemParam{
+			Source: &vcdapitypes.Reference{
 				HREF: templateHref,
 				Name: machine.Name,
 			},
-			InstantiationParams: &types.InstantiationParams{
+			InstantiationParams: &vcdapitypes.InstantiationParams{
 				NetworkConnectionSection: &vcdapitypes.NetworkConnectionSection{
 					NetworkConnection: []*vcdapitypes.NetworkConnection{
 						{
@@ -170,7 +169,7 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 	apiEndpoint.Path = path.Join(apiEndpoint.Path, "action/recomposeVApp")
 
 	task, err := client.VCDClient.Client.ExecuteTaskRequest(apiEndpoint.String(), http.MethodPost,
-		types.MimeRecomposeVappParams, "error instantiating a new VM: %s", vAppRecomposition)
+		vcdapitypes.MimeRecomposeVappParams, "error instantiating a new VM: %s", vAppRecomposition)
 	if err != nil {
 		return fmt.Errorf("failed to execute API call to create VM: %w", err)
 	}

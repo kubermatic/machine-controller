@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"go.anx.io/go-anxcloud/pkg/api"
-	"go.anx.io/go-anxcloud/pkg/client"
 	anxclient "go.anx.io/go-anxcloud/pkg/client"
 	"go.anx.io/go-anxcloud/pkg/vsphere"
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/progress"
@@ -46,7 +45,7 @@ import (
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -175,9 +174,9 @@ func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.C
 		vm.SSH = sshKey.PublicKey
 
 		provisionResponse, err := vmAPI.Provisioning().VM().Provision(ctx, vm, false)
-		meta.SetStatusCondition(&status.Conditions, v1.Condition{
+		meta.SetStatusCondition(&status.Conditions, metav1.Condition{
 			Type:    ProvisionedType,
-			Status:  v1.ConditionFalse,
+			Status:  metav1.ConditionFalse,
 			Reason:  "Provisioning",
 			Message: "provisioning request was sent",
 		})
@@ -197,9 +196,9 @@ func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.C
 
 	log.Info("Using provisionID from machine to await completion")
 
-	meta.SetStatusCondition(&status.Conditions, v1.Condition{
+	meta.SetStatusCondition(&status.Conditions, metav1.Condition{
 		Type:    ProvisionedType,
-		Status:  v1.ConditionTrue,
+		Status:  metav1.ConditionTrue,
 		Reason:  "Provisioned",
 		Message: "Machine has been successfully created",
 	})
@@ -213,20 +212,20 @@ func isAlreadyProvisioning(ctx context.Context) bool {
 	lastChange := condition.LastTransitionTime.Time
 	const reasonInProvisioning = "InProvisioning"
 	if condition.Reason == reasonInProvisioning && time.Since(lastChange) > 5*time.Minute {
-		meta.SetStatusCondition(&status.Conditions, v1.Condition{
+		meta.SetStatusCondition(&status.Conditions, metav1.Condition{
 			Type:    ProvisionedType,
 			Reason:  "ReInitialising",
 			Message: "Could not find ongoing VM provisioning",
-			Status:  v1.ConditionFalse,
+			Status:  metav1.ConditionFalse,
 		})
 	}
 
-	return condition.Status == v1.ConditionFalse && condition.Reason == reasonInProvisioning
+	return condition.Status == metav1.ConditionFalse && condition.Reason == reasonInProvisioning
 }
 
 func ensureConditions(status *anxtypes.ProviderStatus) {
-	conditions := [...]v1.Condition{
-		{Type: ProvisionedType, Message: "", Status: v1.ConditionUnknown, Reason: "Initialising"},
+	conditions := [...]metav1.Condition{
+		{Type: ProvisionedType, Message: "", Status: metav1.ConditionUnknown, Reason: "Initialising"},
 	}
 	for _, condition := range conditions {
 		if meta.FindStatusCondition(status.Conditions, condition.Type) == nil {
@@ -550,7 +549,7 @@ func anexiaErrorToTerminalError(err error, msg string) error {
 		}
 	}
 
-	var responseError *client.ResponseError
+	var responseError *anxclient.ResponseError
 	if errors.As(err, &responseError) && (responseError.ErrorData.Code == http.StatusForbidden || responseError.ErrorData.Code == http.StatusUnauthorized) {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,

@@ -23,10 +23,10 @@ import (
 	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
 	"gopkg.in/yaml.v3"
 
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Task struct {
@@ -66,11 +66,11 @@ const (
 
 // TemplateClient handles interactions with the Tinkerbell Templates in the Tinkerbell cluster.
 type TemplateClient struct {
-	tinkclient client.Client
+	tinkclient ctrlruntimeclient.Client
 }
 
 // NewTemplateClient creates a new client for managing Tinkerbell Templates.
-func NewTemplateClient(k8sClient client.Client) *TemplateClient {
+func NewTemplateClient(k8sClient ctrlruntimeclient.Client) *TemplateClient {
 	return &TemplateClient{
 		tinkclient: k8sClient,
 	}
@@ -98,7 +98,7 @@ func (t *TemplateClient) CreateTemplate(ctx context.Context, namespace string) e
 		Name:      ProvisionWorkerNodeTemplate,
 		Namespace: namespace,
 	}, template); err != nil {
-		if kerrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			data, err := getTemplate(OSImageURL)
 			if err != nil {
 				return err

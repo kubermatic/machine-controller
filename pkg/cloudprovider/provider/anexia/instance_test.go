@@ -22,11 +22,11 @@ import (
 	"github.com/gophercloud/gophercloud/testhelper"
 	"go.anx.io/go-anxcloud/pkg/vsphere/info"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestAnexiaInstance(t *testing.T) {
-	addressCheck := func(t *testing.T, testcase string, instance *anexiaInstance, expected map[string]v1.NodeAddressType) {
+	addressCheck := func(t *testing.T, testcase string, instance *anexiaInstance, expected map[string]corev1.NodeAddressType) {
 		t.Run(testcase, func(t *testing.T) {
 			addresses := instance.Addresses()
 
@@ -36,7 +36,7 @@ func TestAnexiaInstance(t *testing.T) {
 
 	t.Run("empty instance", func(t *testing.T) {
 		instance := anexiaInstance{}
-		addressCheck(t, "no addresses", &instance, map[string]v1.NodeAddressType{})
+		addressCheck(t, "no addresses", &instance, map[string]corev1.NodeAddressType{})
 	})
 
 	t.Run("instance with only reservedAddresses set", func(t *testing.T) {
@@ -44,11 +44,11 @@ func TestAnexiaInstance(t *testing.T) {
 			reservedAddresses: []string{"10.0.0.2", "fda0:23::2", "8.8.8.8", "2001:db8::2"},
 		}
 
-		addressCheck(t, "expected addresses", &instance, map[string]v1.NodeAddressType{
-			"10.0.0.2":    v1.NodeInternalIP,
-			"fda0:23::2":  v1.NodeInternalIP,
-			"8.8.8.8":     v1.NodeExternalIP,
-			"2001:db8::2": v1.NodeExternalIP,
+		addressCheck(t, "expected addresses", &instance, map[string]corev1.NodeAddressType{
+			"10.0.0.2":    corev1.NodeInternalIP,
+			"fda0:23::2":  corev1.NodeInternalIP,
+			"8.8.8.8":     corev1.NodeExternalIP,
+			"2001:db8::2": corev1.NodeExternalIP,
 		})
 	})
 
@@ -68,11 +68,11 @@ func TestAnexiaInstance(t *testing.T) {
 			},
 		}
 
-		addressCheck(t, "expected addresses", &instance, map[string]v1.NodeAddressType{
-			"10.0.0.2":    v1.NodeInternalIP,
-			"fda0:23::2":  v1.NodeInternalIP,
-			"8.8.8.8":     v1.NodeExternalIP,
-			"2001:db8::2": v1.NodeExternalIP,
+		addressCheck(t, "expected addresses", &instance, map[string]corev1.NodeAddressType{
+			"10.0.0.2":    corev1.NodeInternalIP,
+			"fda0:23::2":  corev1.NodeInternalIP,
+			"8.8.8.8":     corev1.NodeExternalIP,
+			"2001:db8::2": corev1.NodeExternalIP,
 		})
 	})
 
@@ -93,11 +93,11 @@ func TestAnexiaInstance(t *testing.T) {
 			},
 		}
 
-		addressCheck(t, "expected addresses", &instance, map[string]v1.NodeAddressType{
-			"10.0.0.2":    v1.NodeInternalIP,
-			"fda0:23::2":  v1.NodeInternalIP,
-			"8.8.8.8":     v1.NodeExternalIP,
-			"2001:db8::2": v1.NodeExternalIP,
+		addressCheck(t, "expected addresses", &instance, map[string]corev1.NodeAddressType{
+			"10.0.0.2":    corev1.NodeInternalIP,
+			"fda0:23::2":  corev1.NodeInternalIP,
+			"8.8.8.8":     corev1.NodeExternalIP,
+			"2001:db8::2": corev1.NodeExternalIP,
 		})
 	})
 
@@ -117,11 +117,11 @@ func TestAnexiaInstance(t *testing.T) {
 			},
 		}
 
-		addressCheck(t, "expected addresses", &instance, map[string]v1.NodeAddressType{
-			"10.0.0.2":    v1.NodeInternalIP,
-			"fda0:23::2":  v1.NodeInternalIP,
-			"8.8.8.8":     v1.NodeExternalIP,
-			"2001:db8::2": v1.NodeExternalIP,
+		addressCheck(t, "expected addresses", &instance, map[string]corev1.NodeAddressType{
+			"10.0.0.2":    corev1.NodeInternalIP,
+			"fda0:23::2":  corev1.NodeInternalIP,
+			"8.8.8.8":     corev1.NodeExternalIP,
+			"2001:db8::2": corev1.NodeExternalIP,
 		})
 	})
 }

@@ -23,7 +23,6 @@ import (
 	"github.com/gophercloud/gophercloud/testhelper"
 
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
@@ -45,7 +44,7 @@ type ConfigTestCase struct {
 }
 
 type ValidateCallTestCase struct {
-	Spec          v1alpha1.MachineSpec
+	Spec          clusterv1alpha1.MachineSpec
 	ExpectedError error
 }
 
@@ -61,8 +60,8 @@ func getSpecsForValidationTest(t *testing.T, configCases []ConfigTestCase) []Val
 		})
 		testhelper.AssertNoErr(t, err)
 		testCases = append(testCases, ValidateCallTestCase{
-			Spec: v1alpha1.MachineSpec{
-				ProviderSpec: v1alpha1.ProviderSpec{
+			Spec: clusterv1alpha1.MachineSpec{
+				ProviderSpec: clusterv1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{Raw: jsonProviderConfig},
 				},
 			},
@@ -108,7 +107,7 @@ func hookableConfig(hook func(*anxtypes.RawConfig)) anxtypes.RawConfig {
 // this generates a full reconcileContext with some default values and allows hooking into it to e.g. remove/overwrite a value.
 func hookableReconcileContext(locationID string, templateID string, hook func(*reconcileContext)) reconcileContext {
 	context := reconcileContext{
-		Machine: &v1alpha1.Machine{
+		Machine: &clusterv1alpha1.Machine{
 			ObjectMeta: metav1.ObjectMeta{Name: "TestMachine"},
 		},
 		Status:   &anxtypes.ProviderStatus{},

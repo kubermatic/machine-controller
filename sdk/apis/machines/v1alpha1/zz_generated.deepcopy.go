@@ -22,7 +22,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -93,7 +93,7 @@ func (in *MachineSpec) DeepCopyInto(out *MachineSpec) {
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	if in.Taints != nil {
 		in, out := &in.Taints, &out.Taints
-		*out = make([]v1.Taint, len(*in))
+		*out = make([]corev1.Taint, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -107,7 +107,7 @@ func (in *MachineSpec) DeepCopyInto(out *MachineSpec) {
 	out.Versions = in.Versions
 	if in.ConfigSource != nil {
 		in, out := &in.ConfigSource, &out.ConfigSource
-		*out = new(v1.NodeConfigSource)
+		*out = new(corev1.NodeConfigSource)
 		(*in).DeepCopyInto(*out)
 	}
 	return
@@ -128,7 +128,7 @@ func (in *MachineStatus) DeepCopyInto(out *MachineStatus) {
 	*out = *in
 	if in.NodeRef != nil {
 		in, out := &in.NodeRef, &out.NodeRef
-		*out = new(v1.ObjectReference)
+		*out = new(corev1.ObjectReference)
 		**out = **in
 	}
 	in.LastUpdated.DeepCopyInto(&out.LastUpdated)

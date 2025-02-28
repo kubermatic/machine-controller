@@ -25,8 +25,8 @@ import (
 	"reflect"
 	"testing"
 
-	kubevirtv1 "kubevirt.io/api/core/v1"
-	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
+	kubevirtcorev1 "kubevirt.io/api/core/v1"
+	cdicorev1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
 	cloudprovidertesting "k8c.io/machine-controller/pkg/cloudprovider/testing"
 	"k8c.io/machine-controller/pkg/providerconfig"
@@ -47,7 +47,7 @@ var (
 	vmManifestsFS embed.FS
 	vmDir         = "testdata"
 	fakeclient    ctrlruntimeclient.WithWatch
-	expectedVms   map[string]*kubevirtv1.VirtualMachine
+	expectedVms   map[string]*kubevirtcorev1.VirtualMachine
 )
 
 func init() {
@@ -58,8 +58,8 @@ func init() {
 
 type kubevirtProviderSpecConf struct {
 	OsImageDV                string // if OsImage from DV and not from http source
-	Instancetype             *kubevirtv1.InstancetypeMatcher
-	Preference               *kubevirtv1.PreferenceMatcher
+	Instancetype             *kubevirtcorev1.InstancetypeMatcher
+	Preference               *kubevirtcorev1.PreferenceMatcher
 	StorageTarget            StorageTarget
 	OperatingSystem          string
 	TopologySpreadConstraint bool
@@ -68,7 +68,7 @@ type kubevirtProviderSpecConf struct {
 	SecondaryDisks           bool
 	OsImageSource            imageSource
 	OsImageSourceURL         string
-	PullMethod               cdiv1beta1.RegistryPullMethod
+	PullMethod               cdicorev1beta1.RegistryPullMethod
 	ProviderNetwork          *kubevirt.ProviderNetwork
 	ExtraHeadersSet          bool
 	EvictStrategy            string
@@ -209,11 +209,11 @@ func TestNewVirtualMachine(t *testing.T) {
 		{
 			name: "instancetype-preference-standard",
 			specConf: kubevirtProviderSpecConf{
-				Instancetype: &kubevirtv1.InstancetypeMatcher{
+				Instancetype: &kubevirtcorev1.InstancetypeMatcher{
 					Name: "standard-it",
 					Kind: "VirtualMachineInstancetype",
 				},
-				Preference: &kubevirtv1.PreferenceMatcher{
+				Preference: &kubevirtcorev1.PreferenceMatcher{
 					Name: "standard-pref",
 					Kind: "VirtualMachinePreference",
 				},
@@ -222,11 +222,11 @@ func TestNewVirtualMachine(t *testing.T) {
 		{
 			name: "instancetype-preference-custom",
 			specConf: kubevirtProviderSpecConf{
-				Instancetype: &kubevirtv1.InstancetypeMatcher{
+				Instancetype: &kubevirtcorev1.InstancetypeMatcher{
 					Name: "custom-it",
 					Kind: "VirtualMachineClusterInstancetype",
 				},
-				Preference: &kubevirtv1.PreferenceMatcher{
+				Preference: &kubevirtcorev1.PreferenceMatcher{
 					Name: "custom-pref",
 					Kind: "VirtualMachineClusterPreference",
 				},
@@ -273,7 +273,7 @@ func TestNewVirtualMachine(t *testing.T) {
 		},
 		{
 			name:     "registry-image-source-pod",
-			specConf: kubevirtProviderSpecConf{OsImageSource: registrySource, OsImageSourceURL: "docker://x.y.z.t/ubuntu.img:latest", PullMethod: cdiv1beta1.RegistryPullPod},
+			specConf: kubevirtProviderSpecConf{OsImageSource: registrySource, OsImageSourceURL: "docker://x.y.z.t/ubuntu.img:latest", PullMethod: cdicorev1beta1.RegistryPullPod},
 		},
 		{
 			name:     "pvc-image-source",
@@ -307,7 +307,7 @@ func TestNewVirtualMachine(t *testing.T) {
 
 			// Check the created VirtualMachine
 			vm, _ := p.newVirtualMachine(c, pc, machine, labels, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter())
-			vm.TypeMeta.APIVersion, vm.TypeMeta.Kind = kubevirtv1.VirtualMachineGroupVersionKind.ToAPIVersionAndKind()
+			vm.TypeMeta.APIVersion, vm.TypeMeta.Kind = kubevirtcorev1.VirtualMachineGroupVersionKind.ToAPIVersionAndKind()
 
 			if !equality.Semantic.DeepEqual(vm, expectedVms[tt.name]) {
 				t.Errorf("Diff %v", diff.ObjectGoPrintDiff(expectedVms[tt.name], vm))
@@ -322,10 +322,10 @@ func fakeMachineDeploymentNameAndRevisionForMachineGetter() machineDeploymentNam
 	}
 }
 
-func toVirtualMachines(objects []runtime.Object) map[string]*kubevirtv1.VirtualMachine {
-	vms := make(map[string]*kubevirtv1.VirtualMachine)
+func toVirtualMachines(objects []runtime.Object) map[string]*kubevirtcorev1.VirtualMachine {
+	vms := make(map[string]*kubevirtcorev1.VirtualMachine)
 	for _, o := range objects {
-		if vm, ok := o.(*kubevirtv1.VirtualMachine); ok {
+		if vm, ok := o.(*kubevirtcorev1.VirtualMachine); ok {
 			vms[vm.Name] = vm
 		}
 	}

@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/sdk/jsonutil"
 	"k8c.io/machine-controller/sdk/providerconfig"
 
@@ -56,7 +56,7 @@ type CloudProviderSpec struct {
 
 // UpdateProviderSpec updates the given provider spec with changed
 // configuration values.
-func (cpSpec *CloudProviderSpec) UpdateProviderSpec(spec v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+func (cpSpec *CloudProviderSpec) UpdateProviderSpec(spec clusterv1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
 	if spec.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}

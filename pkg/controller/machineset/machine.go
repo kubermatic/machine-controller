@@ -21,21 +21,21 @@ import (
 
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (c *ReconcileMachineSet) getMachineSetsForMachine(ctx context.Context, machineLog *zap.SugaredLogger, m *v1alpha1.Machine) []*v1alpha1.MachineSet {
+func (c *ReconcileMachineSet) getMachineSetsForMachine(ctx context.Context, machineLog *zap.SugaredLogger, m *clusterv1alpha1.Machine) []*clusterv1alpha1.MachineSet {
 	if len(m.Labels) == 0 {
 		machineLog.Infow("No MachineSets found for Machine because it has no labels")
 		return nil
 	}
 
-	msList := &v1alpha1.MachineSetList{}
-	listOptions := &client.ListOptions{
+	msList := &clusterv1alpha1.MachineSetList{}
+	listOptions := &ctrlruntimeclient.ListOptions{
 		Namespace: m.Namespace,
 	}
 
@@ -45,7 +45,7 @@ func (c *ReconcileMachineSet) getMachineSetsForMachine(ctx context.Context, mach
 		return nil
 	}
 
-	var mss []*v1alpha1.MachineSet
+	var mss []*clusterv1alpha1.MachineSet
 	for idx := range msList.Items {
 		ms := &msList.Items[idx]
 		if hasMatchingLabels(machineLog, ms, m) {
@@ -56,7 +56,7 @@ func (c *ReconcileMachineSet) getMachineSetsForMachine(ctx context.Context, mach
 	return mss
 }
 
-func hasMatchingLabels(machineLog *zap.SugaredLogger, machineSet *v1alpha1.MachineSet, machine *v1alpha1.Machine) bool {
+func hasMatchingLabels(machineLog *zap.SugaredLogger, machineSet *clusterv1alpha1.MachineSet, machine *clusterv1alpha1.Machine) bool {
 	selector, err := metav1.LabelSelectorAsSelector(&machineSet.Spec.Selector)
 	if err != nil {
 		machineLog.Errorw("Failed to convert selector", zap.Error(err))

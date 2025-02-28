@@ -31,9 +31,8 @@ import (
 	"github.com/gophercloud/gophercloud/testhelper"
 	"go.anx.io/go-anxcloud/pkg/api"
 	"go.anx.io/go-anxcloud/pkg/api/mock"
-	corev1 "go.anx.io/go-anxcloud/pkg/apis/core/v1"
-	vspherev1 "go.anx.io/go-anxcloud/pkg/apis/vsphere/v1"
-	"go.anx.io/go-anxcloud/pkg/client"
+	anxcorev1 "go.anx.io/go-anxcloud/pkg/apis/core/v1"
+	anxvspherev1 "go.anx.io/go-anxcloud/pkg/apis/vsphere/v1"
 	anxclient "go.anx.io/go-anxcloud/pkg/client"
 	"go.anx.io/go-anxcloud/pkg/core"
 	"go.anx.io/go-anxcloud/pkg/ipam/address"
@@ -43,7 +42,7 @@ import (
 
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
@@ -63,11 +62,11 @@ func TestAnexiaProvider(t *testing.T) {
 	log := zap.NewNop().Sugar()
 
 	a := mock.NewMockAPI()
-	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID-OLD-BUILD", Name: testTemplateName, Build: "b01"})
-	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID", Name: testTemplateName, Build: "b02"})
-	a.FakeExisting(&vspherev1.Template{Identifier: "WRONG-TEMPLATE-NAME", Name: "Wrong Template Name", Build: "b02"})
-	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID-NO-NETWORK-CONFIG", Name: "no-network-config", Build: "b03"})
-	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID-ADDITIONAL-DISKS", Name: "additional-disks", Build: "b03"})
+	a.FakeExisting(&anxvspherev1.Template{Identifier: "TEMPLATE-ID-OLD-BUILD", Name: testTemplateName, Build: "b01"})
+	a.FakeExisting(&anxvspherev1.Template{Identifier: "TEMPLATE-ID", Name: testTemplateName, Build: "b02"})
+	a.FakeExisting(&anxvspherev1.Template{Identifier: "WRONG-TEMPLATE-NAME", Name: "Wrong Template Name", Build: "b02"})
+	a.FakeExisting(&anxvspherev1.Template{Identifier: "TEMPLATE-ID-NO-NETWORK-CONFIG", Name: "no-network-config", Build: "b03"})
+	a.FakeExisting(&anxvspherev1.Template{Identifier: "TEMPLATE-ID-ADDITIONAL-DISKS", Name: "additional-disks", Build: "b03"})
 
 	t.Cleanup(func() {
 		testhelper.TeardownHTTP()
@@ -399,7 +398,7 @@ func TestEnsureConditions(t *testing.T) {
 func TestGetProviderStatus(t *testing.T) {
 	t.Parallel()
 
-	machine := &v1alpha1.Machine{}
+	machine := &clusterv1alpha1.Machine{}
 	providerStatus := anxtypes.ProviderStatus{
 		InstanceID: "InstanceID",
 	}
@@ -414,7 +413,7 @@ func TestGetProviderStatus(t *testing.T) {
 
 func TestUpdateStatus(t *testing.T) {
 	t.Parallel()
-	machine := &v1alpha1.Machine{}
+	machine := &clusterv1alpha1.Machine{}
 	providerStatus := anxtypes.ProviderStatus{
 		InstanceID: "InstanceID",
 	}
@@ -423,7 +422,7 @@ func TestUpdateStatus(t *testing.T) {
 	machine.Status.ProviderStatus = &runtime.RawExtension{Raw: providerStatusJSON}
 
 	called := false
-	err = updateMachineStatus(machine, providerStatus, func(paramMachine *v1alpha1.Machine, _ ...cloudprovidertypes.MachineModifier) error {
+	err = updateMachineStatus(machine, providerStatus, func(paramMachine *clusterv1alpha1.Machine, _ ...cloudprovidertypes.MachineModifier) error {
 		called = true
 		testhelper.AssertEquals(t, machine, paramMachine)
 		status := getProviderStatus(zap.NewNop().Sugar(), machine)
@@ -449,19 +448,19 @@ func Test_anexiaErrorToTerminalError(t *testing.T) {
 	})
 
 	legacyClientRun := func(url string) error {
-		client, err := client.New(client.BaseURL(url), client.IgnoreMissingToken(), client.ParseEngineErrors(true))
+		client, err := anxclient.New(anxclient.BaseURL(url), anxclient.IgnoreMissingToken(), anxclient.ParseEngineErrors(true))
 		testhelper.AssertNoErr(t, err)
 		_, err = core.NewAPI(client).Location().List(context.Background(), 1, 1, "", "")
 		return err
 	}
 
 	apiClientRun := func(url string) error {
-		client, err := api.NewAPI(api.WithClientOptions(
-			client.BaseURL(url),
-			client.IgnoreMissingToken(),
+		api, err := api.NewAPI(api.WithClientOptions(
+			anxclient.BaseURL(url),
+			anxclient.IgnoreMissingToken(),
 		))
 		testhelper.AssertNoErr(t, err)
-		return client.Get(context.Background(), &corev1.Location{Identifier: "foo"})
+		return api.Get(context.Background(), &anxcorev1.Location{Identifier: "foo"})
 	}
 
 	testCases := []struct {
@@ -512,7 +511,7 @@ func Test_anexiaErrorToTerminalError(t *testing.T) {
 	})
 
 	t.Run("legacy api client unspecific ResponseError shouldn't convert to TerminalError", func(t *testing.T) {
-		var err error = &client.ResponseError{}
+		var err error = &anxclient.ResponseError{}
 		err = anexiaErrorToTerminalError(err, "foo")
 		if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
 			t.Errorf("unexpected error %#v, expected no TerminalError", err)

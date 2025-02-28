@@ -40,7 +40,7 @@ import (
 	opennebulatypes "k8c.io/machine-controller/sdk/cloudprovider/opennebula"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -424,12 +424,12 @@ func (i *openNebulaInstance) ProviderID() string {
 	return "opennebula://" + strconv.Itoa(i.vm.ID)
 }
 
-func (i *openNebulaInstance) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
+func (i *openNebulaInstance) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
 
 	for _, nic := range i.vm.Template.GetNICs() {
 		ip, _ := nic.Get(shared.IP)
-		addresses[ip] = v1.NodeInternalIP
+		addresses[ip] = corev1.NodeInternalIP
 	}
 
 	return addresses

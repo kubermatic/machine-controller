@@ -27,16 +27,16 @@ import (
 	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	certificatesv1client "k8s.io/client-go/kubernetes/typed/certificates/v1"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -62,7 +62,7 @@ var (
 )
 
 type reconciler struct {
-	client.Client
+	ctrlruntimeclient.Client
 	log *zap.SugaredLogger
 	// Have to use the typed client because csr approval is a subresource
 	// the dynamic client does not approve
@@ -102,7 +102,7 @@ func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	// Get the CSR object
 	csr := &certificatesv1.CertificateSigningRequest{}
 	if err := r.Get(ctx, request.NamespacedName, csr); err != nil {
-		if kerrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, nil
 		}
 		log.Errorw("Failed to get CertificateSigningRequest", zap.Error(err))
@@ -209,7 +209,7 @@ func (r *reconciler) validateCSRObject(csr *certificatesv1.CertificateSigningReq
 
 // validateX509CSR validates the certificate request by comparing CN with username,
 // and organization with groups.
-func (r *reconciler) validateX509CSR(csr *certificatesv1.CertificateSigningRequest, certReq *x509.CertificateRequest, machine v1alpha1.Machine) error {
+func (r *reconciler) validateX509CSR(csr *certificatesv1.CertificateSigningRequest, certReq *x509.CertificateRequest, machine clusterv1alpha1.Machine) error {
 	// Validate Subject CommonName.
 	if certReq.Subject.CommonName != csr.Spec.Username {
 		return fmt.Errorf("commonName '%s' is different then CSR username '%s'", certReq.Subject.CommonName, csr.Spec.Username)
@@ -251,11 +251,11 @@ func (r *reconciler) validateX509CSR(csr *certificatesv1.CertificateSigningReque
 	return nil
 }
 
-func (r *reconciler) getMachineForNode(ctx context.Context, nodeName string) (v1alpha1.Machine, bool, error) {
+func (r *reconciler) getMachineForNode(ctx context.Context, nodeName string) (clusterv1alpha1.Machine, bool, error) {
 	// List all Machines in all namespaces.
-	machines := &v1alpha1.MachineList{}
+	machines := &clusterv1alpha1.MachineList{}
 	if err := r.Client.List(ctx, machines); err != nil {
-		return v1alpha1.Machine{}, false, fmt.Errorf("failed to list all machine objects: %w", err)
+		return clusterv1alpha1.Machine{}, false, fmt.Errorf("failed to list all machine objects: %w", err)
 	}
 
 	for _, machine := range machines.Items {
@@ -264,7 +264,7 @@ func (r *reconciler) getMachineForNode(ctx context.Context, nodeName string) (v1
 		}
 	}
 
-	return v1alpha1.Machine{}, false, fmt.Errorf("failed to get machine for given node name '%s'", nodeName)
+	return clusterv1alpha1.Machine{}, false, fmt.Errorf("failed to get machine for given node name '%s'", nodeName)
 }
 
 func isUsageInUsageList(usage certificatesv1.KeyUsage, usageList []certificatesv1.KeyUsage) bool {

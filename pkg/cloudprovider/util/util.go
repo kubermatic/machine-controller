@@ -21,18 +21,18 @@ import (
 
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	kuberneteshelper "k8c.io/machine-controller/pkg/kubernetes"
-	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 )
 
 // RemoveFinalizerOnInstanceNotFound checks whether a finalizer exists and removes it on demand.
 func RemoveFinalizerOnInstanceNotFound(finalizer string,
-	machine *v1alpha1.Machine,
+	machine *clusterv1alpha1.Machine,
 	provider *cloudprovidertypes.ProviderData) (bool, error) {
 	if !kuberneteshelper.HasFinalizer(machine, finalizer) {
 		return true, nil
 	}
 
-	if err := provider.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := provider.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizer)
 	}); err != nil {
 		return false, fmt.Errorf("failed updating machine %v finzaliers: %w", machine.Name, err)

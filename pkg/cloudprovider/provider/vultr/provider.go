@@ -38,7 +38,7 @@ import (
 	vultrtypes "k8c.io/machine-controller/sdk/cloudprovider/vultr"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -585,15 +585,15 @@ func (v *vultrPhysicalMachine) ProviderID() string {
 	return "vultr://" + v.instance.ID
 }
 
-func (v *vultrVirtualMachine) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
-	addresses[v.instance.MainIP] = v1.NodeExternalIP
-	addresses[v.instance.InternalIP] = v1.NodeInternalIP
+func (v *vultrVirtualMachine) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
+	addresses[v.instance.MainIP] = corev1.NodeExternalIP
+	addresses[v.instance.InternalIP] = corev1.NodeInternalIP
 	return addresses
 }
-func (v *vultrPhysicalMachine) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
-	addresses[v.instance.MainIP] = v1.NodeExternalIP
+func (v *vultrPhysicalMachine) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
+	addresses[v.instance.MainIP] = corev1.NodeExternalIP
 	return addresses
 }
 

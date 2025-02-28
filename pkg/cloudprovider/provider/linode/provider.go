@@ -42,7 +42,7 @@ import (
 	linodetypes "k8c.io/machine-controller/sdk/cloudprovider/linode"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -397,12 +397,12 @@ func (d *linodeInstance) ProviderID() string {
 	return fmt.Sprintf("linode://%s", d.ID())
 }
 
-func (d *linodeInstance) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
+func (d *linodeInstance) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
 	for _, n := range d.linode.IPv4 {
-		addresses[n.String()] = v1.NodeInternalIP
+		addresses[n.String()] = corev1.NodeInternalIP
 	}
-	addresses[d.linode.IPv6] = v1.NodeInternalIP
+	addresses[d.linode.IPv6] = corev1.NodeInternalIP
 	return addresses
 }
 

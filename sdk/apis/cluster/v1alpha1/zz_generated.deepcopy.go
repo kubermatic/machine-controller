@@ -23,7 +23,7 @@ package v1alpha1
 
 import (
 	common "k8c.io/machine-controller/sdk/apis/cluster/common"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	intstr "k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -156,7 +156,7 @@ func (in *MachineClassRef) DeepCopyInto(out *MachineClassRef) {
 	*out = *in
 	if in.ObjectReference != nil {
 		in, out := &in.ObjectReference, &out.ObjectReference
-		*out = new(v1.ObjectReference)
+		*out = new(corev1.ObjectReference)
 		**out = **in
 	}
 	return
@@ -488,7 +488,7 @@ func (in *MachineSpec) DeepCopyInto(out *MachineSpec) {
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	if in.Taints != nil {
 		in, out := &in.Taints, &out.Taints
-		*out = make([]v1.Taint, len(*in))
+		*out = make([]corev1.Taint, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -497,7 +497,7 @@ func (in *MachineSpec) DeepCopyInto(out *MachineSpec) {
 	out.Versions = in.Versions
 	if in.ConfigSource != nil {
 		in, out := &in.ConfigSource, &out.ConfigSource
-		*out = new(v1.NodeConfigSource)
+		*out = new(corev1.NodeConfigSource)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.ProviderID != nil {
@@ -523,7 +523,7 @@ func (in *MachineStatus) DeepCopyInto(out *MachineStatus) {
 	*out = *in
 	if in.NodeRef != nil {
 		in, out := &in.NodeRef, &out.NodeRef
-		*out = new(v1.ObjectReference)
+		*out = new(corev1.ObjectReference)
 		**out = **in
 	}
 	if in.LastUpdated != nil {
@@ -552,12 +552,12 @@ func (in *MachineStatus) DeepCopyInto(out *MachineStatus) {
 	}
 	if in.Addresses != nil {
 		in, out := &in.Addresses, &out.Addresses
-		*out = make([]v1.NodeAddress, len(*in))
+		*out = make([]corev1.NodeAddress, len(*in))
 		copy(*out, *in)
 	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]v1.NodeCondition, len(*in))
+		*out = make([]corev1.NodeCondition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

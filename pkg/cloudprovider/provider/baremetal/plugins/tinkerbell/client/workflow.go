@@ -26,10 +26,10 @@ import (
 
 	tink "k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // DefaultPartitionNumber defines the default value for the "partition_number" field.
@@ -40,11 +40,11 @@ const PartitionNumberAnnotation = "hardware.kubermatic.io/partition-number"
 
 // WorkflowClient handles interactions with the Tinkerbell Workflows.
 type WorkflowClient struct {
-	tinkclient client.Client
+	tinkclient ctrlruntimeclient.Client
 }
 
 // NewWorkflowClient creates a new client for managing Tinkerbell workflows.
-func NewWorkflowClient(k8sClient client.Client) *WorkflowClient {
+func NewWorkflowClient(k8sClient ctrlruntimeclient.Client) *WorkflowClient {
 	return &WorkflowClient{
 		tinkclient: k8sClient,
 	}
@@ -97,7 +97,7 @@ func (w *WorkflowClient) CreateWorkflow(ctx context.Context, userData, templateR
 // GetWorkflow retrieves a Tinkerbell Workflow resource from the cluster.
 func (w *WorkflowClient) GetWorkflow(ctx context.Context, name string, namespace string) (*tinkv1alpha1.Workflow, error) {
 	workflow := &tinkv1alpha1.Workflow{}
-	if err := w.tinkclient.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, workflow); err != nil {
+	if err := w.tinkclient.Get(ctx, ctrlruntimeclient.ObjectKey{Name: name, Namespace: namespace}, workflow); err != nil {
 		return nil, fmt.Errorf("failed to get workflow: %w", err)
 	}
 	return workflow, nil
@@ -107,13 +107,13 @@ func (w *WorkflowClient) GetWorkflow(ctx context.Context, name string, namespace
 // state, to avoid the situation of re-running a workflow for a de-provisioned machine.
 func (w *WorkflowClient) CleanupWorkflows(ctx context.Context, hardwareName, namespace string) error {
 	workflows := &tinkv1alpha1.WorkflowList{}
-	if err := w.tinkclient.List(ctx, workflows, &client.ListOptions{
+	if err := w.tinkclient.List(ctx, workflows, &ctrlruntimeclient.ListOptions{
 		Namespace: namespace,
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			tink.HardwareRefLabel: hardwareName,
 		}),
 	}); err != nil {
-		if kerrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return nil
 		}
 
@@ -124,7 +124,7 @@ func (w *WorkflowClient) CleanupWorkflows(ctx context.Context, hardwareName, nam
 		if workflow.Status.State == tinkv1alpha1.WorkflowStatePending ||
 			workflow.Status.State == tinkv1alpha1.WorkflowStateTimeout {
 			if err := w.tinkclient.Delete(ctx, &workflow); err != nil {
-				if !kerrors.IsNotFound(err) {
+				if !apierrors.IsNotFound(err) {
 					return fmt.Errorf("failed to delete workflow: %w", err)
 				}
 			}

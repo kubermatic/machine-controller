@@ -38,7 +38,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -159,7 +159,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	err := wait.PollUntilContextTimeout(ctx, cachePopulatingInterval, cachePopulatingTimeout, false, func(ctx context.Context) (bool, error) {
 		err := client.Get(ctx, types.NamespacedName{Name: machines.CRDName}, &apiextensionsv1.CustomResourceDefinition{})
 		if err != nil {
-			if kerrors.IsNotFound(err) {
+			if apierrors.IsNotFound(err) {
 				noMigrationNeed = true
 				return true, nil
 			}
@@ -260,7 +260,7 @@ func migrateMachines(ctx context.Context, log *zap.SugaredLogger, client ctrlrun
 			existingClusterV1alpha1Machine)
 		if err != nil {
 			// Some random error occurred
-			if !kerrors.IsNotFound(err) {
+			if !apierrors.IsNotFound(err) {
 				return fmt.Errorf("failed to check if converted machine %s already exists: %w", convertedClusterv1alpha1Machine.Name, err)
 			}
 
@@ -347,7 +347,7 @@ func ensureClusterV1Alpha1NodeOwnership(ctx context.Context, machineLog *zap.Sug
 	for _, nodeName := range nodeNameCandidates {
 		node := &corev1.Node{}
 		if err := client.Get(ctx, types.NamespacedName{Name: nodeName}, node); err != nil {
-			if kerrors.IsNotFound(err) {
+			if apierrors.IsNotFound(err) {
 				machineLog.Info("No node for machines found")
 				continue
 			}
@@ -399,7 +399,7 @@ func deleteMachinesV1Alpha1Machine(ctx context.Context,
 
 func isMachinesV1Alpha1MachineDeleted(ctx context.Context, name string, client ctrlruntimeclient.Client) (bool, error) {
 	if err := client.Get(ctx, types.NamespacedName{Name: name}, &machinesv1alpha1.Machine{}); err != nil {
-		if kerrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return true, nil
 		}
 		return false, err

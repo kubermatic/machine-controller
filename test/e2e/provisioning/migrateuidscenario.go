@@ -29,7 +29,7 @@ import (
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	"k8c.io/machine-controller/pkg/providerconfig"
-	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,13 +49,13 @@ func verifyMigrateUID(ctx context.Context, _, manifestPath string, parameters []
 		return fmt.Errorf("failed to prepare the manifest, due to: %w", err)
 	}
 
-	machineDeployment := &v1alpha1.MachineDeployment{}
+	machineDeployment := &clusterv1alpha1.MachineDeployment{}
 	manifestReader := strings.NewReader(manifest)
 	manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
 	if err := manifestDecoder.Decode(machineDeployment); err != nil {
 		return fmt.Errorf("failed to decode manifest into MachineDeployment: %w", err)
 	}
-	machine := &v1alpha1.Machine{
+	machine := &clusterv1alpha1.Machine{
 		ObjectMeta: machineDeployment.Spec.Template.ObjectMeta,
 		Spec:       machineDeployment.Spec.Template.Spec,
 	}

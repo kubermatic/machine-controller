@@ -21,7 +21,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -76,7 +76,7 @@ func (c *Collector) Describe(desc chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (c *Collector) Collect(metrics chan<- prometheus.Metric) {
-	machineDeployments := &v1alpha1.MachineDeploymentList{}
+	machineDeployments := &clusterv1alpha1.MachineDeploymentList{}
 	if err := c.client.List(c.ctx, machineDeployments); err != nil {
 		return
 	}

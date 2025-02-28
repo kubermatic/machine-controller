@@ -26,7 +26,7 @@ import (
 	"k8c.io/machine-controller/pkg/node/nodemanager"
 
 	corev1 "k8s.io/api/core/v1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -123,7 +123,7 @@ func (vc *NodeVolumeAttachmentsCleanup) getFilteredPods(ctx context.Context) ([]
 						defer wg.Done()
 						pods, err := vc.kubeClient.CoreV1().Pods(pvc.Namespace).List(ctx, metav1.ListOptions{})
 						switch {
-						case kerrors.IsTooManyRequests(err):
+						case apierrors.IsTooManyRequests(err):
 							return
 						case err != nil:
 							errCh <- fmt.Errorf("failed to list pod: %w", err)
@@ -183,10 +183,10 @@ func (vc *NodeVolumeAttachmentsCleanup) deletePods(ctx context.Context, log *zap
 					return
 				}
 				err := vc.kubeClient.CoreV1().Pods(p.Namespace).Delete(ctx, p.Name, metav1.DeleteOptions{})
-				if err == nil || kerrors.IsNotFound(err) {
+				if err == nil || apierrors.IsNotFound(err) {
 					log.Debugw("Successfully deleted pod on node", "pod", ctrlruntimeclient.ObjectKeyFromObject(&p))
 					return
-				} else if kerrors.IsTooManyRequests(err) {
+				} else if apierrors.IsTooManyRequests(err) {
 					// PDB prevents pod deletion, return and make the controller retry later.
 					return
 				}
