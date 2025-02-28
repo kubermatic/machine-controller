@@ -33,17 +33,17 @@ import (
 	gocache "github.com/patrickmn/go-cache"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	azuretypes "k8c.io/machine-controller/pkg/cloudprovider/provider/azure/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/cloudprovider/util"
 	kuberneteshelper "k8c.io/machine-controller/pkg/kubernetes"
 	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	azuretypes "k8c.io/machine-controller/sdk/cloudprovider/azure"
+	"k8c.io/machine-controller/sdk/net"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -378,7 +378,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	return &c, pconfig, nil
 }
 
-func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm *compute.VirtualMachine, ipFamily util.IPFamily) (map[string]v1.NodeAddressType, error) {
+func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm *compute.VirtualMachine, ipFamily net.IPFamily) (map[string]v1.NodeAddressType, error) {
 	var (
 		ipAddresses = map[string]v1.NodeAddressType{}
 		err         error
@@ -412,7 +412,7 @@ func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm
 	return ipAddresses, nil
 }
 
-func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, ipFamily util.IPFamily, ifaceName string) (map[string]v1.NodeAddressType, error) {
+func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, ipFamily net.IPFamily, ifaceName string) (map[string]v1.NodeAddressType, error) {
 	ifClient, err := getInterfacesClient(c)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interfaces client: %w", err)
@@ -1002,14 +1002,14 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 	}
 
 	switch f := providerConfig.Network.GetIPFamily(); f {
-	case util.IPFamilyUnspecified, util.IPFamilyIPv4:
+	case net.IPFamilyUnspecified, net.IPFamilyIPv4:
 		//noop
-	case util.IPFamilyIPv6:
-		return fmt.Errorf(util.ErrIPv6OnlyUnsupported)
-	case util.IPFamilyIPv4IPv6, util.IPFamilyIPv6IPv4:
+	case net.IPFamilyIPv6:
+		return fmt.Errorf(net.ErrIPv6OnlyUnsupported)
+	case net.IPFamilyIPv4IPv6, net.IPFamilyIPv6IPv4:
 		// validate
 	default:
-		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
+		return fmt.Errorf(net.ErrUnknownNetworkFamily, f)
 	}
 
 	if c.PublicIPSKU != nil {
@@ -1109,7 +1109,7 @@ func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machi
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerNIC) {
-		_, err = createOrUpdateNetworkInterface(ctx, log, ifaceName(machine), newUID, config, publicIP, publicIPv6, util.IPFamilyUnspecified, config.EnableAcceleratedNetworking)
+		_, err = createOrUpdateNetworkInterface(ctx, log, ifaceName(machine), newUID, config, publicIP, publicIPv6, net.IPFamilyUnspecified, config.EnableAcceleratedNetworking)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on main network interface: %w", err)
 		}

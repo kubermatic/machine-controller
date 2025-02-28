@@ -27,7 +27,7 @@ import (
 	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"

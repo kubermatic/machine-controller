@@ -21,6 +21,15 @@ import (
 	"k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
 )
 
+const (
+	Unknown        string = "Unknown"
+	Staged         string = "Staged"
+	Provisioned    string = "Provisioned"
+	Decommissioned string = "Decommissioned"
+
+	HardwareRefLabel = "app.kubernetes.io/hardware-reference"
+)
+
 type Hardware struct {
 	*tinkv1alpha1.Hardware `json:"hardware"`
 }

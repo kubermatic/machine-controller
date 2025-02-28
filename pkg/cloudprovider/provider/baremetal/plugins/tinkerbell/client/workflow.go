@@ -22,9 +22,10 @@ import (
 	"fmt"
 	"time"
 
+	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
+
 	tink "k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 
-	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"

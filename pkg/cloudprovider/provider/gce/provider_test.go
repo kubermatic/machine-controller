@@ -26,8 +26,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/providerconfig"
+	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"

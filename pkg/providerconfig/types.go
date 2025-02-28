@@ -24,12 +24,12 @@ import (
 	"strconv"
 	"time"
 
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
-	"k8c.io/machine-controller/pkg/userdata/amzn2"
-	"k8c.io/machine-controller/pkg/userdata/flatcar"
-	"k8c.io/machine-controller/pkg/userdata/rhel"
-	"k8c.io/machine-controller/pkg/userdata/rockylinux"
-	"k8c.io/machine-controller/pkg/userdata/ubuntu"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/userdata/amzn2"
+	"k8c.io/machine-controller/sdk/userdata/flatcar"
+	"k8c.io/machine-controller/sdk/userdata/rhel"
+	"k8c.io/machine-controller/sdk/userdata/rockylinux"
+	"k8c.io/machine-controller/sdk/userdata/ubuntu"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,6 +40,13 @@ import (
 type ConfigVarResolver struct {
 	ctx    context.Context
 	client ctrlruntimeclient.Client
+}
+
+func NewConfigVarResolver(ctx context.Context, client ctrlruntimeclient.Client) *ConfigVarResolver {
+	return &ConfigVarResolver{
+		ctx:    ctx,
+		client: client,
+	}
 }
 
 func (cvr *ConfigVarResolver) GetConfigVarDurationValue(configVar providerconfigtypes.ConfigVarString) (time.Duration, error) {
@@ -171,18 +178,8 @@ func (cvr *ConfigVarResolver) GetConfigVarBoolValueOrEnv(configVar providerconfi
 	return false, nil
 }
 
-func NewConfigVarResolver(ctx context.Context, client ctrlruntimeclient.Client) *ConfigVarResolver {
-	return &ConfigVarResolver{
-		ctx:    ctx,
-		client: client,
-	}
-}
-
-func DefaultOperatingSystemSpec(
-	osys providerconfigtypes.OperatingSystem,
-	operatingSystemSpec runtime.RawExtension,
-) (runtime.RawExtension, error) {
-	switch osys {
+func DefaultOperatingSystemSpec(os providerconfigtypes.OperatingSystem, operatingSystemSpec runtime.RawExtension) (runtime.RawExtension, error) {
+	switch os {
 	case providerconfigtypes.OperatingSystemAmazonLinux2:
 		return amzn2.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemFlatcar:

@@ -19,10 +19,10 @@ package anexia
 import (
 	"context"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
-	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 )
 
 type contextKey byte

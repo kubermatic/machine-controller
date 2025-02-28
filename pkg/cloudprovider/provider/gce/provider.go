@@ -33,13 +33,13 @@ import (
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/cloudprovider/util"
 	"k8c.io/machine-controller/pkg/providerconfig"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	"k8c.io/machine-controller/sdk/net"
 
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -116,13 +116,13 @@ func (p *Provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec cluste
 	}
 
 	switch cfg.providerConfig.Network.GetIPFamily() {
-	case util.IPFamilyUnspecified, util.IPFamilyIPv4:
+	case net.IPFamilyUnspecified, net.IPFamilyIPv4:
 		// noop
-	case util.IPFamilyIPv6:
-		return newError(common.InvalidConfigurationMachineError, util.ErrIPv6OnlyUnsupported)
-	case util.IPFamilyIPv4IPv6, util.IPFamilyIPv6IPv4:
+	case net.IPFamilyIPv6:
+		return newError(common.InvalidConfigurationMachineError, net.ErrIPv6OnlyUnsupported)
+	case net.IPFamilyIPv4IPv6, net.IPFamilyIPv6IPv4:
 	default:
-		return newError(common.InvalidConfigurationMachineError, util.ErrUnknownNetworkFamily, cfg.providerConfig.Network.GetIPFamily())
+		return newError(common.InvalidConfigurationMachineError, net.ErrUnknownNetworkFamily, cfg.providerConfig.Network.GetIPFamily())
 	}
 
 	if cfg.machineType == "" {

@@ -17,9 +17,9 @@ limitations under the License.
 package rhsm
 
 import (
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider/types"
 	kuberneteshelper "k8c.io/machine-controller/pkg/kubernetes"
+	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 )
 
 const (

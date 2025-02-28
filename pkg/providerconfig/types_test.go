@@ -19,7 +19,7 @@ package providerconfig
 import (
 	"testing"
 
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	"k8s.io/apimachinery/pkg/runtime"
 )

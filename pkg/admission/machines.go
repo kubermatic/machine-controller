@@ -24,11 +24,11 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"golang.org/x/crypto/ssh"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider"
 	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"

@@ -30,8 +30,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	"k8c.io/machine-controller/pkg/cloudprovider/util"
 	clusterinfo "k8c.io/machine-controller/pkg/clusterinfo"
@@ -41,8 +39,10 @@ import (
 	"k8c.io/machine-controller/pkg/controller/nodecsrapprover"
 	"k8c.io/machine-controller/pkg/health"
 	machinecontrollerlog "k8c.io/machine-controller/pkg/log"
-	machinesv1alpha1 "k8c.io/machine-controller/pkg/machines/v1alpha1"
+	"k8c.io/machine-controller/pkg/migrations"
 	"k8c.io/machine-controller/pkg/node"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	machinesv1alpha1 "k8c.io/machine-controller/sdk/apis/machines/v1alpha1"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/types"

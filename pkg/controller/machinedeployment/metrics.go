@@ -20,7 +20,9 @@ import (
 	"context"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+
+	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 

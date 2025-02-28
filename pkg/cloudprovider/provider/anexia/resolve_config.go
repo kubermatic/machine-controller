@@ -20,13 +20,12 @@ import (
 	"context"
 	"fmt"
 
-	"go.uber.org/zap"
-
 	"go.anx.io/go-anxcloud/pkg/api"
 	corev1 "go.anx.io/go-anxcloud/pkg/apis/core/v1"
 	vspherev1 "go.anx.io/go-anxcloud/pkg/apis/vsphere/v1"
+	"go.uber.org/zap"
 
-	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
+	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
 )
 
 // resolvedDisk contains the resolved values from types.RawDisk.

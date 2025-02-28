@@ -28,14 +28,14 @@ import (
 	"github.com/equinix/equinix-sdk-go/services/metalv1"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	equinixmetaltypes "k8c.io/machine-controller/pkg/cloudprovider/provider/equinixmetal/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	equinixmetaltypes "k8c.io/machine-controller/sdk/cloudprovider/equinixmetal"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"

@@ -24,7 +24,7 @@ import (
 
 	gocache "github.com/patrickmn/go-cache"
 
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 )
 
 type CloudproviderCache struct {

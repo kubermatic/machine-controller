@@ -31,14 +31,14 @@ import (
 	"github.com/OpenNebula/one/src/oca/go/src/goca/schemas/vm/keys"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	opennebulatypes "k8c.io/machine-controller/pkg/cloudprovider/provider/opennebula/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	opennebulatypes "k8c.io/machine-controller/sdk/cloudprovider/opennebula"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"

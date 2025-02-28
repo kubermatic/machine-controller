@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
+
 	"k8c.io/machine-controller/pkg/cloudprovider/errors"
 	tbtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 

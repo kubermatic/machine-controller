@@ -32,10 +32,10 @@ import (
 	"github.com/gophercloud/gophercloud/testhelper/client"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidertesting "k8c.io/machine-controller/pkg/cloudprovider/testing"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	"k8c.io/machine-controller/pkg/providerconfig"
+	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"

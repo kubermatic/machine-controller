@@ -19,9 +19,9 @@ package util
 import (
 	"fmt"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	kuberneteshelper "k8c.io/machine-controller/pkg/kubernetes"
+	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 )
 
 // RemoveFinalizerOnInstanceNotFound checks whether a finalizer exists and removes it on demand.

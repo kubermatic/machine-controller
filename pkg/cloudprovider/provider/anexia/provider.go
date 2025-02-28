@@ -34,21 +34,22 @@ import (
 	anxvm "go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	cloudproviderutil "k8c.io/machine-controller/pkg/cloudprovider/util"
 	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 const (
@@ -96,7 +97,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	// make sure status is reflected in Machine Object
 	defer func() {
 		// if error occurs during updating the machine object don't override the original error
-		retErr = anxtypes.NewMultiError(retErr, updateMachineStatus(machine, status, data.Update))
+		retErr = kerrors.NewAggregate([]error{retErr, updateMachineStatus(machine, status, data.Update)})
 	}()
 
 	// provision machine
@@ -395,7 +396,7 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 	// make sure status is reflected in Machine Object
 	defer func() {
 		// if error occurs during updating the machine object don't override the original error
-		retErr = anxtypes.NewMultiError(retErr, updateMachineStatus(machine, status, data.Update))
+		retErr = kerrors.NewAggregate([]error{retErr, updateMachineStatus(machine, status, data.Update)})
 	}()
 
 	ensureConditions(&status)

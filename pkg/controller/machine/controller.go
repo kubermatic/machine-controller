@@ -31,8 +31,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/bootstrap"
 	"k8c.io/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
@@ -44,9 +42,11 @@ import (
 	"k8c.io/machine-controller/pkg/node/eviction"
 	"k8c.io/machine-controller/pkg/node/poddeletion"
 	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
 	"k8c.io/machine-controller/pkg/rhsm"
-	"k8c.io/machine-controller/pkg/userdata/rhel"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/userdata/rhel"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"

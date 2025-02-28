@@ -26,8 +26,8 @@ import (
 	anxvm "go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
 )
 
 func networkInterfacesForProvisioning(ctx context.Context, log *zap.SugaredLogger, client anxclient.Client) ([]anxvm.Network, error) {

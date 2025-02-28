@@ -20,9 +20,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"

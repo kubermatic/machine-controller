@@ -23,8 +23,8 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	dutil "k8c.io/machine-controller/pkg/controller/util"
+	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	"k8s.io/utils/integer"
 	"sigs.k8s.io/controller-runtime/pkg/client"

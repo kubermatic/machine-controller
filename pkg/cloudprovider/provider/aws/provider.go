@@ -38,16 +38,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	awstypes "k8c.io/machine-controller/pkg/cloudprovider/provider/aws/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/cloudprovider/util"
 	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
-	"k8c.io/machine-controller/pkg/userdata/convert"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	awstypes "k8c.io/machine-controller/sdk/cloudprovider/aws"
+	"k8c.io/machine-controller/sdk/net"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -568,14 +567,14 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 	}
 
 	switch f := pc.Network.GetIPFamily(); f {
-	case util.IPFamilyUnspecified, util.IPFamilyIPv4:
+	case net.IPFamilyUnspecified, net.IPFamilyIPv4:
 		// noop
-	case util.IPFamilyIPv6, util.IPFamilyIPv4IPv6, util.IPFamilyIPv6IPv4:
+	case net.IPFamilyIPv6, net.IPFamilyIPv4IPv6, net.IPFamilyIPv6IPv4:
 		if len(vpc.Ipv6CidrBlockAssociationSet) == 0 {
 			return fmt.Errorf("vpc %s does not have IPv6 CIDR block", ptr.Deref(vpc.VpcId, ""))
 		}
 	default:
-		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
+		return fmt.Errorf(net.ErrUnknownNetworkFamily, f)
 	}
 
 	dnsHostnames, err := areVpcDNSHostnamesEnabled(ctx, ec2Client, config.VpcID)
@@ -696,7 +695,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 
 	if pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
 		// Gzip the userdata in case we don't use Flatcar
-		userdata, err = convert.GzipString(userdata)
+		userdata, err = gzipString(userdata)
 		if err != nil {
 			return nil, fmt.Errorf("failed to gzip the userdata")
 		}
@@ -993,7 +992,7 @@ func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
 
 			// link-local addresses not very useful in machine status
 			// filter them out
-			if !util.IsLinkLocal(ipAddr) {
+			if !net.IsLinkLocal(ipAddr) {
 				addresses[ipAddr] = v1.NodeExternalIP
 			}
 		}

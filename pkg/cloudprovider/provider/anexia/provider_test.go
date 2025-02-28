@@ -41,11 +41,11 @@ import (
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
-	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -23,13 +23,13 @@ import (
 	"strings"
 	"time"
 
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	machinecontroller "k8c.io/machine-controller/pkg/controller/machine"
 	evictiontypes "k8c.io/machine-controller/pkg/node/eviction/types"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -260,7 +260,7 @@ func deleteAndAssure(ctx context.Context, machineDeployment *clusterv1alpha1.Mac
 	}
 	return wait.PollUntilContextTimeout(ctx, machineReadyCheckPeriod, timeout, false, func(ctx context.Context) (bool, error) {
 		err := client.Get(ctx, types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}, &clusterv1alpha1.MachineDeployment{})
-		if kerrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return true, nil
 		}
 		return false, err
@@ -385,7 +385,7 @@ func getMatchingMachineSets(ctx context.Context, machineDeployment *clusterv1alp
 	if machineDeployment.ResourceVersion == "" {
 		nn := types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}
 		if err := client.Get(ctx, nn, machineDeployment); err != nil {
-			if !kerrors.IsNotFound(err) {
+			if !apierrors.IsNotFound(err) {
 				return nil, fmt.Errorf("failed to get MachineDeployment %s: %w", nn.Name, err)
 			}
 			return nil, nil

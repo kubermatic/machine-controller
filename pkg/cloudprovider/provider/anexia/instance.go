@@ -22,7 +22,7 @@ import (
 	"go.anx.io/go-anxcloud/pkg/vsphere/info"
 
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
+	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
 
 	v1 "k8s.io/api/core/v1"
 )

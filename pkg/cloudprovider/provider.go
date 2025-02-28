@@ -43,7 +43,7 @@ import (
 	"k8c.io/machine-controller/pkg/cloudprovider/provider/vultr"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 )
 
 var (

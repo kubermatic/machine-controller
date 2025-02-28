@@ -28,9 +28,9 @@ import (
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
-	"k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
 	cloudprovidertesting "k8c.io/machine-controller/pkg/cloudprovider/testing"
 	"k8c.io/machine-controller/pkg/providerconfig"
+	"k8c.io/machine-controller/sdk/cloudprovider/kubevirt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -69,7 +69,7 @@ type kubevirtProviderSpecConf struct {
 	OsImageSource            imageSource
 	OsImageSourceURL         string
 	PullMethod               cdiv1beta1.RegistryPullMethod
-	ProviderNetwork          *types.ProviderNetwork
+	ProviderNetwork          *kubevirt.ProviderNetwork
 	ExtraHeadersSet          bool
 	EvictStrategy            string
 }
@@ -106,7 +106,7 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		{{- end }}
 		"virtualMachine": {
             {{- if .EvictStrategy }}
-            "evictionStrategy": "LiveMigrate",        
+            "evictionStrategy": "LiveMigrate",
             {{- end }}
             {{- if .ProviderNetwork }}
             "providerNetwork": {
@@ -235,7 +235,7 @@ func TestNewVirtualMachine(t *testing.T) {
 		{
 			name: "kubeovn-provider-network",
 			specConf: kubevirtProviderSpecConf{
-				ProviderNetwork: &types.ProviderNetwork{Name: "KubeOVN", VPC: types.VPC{Name: "test-vpc", Subnet: &types.Subnet{
+				ProviderNetwork: &kubevirt.ProviderNetwork{Name: "KubeOVN", VPC: kubevirt.VPC{Name: "test-vpc", Subnet: &kubevirt.Subnet{
 					Name: "test-subnet",
 				}}}},
 		},
