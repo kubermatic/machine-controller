@@ -54,14 +54,6 @@ const (
 	ProvisionedType = "Provisioned"
 )
 
-var (
-	// ErrConfigDiskSizeAndDisks is returned when the config has both DiskSize and Disks set, which is unsupported.
-	ErrConfigDiskSizeAndDisks = errors.New("both the deprecated DiskSize and new Disks attribute are set")
-
-	// ErrConfigVlanIDAndNetworks is returned when the config has both VlanID and Networks set, which is unsupported.
-	ErrConfigVlanIDAndNetworks = errors.New("both the deprecated VlanID and new Networks attribute are set")
-)
-
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }

@@ -82,7 +82,7 @@ func (p *provider) resolveNetworkConfig(log *zap.SugaredLogger, config anxtypes.
 	legacyVlanIDConfig, _ := config.VlanID.MarshalJSON()
 	if string(legacyVlanIDConfig) != `""` {
 		if len(config.Networks) != 0 {
-			return nil, ErrConfigVlanIDAndNetworks
+			return nil, anxtypes.ErrConfigVlanIDAndNetworks
 		}
 
 		log.Info("Configuration uses the deprecated VlanID attribute, please migrate to the Networks array instead.")
@@ -129,7 +129,7 @@ func (p *provider) resolveNetworkConfig(log *zap.SugaredLogger, config anxtypes.
 func (p *provider) resolveDiskConfig(log *zap.SugaredLogger, config anxtypes.RawConfig) (*[]resolvedDisk, error) {
 	if config.DiskSize != 0 {
 		if len(config.Disks) != 0 {
-			return nil, ErrConfigDiskSizeAndDisks
+			return nil, anxtypes.ErrConfigDiskSizeAndDisks
 		}
 
 		log.Info("Configuration uses the deprecated DiskSize attribute, please migrate to the Disks array instead.")

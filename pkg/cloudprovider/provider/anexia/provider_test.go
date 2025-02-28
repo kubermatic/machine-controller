@@ -335,7 +335,7 @@ func TestValidate(t *testing.T) {
 		},
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.DiskSize = 10 }),
-			Error:  ErrConfigDiskSizeAndDisks,
+			Error:  anxtypes.ErrConfigDiskSizeAndDisks,
 		},
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Disks[0].Size = 0 }),
@@ -356,7 +356,7 @@ func TestValidate(t *testing.T) {
 		},
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.VlanID.Value = "legacy VLAN-ID" }),
-			Error:  ErrConfigVlanIDAndNetworks,
+			Error:  anxtypes.ErrConfigVlanIDAndNetworks,
 		},
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.DiskSize = 10; c.Disks = []anxtypes.RawDisk{} }),
