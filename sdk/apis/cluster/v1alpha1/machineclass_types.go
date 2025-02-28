@@ -73,7 +73,3 @@ type MachineClassList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []MachineClass `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&MachineClass{}, &MachineClassList{})
-}

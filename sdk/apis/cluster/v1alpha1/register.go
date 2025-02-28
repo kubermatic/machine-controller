@@ -25,25 +25,41 @@ limitations under the License.
 package v1alpha1
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
 var (
-	// SchemeGroupVersion is group version used to register these objects.
-	SchemeGroupVersion = schema.GroupVersion{Group: "cluster.k8s.io", Version: "v1alpha1"}
-
-	// SchemeBuilder is used to add go types to the GroupVersionKind scheme.
-	SchemeBuilder = &scheme.Builder{GroupVersion: SchemeGroupVersion}
-
-	// AddToScheme adds registered types to the builder.
-	// Required by pkg/client/...
-	// TODO(pwittrock): Remove this after removing pkg/client/...
-	AddToScheme = SchemeBuilder.AddToScheme
+	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
+	AddToScheme   = SchemeBuilder.AddToScheme
 )
 
-// Required by pkg/client/listers/...
-// TODO(pwittrock): Remove this after removing pkg/client/...
+// GroupName is the group name use in this package.
+const GroupName = "cluster.k8s.io"
+const GroupVersion = "v1alpha1"
+
+// SchemeGroupVersion is group version used to register these objects.
+var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: GroupVersion}
+
+// Resource takes an unqualified resource and returns a Group qualified GroupResource.
 func Resource(resource string) schema.GroupResource {
 	return SchemeGroupVersion.WithResource(resource).GroupResource()
+}
+
+// Adds the list of known types to api.Scheme.
+func addKnownTypes(scheme *runtime.Scheme) error {
+	scheme.AddKnownTypes(SchemeGroupVersion,
+		&Machine{},
+		&MachineList{},
+		&MachineClass{},
+		&MachineClassList{},
+		&MachineDeployment{},
+		&MachineDeploymentList{},
+		&MachineSet{},
+		&MachineSetList{},
+	)
+
+	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
+	return nil
 }

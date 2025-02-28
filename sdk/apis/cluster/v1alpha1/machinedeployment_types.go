@@ -189,7 +189,3 @@ type MachineDeploymentList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []MachineDeployment `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&MachineDeployment{}, &MachineDeploymentList{})
-}

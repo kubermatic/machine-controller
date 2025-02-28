@@ -217,7 +217,3 @@ type MachineSetList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []MachineSet `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&MachineSet{}, &MachineSetList{})
-}
