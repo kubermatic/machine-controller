@@ -33,6 +33,7 @@ import (
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	baremetaltypes "k8c.io/machine-controller/sdk/cloudprovider/baremetal"
+	plugintypes "k8c.io/machine-controller/sdk/cloudprovider/baremetal/plugins"
 	tinktypes "k8c.io/machine-controller/sdk/cloudprovider/baremetal/plugins/tinkerbell"
 	"k8c.io/machine-controller/sdk/providerconfig"
 
@@ -82,7 +83,7 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 
 type Config struct {
 	driver     plugins.PluginDriver
-	driverName plugins.Driver
+	driverName plugintypes.Driver
 	driverSpec runtime.RawExtension
 }
 
@@ -111,12 +112,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get baremetal provider's driver name: %w", err)
 	}
-	c.driverName = plugins.Driver(driverName)
+	c.driverName = plugintypes.Driver(driverName)
 
 	c.driverSpec = rawConfig.DriverSpec
 
 	switch c.driverName {
-	case plugins.Tinkerbell:
+	case plugintypes.Tinkerbell:
 		driverConfig := &tinktypes.TinkerbellPluginSpec{}
 
 		if err := json.Unmarshal(c.driverSpec.Raw, &driverConfig); err != nil {
