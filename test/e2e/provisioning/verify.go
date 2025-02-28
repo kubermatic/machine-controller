@@ -24,8 +24,8 @@ import (
 	"time"
 
 	machinecontroller "k8c.io/machine-controller/pkg/controller/machine"
-	evictiontypes "k8c.io/machine-controller/pkg/node/eviction/types"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	nodetypes "k8c.io/machine-controller/sdk/node"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
@@ -89,7 +89,7 @@ func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []stri
 	// Enforce the kube-system namespace, otherwise cleanup won't work
 	newMachineDeployment.Namespace = metav1.NamespaceSystem
 	// Dont evict during testing
-	newMachineDeployment.Spec.Template.Spec.Annotations = map[string]string{evictiontypes.SkipEvictionAnnotationKey: "true"}
+	newMachineDeployment.Spec.Template.Spec.Annotations = map[string]string{nodetypes.SkipEvictionAnnotationKey: "true"}
 
 	return client, newMachineDeployment, nil
 }
@@ -109,7 +109,7 @@ func prepareMachine(kubeConfig, manifestPath string, parameters []string) (ctrlr
 	// Enforce the kube-system namespace, otherwise cleanup won't work
 	newMachine.Namespace = metav1.NamespaceSystem
 	// Dont evict during testing
-	newMachine.Spec.Annotations = map[string]string{evictiontypes.SkipEvictionAnnotationKey: "true"}
+	newMachine.Spec.Annotations = map[string]string{nodetypes.SkipEvictionAnnotationKey: "true"}
 
 	return client, newMachine, nil
 }

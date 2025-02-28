@@ -23,8 +23,8 @@ import (
 
 	"go.uber.org/zap"
 
-	evictiontypes "k8c.io/machine-controller/pkg/node/eviction/types"
 	"k8c.io/machine-controller/pkg/node/nodemanager"
+	nodetypes "k8c.io/machine-controller/sdk/node"
 
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -58,8 +58,8 @@ func (ne *NodeEviction) Run(ctx context.Context, log *zap.SugaredLogger) (bool, 
 	if err != nil {
 		return false, fmt.Errorf("failed to get node from lister: %w", err)
 	}
-	if _, exists := node.Annotations[evictiontypes.SkipEvictionAnnotationKey]; exists {
-		nodeLog.Infof("Skipping eviction for node as it has a %s annotation", evictiontypes.SkipEvictionAnnotationKey)
+	if _, exists := node.Annotations[nodetypes.SkipEvictionAnnotationKey]; exists {
+		nodeLog.Infof("Skipping eviction for node as it has a %s annotation", nodetypes.SkipEvictionAnnotationKey)
 		return false, nil
 	}
 
