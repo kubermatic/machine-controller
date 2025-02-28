@@ -22,9 +22,9 @@ import (
 	"go.anx.io/go-anxcloud/pkg/vsphere/info"
 
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
+	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type anexiaInstance struct {
@@ -57,22 +57,22 @@ func (ai *anexiaInstance) ProviderID() string {
 	return ai.ID()
 }
 
-func (ai *anexiaInstance) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
+func (ai *anexiaInstance) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
 
 	if ai.reservedAddresses != nil {
 		for _, reservedIP := range ai.reservedAddresses {
-			addresses[reservedIP] = v1.NodeExternalIP
+			addresses[reservedIP] = corev1.NodeExternalIP
 		}
 	}
 
 	if ai.info != nil {
 		for _, network := range ai.info.Network {
 			for _, ip := range network.IPv4 {
-				addresses[ip] = v1.NodeExternalIP
+				addresses[ip] = corev1.NodeExternalIP
 			}
 			for _, ip := range network.IPv6 {
-				addresses[ip] = v1.NodeExternalIP
+				addresses[ip] = corev1.NodeExternalIP
 			}
 		}
 	}
@@ -80,9 +80,9 @@ func (ai *anexiaInstance) Addresses() map[string]v1.NodeAddressType {
 	for ip := range addresses {
 		parsed := net.ParseIP(ip)
 		if parsed.IsPrivate() {
-			addresses[ip] = v1.NodeInternalIP
+			addresses[ip] = corev1.NodeInternalIP
 		} else {
-			addresses[ip] = v1.NodeExternalIP
+			addresses[ip] = corev1.NodeExternalIP
 		}
 	}
 

@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"strings"
 
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
-
 	"github.com/vmware/govmomi/vim25/types"
 	"go.uber.org/zap"
+
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 )
 
 func (p *provider) addToVMGroup(ctx context.Context, log *zap.SugaredLogger, session *Session, machine *clusterv1alpha1.Machine, config *Config) error {

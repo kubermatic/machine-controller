@@ -19,7 +19,7 @@ package testing
 import (
 	"testing"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,18 +35,18 @@ type Creator struct {
 	ProviderSpecGetter ProviderSpecGetter
 }
 
-func (c Creator) CreateMachine(t *testing.T) *v1alpha1.Machine {
-	return &v1alpha1.Machine{
+func (c Creator) CreateMachine(t *testing.T) *clusterv1alpha1.Machine {
+	return &clusterv1alpha1.Machine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      c.Name,
 			Namespace: c.Namespace,
 		},
-		Spec: v1alpha1.MachineSpec{
+		Spec: clusterv1alpha1.MachineSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      c.Name,
 				Namespace: c.Namespace,
 			},
-			ProviderSpec: v1alpha1.ProviderSpec{
+			ProviderSpec: clusterv1alpha1.ProviderSpec{
 				Value: &runtime.RawExtension{
 					Raw: c.ProviderSpecGetter(t),
 				},

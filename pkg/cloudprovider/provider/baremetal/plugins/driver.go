@@ -18,22 +18,12 @@ package plugins
 
 import (
 	"context"
+
 	"go.uber.org/zap"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
-
-type Driver string
-
-const Tinkerbell Driver = "tinkerbell"
-
-type CloudConfigSettings struct {
-	Token       string
-	Namespace   string
-	SecretName  string
-	ClusterHost string
-}
 
 // PluginDriver manages the communications between the machine controller cloud provider and the bare metal env.
 type PluginDriver interface {

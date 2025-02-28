@@ -22,12 +22,10 @@ import (
 
 	"github.com/gophercloud/gophercloud/testhelper"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
-	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig/types"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,7 +44,7 @@ type ConfigTestCase struct {
 }
 
 type ValidateCallTestCase struct {
-	Spec          v1alpha1.MachineSpec
+	Spec          clusterv1alpha1.MachineSpec
 	ExpectedError error
 }
 
@@ -56,14 +54,14 @@ func getSpecsForValidationTest(t *testing.T, configCases []ConfigTestCase) []Val
 	for _, configCase := range configCases {
 		jsonConfig, err := json.Marshal(configCase.Config)
 		testhelper.AssertNoErr(t, err)
-		jsonProviderConfig, err := json.Marshal(types.Config{
+		jsonProviderConfig, err := json.Marshal(providerconfigtypes.Config{
 			CloudProviderSpec:   runtime.RawExtension{Raw: jsonConfig},
 			OperatingSystemSpec: runtime.RawExtension{Raw: []byte("{}")},
 		})
 		testhelper.AssertNoErr(t, err)
 		testCases = append(testCases, ValidateCallTestCase{
-			Spec: v1alpha1.MachineSpec{
-				ProviderSpec: v1alpha1.ProviderSpec{
+			Spec: clusterv1alpha1.MachineSpec{
+				ProviderSpec: clusterv1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{Raw: jsonProviderConfig},
 				},
 			},
@@ -73,8 +71,8 @@ func getSpecsForValidationTest(t *testing.T, configCases []ConfigTestCase) []Val
 	return testCases
 }
 
-func newConfigVarString(str string) types.ConfigVarString {
-	return types.ConfigVarString{
+func newConfigVarString(str string) providerconfigtypes.ConfigVarString {
+	return providerconfigtypes.ConfigVarString{
 		Value: str,
 	}
 }
@@ -91,7 +89,7 @@ func hookableConfig(hook func(*anxtypes.RawConfig)) anxtypes.RawConfig {
 		},
 
 		Networks: []anxtypes.RawNetwork{
-			{VlanID: newConfigVarString("test-vlan"), PrefixIDs: []types.ConfigVarString{newConfigVarString("test-prefix")}},
+			{VlanID: newConfigVarString("test-vlan"), PrefixIDs: []providerconfigtypes.ConfigVarString{newConfigVarString("test-prefix")}},
 		},
 
 		Token:      newConfigVarString("test-token"),
@@ -109,7 +107,7 @@ func hookableConfig(hook func(*anxtypes.RawConfig)) anxtypes.RawConfig {
 // this generates a full reconcileContext with some default values and allows hooking into it to e.g. remove/overwrite a value.
 func hookableReconcileContext(locationID string, templateID string, hook func(*reconcileContext)) reconcileContext {
 	context := reconcileContext{
-		Machine: &v1alpha1.Machine{
+		Machine: &clusterv1alpha1.Machine{
 			ObjectMeta: metav1.ObjectMeta{Name: "TestMachine"},
 		},
 		Status:   &anxtypes.ProviderStatus{},

@@ -38,18 +38,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	awstypes "k8c.io/machine-controller/pkg/cloudprovider/provider/aws/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/cloudprovider/util"
-	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
-	"k8c.io/machine-controller/pkg/userdata/convert"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	awstypes "k8c.io/machine-controller/sdk/cloudprovider/aws"
+	"k8c.io/machine-controller/sdk/net"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -104,8 +102,8 @@ var (
 		ec2types.VolumeTypeSt1:      nil,
 	}
 
-	amiFilters = map[providerconfigtypes.OperatingSystem]map[awstypes.CPUArchitecture]amiFilter{
-		providerconfigtypes.OperatingSystemRockyLinux: {
+	amiFilters = map[providerconfig.OperatingSystem]map[awstypes.CPUArchitecture]amiFilter{
+		providerconfig.OperatingSystemRockyLinux: {
 			awstypes.CPUArchitectureX86_64: {
 				description: "*Rocky-8-EC2-*.x86_64",
 				// The AWS marketplace ID from Rocky Linux Community Platform Engineering (CPE)
@@ -117,7 +115,7 @@ var (
 				owner: "792107900819",
 			},
 		},
-		providerconfigtypes.OperatingSystemAmazonLinux2: {
+		providerconfig.OperatingSystemAmazonLinux2: {
 			awstypes.CPUArchitectureX86_64: {
 				description: "Amazon Linux 2 AMI * x86_64 HVM gp2",
 				// The AWS marketplace ID from Amazon
@@ -129,7 +127,7 @@ var (
 				owner: "137112412989",
 			},
 		},
-		providerconfigtypes.OperatingSystemUbuntu: {
+		providerconfig.OperatingSystemUbuntu: {
 			awstypes.CPUArchitectureX86_64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
 				description: "Canonical, Ubuntu, 24.04 LTS, amd64 noble image build on ????-??-??",
@@ -143,7 +141,7 @@ var (
 				owner: "099720109477",
 			},
 		},
-		providerconfigtypes.OperatingSystemRHEL: {
+		providerconfig.OperatingSystemRHEL: {
 			awstypes.CPUArchitectureX86_64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
 				description: "Provided by Red Hat, Inc.",
@@ -157,7 +155,7 @@ var (
 				owner: "309956199498",
 			},
 		},
-		providerconfigtypes.OperatingSystemFlatcar: {
+		providerconfig.OperatingSystemFlatcar: {
 			awstypes.CPUArchitectureX86_64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
 				description: "Flatcar Container Linux stable *",
@@ -208,7 +206,7 @@ type amiFilter struct {
 	productCode string
 }
 
-func getDefaultAMIID(ctx context.Context, log *zap.SugaredLogger, client *ec2.Client, os providerconfigtypes.OperatingSystem, region string, cpuArchitecture awstypes.CPUArchitecture) (string, error) {
+func getDefaultAMIID(ctx context.Context, log *zap.SugaredLogger, client *ec2.Client, os providerconfig.OperatingSystem, region string, cpuArchitecture awstypes.CPUArchitecture) (string, error) {
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 
@@ -267,7 +265,7 @@ func getDefaultAMIID(ctx context.Context, log *zap.SugaredLogger, client *ec2.Cl
 		return "", fmt.Errorf("could not find Image for '%s' with arch '%s'", os, cpuArchitecture)
 	}
 
-	if os == providerconfigtypes.OperatingSystemRHEL {
+	if os == providerconfig.OperatingSystemRHEL {
 		imagesOut.Images, err = filterSupportedRHELImages(imagesOut.Images)
 		if err != nil {
 			return "", err
@@ -315,22 +313,22 @@ func getCPUArchitecture(ctx context.Context, client *ec2.Client, instanceType ec
 	return "", errors.New("returned instance type data did not include supported architectures")
 }
 
-func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, error) {
+func getDefaultRootDevicePath(os providerconfig.OperatingSystem) (string, error) {
 	const (
 		rootDevicePathSDA  = "/dev/sda1"
 		rootDevicePathXVDA = "/dev/xvda"
 	)
 
 	switch os {
-	case providerconfigtypes.OperatingSystemUbuntu:
+	case providerconfig.OperatingSystemUbuntu:
 		return rootDevicePathSDA, nil
-	case providerconfigtypes.OperatingSystemRockyLinux:
+	case providerconfig.OperatingSystemRockyLinux:
 		return rootDevicePathSDA, nil
-	case providerconfigtypes.OperatingSystemRHEL:
+	case providerconfig.OperatingSystemRHEL:
 		return rootDevicePathSDA, nil
-	case providerconfigtypes.OperatingSystemFlatcar:
+	case providerconfig.OperatingSystemFlatcar:
 		return rootDevicePathXVDA, nil
-	case providerconfigtypes.OperatingSystemAmazonLinux2:
+	case providerconfig.OperatingSystemAmazonLinux2:
 		return rootDevicePathXVDA, nil
 	}
 
@@ -338,8 +336,8 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 }
 
 //gocyclo:ignore
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *awstypes.RawConfig, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, *awstypes.RawConfig, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -568,14 +566,14 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 	}
 
 	switch f := pc.Network.GetIPFamily(); f {
-	case util.IPFamilyUnspecified, util.IPFamilyIPv4:
+	case net.IPFamilyUnspecified, net.IPFamilyIPv4:
 		// noop
-	case util.IPFamilyIPv6, util.IPFamilyIPv4IPv6, util.IPFamilyIPv6IPv4:
+	case net.IPFamilyIPv6, net.IPFamilyIPv4IPv6, net.IPFamilyIPv6IPv4:
 		if len(vpc.Ipv6CidrBlockAssociationSet) == 0 {
 			return fmt.Errorf("vpc %s does not have IPv6 CIDR block", ptr.Deref(vpc.VpcId, ""))
 		}
 	default:
-		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
+		return fmt.Errorf(net.ErrUnknownNetworkFamily, f)
 	}
 
 	dnsHostnames, err := areVpcDNSHostnamesEnabled(ctx, ec2Client, config.VpcID)
@@ -694,9 +692,9 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		}
 	}
 
-	if pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
+	if pc.OperatingSystem != providerconfig.OperatingSystemFlatcar {
 		// Gzip the userdata in case we don't use Flatcar
-		userdata, err = convert.GzipString(userdata)
+		userdata, err = gzipString(userdata)
 		if err != nil {
 			return nil, fmt.Errorf("failed to gzip the userdata")
 		}
@@ -819,7 +817,7 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		return false, err
 	}
 
-	// (*Config, *providerconfigtypes.Config, *awstypes.RawConfig, error)
+	// (*Config, *providerconfig.Config, *awstypes.RawConfig, error)
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 
 	if err != nil {
@@ -979,12 +977,12 @@ func (d *awsInstance) ProviderID() string {
 	return "aws:///" + *d.instance.Placement.AvailabilityZone + "/" + *d.instance.InstanceId
 }
 
-func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{
-		ptr.Deref(d.instance.PublicIpAddress, ""):  v1.NodeExternalIP,
-		ptr.Deref(d.instance.PublicDnsName, ""):    v1.NodeExternalDNS,
-		ptr.Deref(d.instance.PrivateIpAddress, ""): v1.NodeInternalIP,
-		ptr.Deref(d.instance.PrivateDnsName, ""):   v1.NodeInternalDNS,
+func (d *awsInstance) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{
+		ptr.Deref(d.instance.PublicIpAddress, ""):  corev1.NodeExternalIP,
+		ptr.Deref(d.instance.PublicDnsName, ""):    corev1.NodeExternalDNS,
+		ptr.Deref(d.instance.PrivateIpAddress, ""): corev1.NodeInternalIP,
+		ptr.Deref(d.instance.PrivateDnsName, ""):   corev1.NodeInternalDNS,
 	}
 
 	for _, netInterface := range d.instance.NetworkInterfaces {
@@ -993,8 +991,8 @@ func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
 
 			// link-local addresses not very useful in machine status
 			// filter them out
-			if !util.IsLinkLocal(ipAddr) {
-				addresses[ipAddr] = v1.NodeExternalIP
+			if !net.IsLinkLocal(ipAddr) {
+				addresses[ipAddr] = corev1.NodeExternalIP
 			}
 		}
 	}
@@ -1070,7 +1068,7 @@ func awsErrorToTerminalError(err error, msg string) error {
 }
 
 func setProviderSpec(rawConfig awstypes.RawConfig, provSpec clusterv1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, err
 	}

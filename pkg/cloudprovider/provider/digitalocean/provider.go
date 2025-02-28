@@ -28,18 +28,17 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	digitaloceantypes "k8c.io/machine-controller/pkg/cloudprovider/provider/digitalocean/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/cloudprovider/util"
-	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	digitaloceantypes "k8c.io/machine-controller/sdk/cloudprovider/digitalocean"
+	"k8c.io/machine-controller/sdk/net"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -82,14 +81,14 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
+func getSlugForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfigtypes.OperatingSystemUbuntu:
+	case providerconfig.OperatingSystemUbuntu:
 		return "ubuntu-24-04-x64", nil
-	case providerconfigtypes.OperatingSystemRockyLinux:
+	case providerconfig.OperatingSystemRockyLinux:
 		return "rockylinux-8-x64", nil
 	}
-	return "", providerconfigtypes.ErrOSNotSupported
+	return "", providerconfig.ErrOSNotSupported
 }
 
 func getClient(ctx context.Context, token string) *godo.Client {
@@ -101,8 +100,8 @@ func getClient(ctx context.Context, token string) *godo.Client {
 	return godo.NewClient(oauthClient)
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -184,14 +183,14 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 	}
 
 	switch f := pc.Network.GetIPFamily(); f {
-	case util.IPFamilyUnspecified, util.IPFamilyIPv4:
+	case net.IPFamilyUnspecified, net.IPFamilyIPv4:
 	// noop
-	case util.IPFamilyIPv6:
-		return fmt.Errorf(util.ErrIPv6OnlyUnsupported)
-	case util.IPFamilyIPv4IPv6, util.IPFamilyIPv6IPv4:
+	case net.IPFamilyIPv6:
+		return fmt.Errorf(net.ErrIPv6OnlyUnsupported)
+	case net.IPFamilyIPv4IPv6, net.IPFamilyIPv6IPv4:
 		// noop
 	default:
-		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
+		return fmt.Errorf(net.ErrUnknownNetworkFamily, f)
 	}
 
 	client := getClient(ctx, c.Token)
@@ -502,20 +501,20 @@ func (d *doInstance) ProviderID() string {
 	return fmt.Sprintf("digitalocean://%d", d.droplet.ID)
 }
 
-func (d *doInstance) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
+func (d *doInstance) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
 	for _, n := range d.droplet.Networks.V4 {
 		if n.Type == "public" {
-			addresses[n.IPAddress] = v1.NodeExternalIP
+			addresses[n.IPAddress] = corev1.NodeExternalIP
 		} else {
-			addresses[n.IPAddress] = v1.NodeInternalIP
+			addresses[n.IPAddress] = corev1.NodeInternalIP
 		}
 	}
 	for _, n := range d.droplet.Networks.V6 {
 		if n.Type == "public" {
-			addresses[n.IPAddress] = v1.NodeExternalIP
+			addresses[n.IPAddress] = corev1.NodeExternalIP
 		} else {
-			addresses[n.IPAddress] = v1.NodeInternalIP
+			addresses[n.IPAddress] = corev1.NodeInternalIP
 		}
 	}
 	return addresses

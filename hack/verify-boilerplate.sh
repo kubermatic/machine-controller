@@ -20,5 +20,4 @@ cd $(dirname $0)/..
 
 boilerplate \
   -boilerplates hack/boilerplate \
-  -exclude pkg/machines/v1alpha1 \
-  -exclude pkg/signals
+  -exclude sdk/apis/machines/v1alpha1

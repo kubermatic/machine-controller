@@ -20,13 +20,13 @@ import (
 	"context"
 	"fmt"
 
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func GetMachineDeploymentNameAndRevisionForMachine(ctx context.Context, machine *clusterv1alpha1.Machine, c client.Client) (string, string, error) {
+func GetMachineDeploymentNameAndRevisionForMachine(ctx context.Context, machine *clusterv1alpha1.Machine, c ctrlruntimeclient.Client) (string, string, error) {
 	var (
 		machineSetName        string
 		machineDeploymentName string

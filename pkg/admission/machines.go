@@ -24,11 +24,11 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"golang.org/x/crypto/ssh"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider"
-	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	"k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/userdata"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -101,7 +101,7 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 		common.SetKubeletFlags(&machine, map[common.KubeletFlags]string{
 			common.ExternalCloudProviderKubeletFlag: fmt.Sprintf("%t", ad.nodeSettings.ExternalCloudProvider),
 		})
-		providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
+		providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +116,7 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 }
 
 func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec *clusterv1alpha1.MachineSpec) error {
-	providerConfig, err := providerconfigtypes.GetConfig(spec.ProviderSpec)
+	providerConfig, err := providerconfig.GetConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to read machine.spec.providerSpec: %w", err)
 	}
@@ -164,7 +164,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 		return fmt.Errorf("Invalid public keys specified: %w", err)
 	}
 
-	defaultedOperatingSystemSpec, err := providerconfig.DefaultOperatingSystemSpec(
+	defaultedOperatingSystemSpec, err := userdata.DefaultOperatingSystemSpec(
 		providerConfig.OperatingSystem,
 		providerConfig.OperatingSystemSpec,
 	)

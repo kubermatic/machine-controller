@@ -23,12 +23,12 @@ import (
 
 	"go.uber.org/zap"
 
-	evictiontypes "k8c.io/machine-controller/pkg/node/eviction/types"
 	"k8c.io/machine-controller/pkg/node/nodemanager"
+	nodetypes "k8c.io/machine-controller/sdk/node"
 
 	corev1 "k8s.io/api/core/v1"
-	policy "k8s.io/api/policy/v1beta1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
@@ -58,8 +58,8 @@ func (ne *NodeEviction) Run(ctx context.Context, log *zap.SugaredLogger) (bool, 
 	if err != nil {
 		return false, fmt.Errorf("failed to get node from lister: %w", err)
 	}
-	if _, exists := node.Annotations[evictiontypes.SkipEvictionAnnotationKey]; exists {
-		nodeLog.Infof("Skipping eviction for node as it has a %s annotation", evictiontypes.SkipEvictionAnnotationKey)
+	if _, exists := node.Annotations[nodetypes.SkipEvictionAnnotationKey]; exists {
+		nodeLog.Infof("Skipping eviction for node as it has a %s annotation", nodetypes.SkipEvictionAnnotationKey)
 		return false, nil
 	}
 
@@ -134,10 +134,10 @@ func (ne *NodeEviction) evictPods(ctx context.Context, log *zap.SugaredLogger, p
 					return
 				}
 				err := ne.evictPod(ctx, &p)
-				if err == nil || kerrors.IsNotFound(err) {
+				if err == nil || apierrors.IsNotFound(err) {
 					log.Debugw("Successfully evicted pod on node", "pod", ctrlruntimeclient.ObjectKeyFromObject(&p))
 					return
-				} else if kerrors.IsTooManyRequests(err) {
+				} else if apierrors.IsTooManyRequests(err) {
 					// PDB prevents eviction, return and make the controller retry later
 					return
 				}
@@ -162,7 +162,7 @@ func (ne *NodeEviction) evictPods(ctx context.Context, log *zap.SugaredLogger, p
 }
 
 func (ne *NodeEviction) evictPod(ctx context.Context, pod *corev1.Pod) error {
-	eviction := &policy.Eviction{
+	eviction := &policyv1beta1.Eviction{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pod.Name,
 			Namespace: pod.Namespace,

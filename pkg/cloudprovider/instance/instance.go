@@ -16,7 +16,7 @@ limitations under the License.
 
 package instance
 
-import v1 "k8s.io/api/core/v1"
+import corev1 "k8s.io/api/core/v1"
 
 // Instance represents a instance on the cloud provider.
 type Instance interface {
@@ -27,7 +27,7 @@ type Instance interface {
 	// ProviderID returns the expected providerID for the instance
 	ProviderID() string
 	// Addresses returns a list of addresses associated with the instance.
-	Addresses() map[string]v1.NodeAddressType
+	Addresses() map[string]corev1.NodeAddressType
 	// Status returns the instance status.
 	Status() Status
 }

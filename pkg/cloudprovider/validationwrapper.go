@@ -23,9 +23,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -40,13 +40,13 @@ func NewValidationCacheWrappingCloudProvider(actualProvider cloudprovidertypes.P
 }
 
 // AddDefaults just calls the underlying cloudproviders AddDefaults.
-func (w *cachingValidationWrapper) AddDefaults(log *zap.SugaredLogger, spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (w *cachingValidationWrapper) AddDefaults(log *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return w.actualProvider.AddDefaults(log, spec)
 }
 
 // Validate tries to get the validation result from the cache and if not found, calls the
 // cloudproviders Validate and saves that to the cache.
-func (w *cachingValidationWrapper) Validate(ctx context.Context, log *zap.SugaredLogger, spec v1alpha1.MachineSpec) error {
+func (w *cachingValidationWrapper) Validate(ctx context.Context, log *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	result, exists, err := cache.Get(spec)
 	if err != nil {
 		return fmt.Errorf("error getting validation result from cache: %w", err)
@@ -71,30 +71,30 @@ func (w *cachingValidationWrapper) Validate(ctx context.Context, log *zap.Sugare
 }
 
 // Get just calls the underlying cloudproviders Get.
-func (w *cachingValidationWrapper) Get(ctx context.Context, log *zap.SugaredLogger, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (w *cachingValidationWrapper) Get(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	return w.actualProvider.Get(ctx, log, machine, data)
 }
 
 // Create just calls the underlying cloudproviders Create.
-func (w *cachingValidationWrapper) Create(ctx context.Context, log *zap.SugaredLogger, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (w *cachingValidationWrapper) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	return w.actualProvider.Create(ctx, log, machine, data, userdata)
 }
 
 // Cleanup just calls the underlying cloudproviders Cleanup.
-func (w *cachingValidationWrapper) Cleanup(ctx context.Context, log *zap.SugaredLogger, m *v1alpha1.Machine, mcd *cloudprovidertypes.ProviderData) (bool, error) {
+func (w *cachingValidationWrapper) Cleanup(ctx context.Context, log *zap.SugaredLogger, m *clusterv1alpha1.Machine, mcd *cloudprovidertypes.ProviderData) (bool, error) {
 	return w.actualProvider.Cleanup(ctx, log, m, mcd)
 }
 
 // MigrateUID just calls the underlying cloudproviders MigrateUID.
-func (w *cachingValidationWrapper) MigrateUID(ctx context.Context, log *zap.SugaredLogger, m *v1alpha1.Machine, newUID types.UID) error {
+func (w *cachingValidationWrapper) MigrateUID(ctx context.Context, log *zap.SugaredLogger, m *clusterv1alpha1.Machine, newUID types.UID) error {
 	return w.actualProvider.MigrateUID(ctx, log, m, newUID)
 }
 
 // MachineMetricsLabels just calls the underlying cloudproviders MachineMetricsLabels.
-func (w *cachingValidationWrapper) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (w *cachingValidationWrapper) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	return w.actualProvider.MachineMetricsLabels(machine)
 }
 
-func (w *cachingValidationWrapper) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+func (w *cachingValidationWrapper) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
 	return w.actualProvider.SetMetricsForMachines(machines)
 }

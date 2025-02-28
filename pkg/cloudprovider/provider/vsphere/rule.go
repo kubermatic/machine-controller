@@ -29,7 +29,7 @@ import (
 	"github.com/vmware/govmomi/vim25/types"
 	"go.uber.org/zap"
 
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	"k8s.io/utils/ptr"
 )

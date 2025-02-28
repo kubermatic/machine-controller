@@ -28,22 +28,21 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	kubevirtv1 "kubevirt.io/api/core/v1"
-	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
+	kubevirtcorev1 "kubevirt.io/api/core/v1"
+	cdicorev1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	kubevirttypes "k8c.io/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	controllerutil "k8c.io/machine-controller/pkg/controller/util"
-	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	kubevirttypes "k8c.io/machine-controller/sdk/cloudprovider/kubevirt"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -51,14 +50,14 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
-	if err := kubevirtv1.AddToScheme(scheme.Scheme); err != nil {
+	if err := kubevirtcorev1.AddToScheme(scheme.Scheme); err != nil {
 		panic(fmt.Sprintf("failed to add kubevirtv1 to scheme: %v", err))
 	}
-	if err := cdiv1beta1.AddToScheme(scheme.Scheme); err != nil {
+	if err := cdicorev1beta1.AddToScheme(scheme.Scheme); err != nil {
 		panic(fmt.Sprintf("failed to add cdiv1beta1 to scheme: %v", err))
 	}
 }
@@ -101,13 +100,13 @@ type Config struct {
 	CPUs                      string
 	Memory                    string
 	Namespace                 string
-	OSImageSource             *cdiv1beta1.DataVolumeSource
+	OSImageSource             *cdicorev1beta1.DataVolumeSource
 	StorageTarget             StorageTarget
 	StorageClassName          string
 	StorageAccessType         corev1.PersistentVolumeAccessMode
 	PVCSize                   resource.Quantity
-	Instancetype              *kubevirtv1.InstancetypeMatcher
-	Preference                *kubevirtv1.PreferenceMatcher
+	Instancetype              *kubevirtcorev1.InstancetypeMatcher
+	Preference                *kubevirtcorev1.PreferenceMatcher
 	SecondaryDisks            []SecondaryDisks
 	NodeAffinityPreset        NodeAffinityPreset
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint
@@ -117,7 +116,7 @@ type Config struct {
 	ExtraHeaders              []string
 	ExtraHeadersSecretRef     string
 	DataVolumeSecretRef       string
-	EvictionStrategy          kubevirtv1.EvictionStrategy
+	EvictionStrategy          kubevirtcorev1.EvictionStrategy
 
 	ProviderNetworkName string
 	SubnetName          string
@@ -144,7 +143,7 @@ const (
 	noAffinityType = ""
 )
 
-func (p *provider) affinityType(affinityType providerconfigtypes.ConfigVarString) (AffinityType, error) {
+func (p *provider) affinityType(affinityType providerconfig.ConfigVarString) (AffinityType, error) {
 	podAffinityPresetString, err := p.configVarResolver.GetConfigVarStringValue(affinityType)
 	if err != nil {
 		return "", fmt.Errorf(`failed to parse "podAffinityPreset" field: %w`, err)
@@ -176,7 +175,7 @@ type SecondaryDisks struct {
 }
 
 type kubeVirtServer struct {
-	vmi kubevirtv1.VirtualMachineInstance
+	vmi kubevirtcorev1.VirtualMachineInstance
 }
 
 func (k *kubeVirtServer) Name() string {
@@ -205,7 +204,7 @@ func (k *kubeVirtServer) Addresses() map[string]corev1.NodeAddressType {
 }
 
 func (k *kubeVirtServer) Status() instance.Status {
-	if k.vmi.Status.Phase == kubevirtv1.Running {
+	if k.vmi.Status.Phase == kubevirtcorev1.Running {
 		return instance.StatusRunning
 	}
 	return instance.StatusUnknown
@@ -213,8 +212,8 @@ func (k *kubeVirtServer) Status() instance.Status {
 
 var _ instance.Instance = &kubeVirtServer{}
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -338,7 +337,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if rawConfig.VirtualMachine.DNSConfig != nil {
 		config.DNSConfig = rawConfig.VirtualMachine.DNSConfig
 	}
-	infraClient, err := client.New(config.RestConfig, client.Options{})
+	infraClient, err := ctrlruntimeclient.New(config.RestConfig, ctrlruntimeclient.Options{})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
@@ -368,17 +367,17 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	if rawConfig.VirtualMachine.EvictionStrategy != "" {
-		config.EvictionStrategy = kubevirtv1.EvictionStrategy(rawConfig.VirtualMachine.EvictionStrategy)
+		config.EvictionStrategy = kubevirtcorev1.EvictionStrategy(rawConfig.VirtualMachine.EvictionStrategy)
 	}
 
 	return &config, pconfig, nil
 }
 
-func (p *provider) getStorageAccessType(ctx context.Context, accessType providerconfigtypes.ConfigVarString,
-	infraClient client.Client, storageClassName string) (corev1.PersistentVolumeAccessMode, error) {
+func (p *provider) getStorageAccessType(ctx context.Context, accessType providerconfig.ConfigVarString,
+	infraClient ctrlruntimeclient.Client, storageClassName string) (corev1.PersistentVolumeAccessMode, error) {
 	at, _ := p.configVarResolver.GetConfigVarStringValue(accessType)
 	if at == "" {
-		sp := &cdiv1beta1.StorageProfile{}
+		sp := &cdicorev1beta1.StorageProfile{}
 		if err := infraClient.Get(ctx, types.NamespacedName{Name: storageClassName}, sp); err != nil {
 			return "", fmt.Errorf(`failed to get cdi storageprofile: %w`, err)
 		}
@@ -449,7 +448,7 @@ func (p *provider) parseTopologySpreadConstraint(topologyConstraints []kubevirtt
 	return parsedTopologyConstraints, nil
 }
 
-func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, config *Config) (*cdiv1beta1.DataVolumeSource, error) {
+func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, config *Config) (*cdicorev1beta1.DataVolumeSource, error) {
 	osImage, err := p.configVarResolver.GetConfigVarStringValue(primaryDisk.OsImage)
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "primaryDisk.osImage" field: %w`, err)
@@ -468,18 +467,18 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, con
 		if err != nil {
 			return nil, fmt.Errorf(`failed to get value of "primaryDisk.extraHeaders" field: %w`, err)
 		}
-		return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage, ExtraHeaders: extraHeaders, SecretRef: config.DataVolumeSecretRef}}, nil
+		return &cdicorev1beta1.DataVolumeSource{HTTP: &cdicorev1beta1.DataVolumeSourceHTTP{URL: osImage, ExtraHeaders: extraHeaders, SecretRef: config.DataVolumeSecretRef}}, nil
 	case registrySource:
 		return registryDataVolume(osImage, pullMethod), nil
 	case pvcSource:
 		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
-			return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
+			return &cdicorev1beta1.DataVolumeSource{PVC: &cdicorev1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
 		}
-		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: config.Namespace}}, nil
+		return &cdicorev1beta1.DataVolumeSource{PVC: &cdicorev1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: config.Namespace}}, nil
 	default:
 		// handle old API for backward compatibility.
 		if srcURL, err := url.ParseRequestURI(osImage); err == nil {
-			if srcURL.Scheme == cdiv1beta1.RegistrySchemeDocker || srcURL.Scheme == cdiv1beta1.RegistrySchemeOci {
+			if srcURL.Scheme == cdicorev1beta1.RegistrySchemeDocker || srcURL.Scheme == cdicorev1beta1.RegistrySchemeOci {
 				return registryDataVolume(osImage, pullMethod), nil
 			}
 
@@ -488,19 +487,19 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, con
 				return nil, fmt.Errorf(`failed to get value of "primaryDisk.extraHeaders" field: %w`, err)
 			}
 
-			return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage, ExtraHeaders: extraHeaders, SecretRef: config.DataVolumeSecretRef}}, nil
+			return &cdicorev1beta1.DataVolumeSource{HTTP: &cdicorev1beta1.DataVolumeSourceHTTP{URL: osImage, ExtraHeaders: extraHeaders, SecretRef: config.DataVolumeSecretRef}}, nil
 		}
 		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
-			return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
+			return &cdicorev1beta1.DataVolumeSource{PVC: &cdicorev1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
 		}
-		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: config.Namespace}}, nil
+		return &cdicorev1beta1.DataVolumeSource{PVC: &cdicorev1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: config.Namespace}}, nil
 	}
 }
 
 func getHTTPExtraHeaders(config *Config) ([]string, error) {
 	var extraHeaders []string
 	if config.ExtraHeadersSecretRef != "" {
-		sigClient, err := client.New(config.RestConfig, client.Options{})
+		sigClient, err := ctrlruntimeclient.New(config.RestConfig, ctrlruntimeclient.Options{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to get kubevirt client: %w", err)
 		}
@@ -537,24 +536,24 @@ func getNamespace() string {
 	return ns
 }
 
-func (p *provider) getPullMethod(pullMethod providerconfigtypes.ConfigVarString) (cdiv1beta1.RegistryPullMethod, error) {
+func (p *provider) getPullMethod(pullMethod providerconfig.ConfigVarString) (cdicorev1beta1.RegistryPullMethod, error) {
 	resolvedPM, err := p.configVarResolver.GetConfigVarStringValue(pullMethod)
 	if err != nil {
 		return "", err
 	}
-	switch pm := cdiv1beta1.RegistryPullMethod(resolvedPM); pm {
-	case cdiv1beta1.RegistryPullNode, cdiv1beta1.RegistryPullPod:
+	switch pm := cdicorev1beta1.RegistryPullMethod(resolvedPM); pm {
+	case cdicorev1beta1.RegistryPullNode, cdicorev1beta1.RegistryPullPod:
 		return pm, nil
 	case "":
-		return cdiv1beta1.RegistryPullNode, nil
+		return cdicorev1beta1.RegistryPullNode, nil
 	default:
 		return "", fmt.Errorf("unsupported value: %v", resolvedPM)
 	}
 }
 
-func registryDataVolume(imageURL string, pullMethod cdiv1beta1.RegistryPullMethod) *cdiv1beta1.DataVolumeSource {
-	return &cdiv1beta1.DataVolumeSource{
-		Registry: &cdiv1beta1.DataVolumeSourceRegistry{
+func registryDataVolume(imageURL string, pullMethod cdicorev1beta1.RegistryPullMethod) *cdicorev1beta1.DataVolumeSource {
+	return &cdicorev1beta1.DataVolumeSource{
+		Registry: &cdicorev1beta1.DataVolumeSourceRegistry{
 			URL:        &imageURL,
 			PullMethod: &pullMethod,
 		},
@@ -569,22 +568,22 @@ func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clust
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
-	sigClient, err := client.New(c.RestConfig, client.Options{})
+	sigClient, err := ctrlruntimeclient.New(c.RestConfig, ctrlruntimeclient.Options{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
 
-	virtualMachine := &kubevirtv1.VirtualMachine{}
+	virtualMachine := &kubevirtcorev1.VirtualMachine{}
 	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachine); err != nil {
-		if !kerrors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get VirtualMachine %s: %w", machine.Name, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
-	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{}
+	virtualMachineInstance := &kubevirtcorev1.VirtualMachineInstance{}
 	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachineInstance); err != nil {
-		if kerrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return &kubeVirtServer{}, nil
 		}
 
@@ -622,12 +621,12 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 		}
 	}
 
-	sigClient, err := client.New(c.RestConfig, client.Options{})
+	sigClient, err := ctrlruntimeclient.New(c.RestConfig, ctrlruntimeclient.Options{})
 	if err != nil {
 		return fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
 	if _, ok := kubevirttypes.SupportedOS[pc.OperatingSystem]; !ok {
-		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
+		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, providerconfig.ErrOSNotSupported)
 	}
 	if c.DNSPolicy == corev1.DNSNone {
 		if c.DNSConfig == nil || len(c.DNSConfig.Nameservers) == 0 {
@@ -635,14 +634,14 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 		}
 	}
 	// Check if we can reach the API of the target cluster.
-	vmi := &kubevirtv1.VirtualMachineInstance{}
-	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: "not-expected-to-exist"}, vmi); err != nil && !kerrors.IsNotFound(err) {
+	vmi := &kubevirtcorev1.VirtualMachineInstance{}
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: "not-expected-to-exist"}, vmi); err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to request VirtualMachineInstances: %w", err)
 	}
 
 	if c.EvictionStrategy != "" {
-		if c.EvictionStrategy != kubevirtv1.EvictionStrategyExternal &&
-			c.EvictionStrategy != kubevirtv1.EvictionStrategyLiveMigrate {
+		if c.EvictionStrategy != kubevirtcorev1.EvictionStrategyExternal &&
+			c.EvictionStrategy != kubevirtcorev1.EvictionStrategyLiveMigrate {
 			return fmt.Errorf("unsupported vm eviction strategy: %s", c.EvictionStrategy)
 		}
 	}
@@ -682,7 +681,7 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 
 type machineDeploymentNameGetter func() (string, error)
 
-func machineDeploymentNameAndRevisionForMachineGetter(ctx context.Context, machine *clusterv1alpha1.Machine, c client.Client) machineDeploymentNameGetter {
+func machineDeploymentNameAndRevisionForMachineGetter(ctx context.Context, machine *clusterv1alpha1.Machine, c ctrlruntimeclient.Client) machineDeploymentNameGetter {
 	mdName, _, err := controllerutil.GetMachineDeploymentNameAndRevisionForMachine(ctx, machine, c)
 	return func() (string, error) {
 		return mdName, err
@@ -698,7 +697,7 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 		}
 	}
 
-	sigClient, err := client.New(c.RestConfig, client.Options{})
+	sigClient, err := ctrlruntimeclient.New(c.RestConfig, ctrlruntimeclient.Options{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
@@ -723,7 +722,7 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            userDataSecretName,
 			Namespace:       virtualMachine.Namespace,
-			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(virtualMachine, kubevirtv1.VirtualMachineGroupVersionKind)},
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(virtualMachine, kubevirtcorev1.VirtualMachineGroupVersionKind)},
 		},
 		Data: map[string][]byte{"userdata": []byte(userdata)},
 	}
@@ -733,19 +732,19 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 	return &kubeVirtServer{}, nil
 }
 
-func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, machine *clusterv1alpha1.Machine,
-	labels map[string]string, userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter) (*kubevirtv1.VirtualMachine, error) {
+func (p *provider) newVirtualMachine(c *Config, pc *providerconfig.Config, machine *clusterv1alpha1.Machine,
+	labels map[string]string, userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter) (*kubevirtcorev1.VirtualMachine, error) {
 	// We add the timestamp because the secret name must be different when we recreate the VMI
 	// because its pod got deleted
 	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up.
 	terminationGracePeriodSeconds := int64(30)
 
-	evictionStrategy := kubevirtv1.EvictionStrategyExternal
+	evictionStrategy := kubevirtcorev1.EvictionStrategyExternal
 	if c.EvictionStrategy != "" {
 		evictionStrategy = c.EvictionStrategy
 	}
 
-	resourceRequirements := kubevirtv1.ResourceRequirements{}
+	resourceRequirements := kubevirtcorev1.ResourceRequirements{}
 	labels["kubevirt.io/vm"] = machine.Name
 	//Add a common label to all VirtualMachines spawned by the same MachineDeployment (= MachineDeployment name).
 	if mdName, err := mdNameGetter(); err == nil {
@@ -774,7 +773,7 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 	// Add machineName as prefix to secondaryDisks.
 	addPrefixToSecondaryDisk(c.SecondaryDisks, dataVolumeName)
 
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
+	if pc.OperatingSystem == providerconfig.OperatingSystemFlatcar {
 		annotations["kubevirt.io/ignitiondata"] = userdata
 	}
 
@@ -794,37 +793,37 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 	}
 
 	defaultBridgeNetwork := defaultBridgeNetwork()
-	runStrategy := kubevirtv1.RunStrategyOnce
+	runStrategy := kubevirtcorev1.RunStrategyOnce
 	// currently we only support KubeOvn as a ProviderNetwork and KubeOvn has the ability to pin the IP of the VM(static ip)
 	// even if the VMi was stopped or deleted thus we can have the VM always running and in the events of VM restarts the
 	// ip address of the VMI will not change.
 	if c.SubnetName != "" {
-		runStrategy = kubevirtv1.RunStrategyAlways
+		runStrategy = kubevirtcorev1.RunStrategyAlways
 	}
 
-	virtualMachine := &kubevirtv1.VirtualMachine{
+	virtualMachine := &kubevirtcorev1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      machine.Name,
 			Namespace: c.Namespace,
 			Labels:    labels,
 		},
-		Spec: kubevirtv1.VirtualMachineSpec{
+		Spec: kubevirtcorev1.VirtualMachineSpec{
 			RunStrategy:  &runStrategy,
 			Instancetype: c.Instancetype,
 			Preference:   c.Preference,
-			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
+			Template: &kubevirtcorev1.VirtualMachineInstanceTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: annotations,
 					Labels:      labels,
 				},
-				Spec: kubevirtv1.VirtualMachineInstanceSpec{
+				Spec: kubevirtcorev1.VirtualMachineInstanceSpec{
 					EvictionStrategy: &evictionStrategy,
-					Networks: []kubevirtv1.Network{
-						*kubevirtv1.DefaultPodNetwork(),
+					Networks: []kubevirtcorev1.Network{
+						*kubevirtcorev1.DefaultPodNetwork(),
 					},
-					Domain: kubevirtv1.DomainSpec{
-						Devices: kubevirtv1.Devices{
-							Interfaces:                 []kubevirtv1.Interface{*defaultBridgeNetwork},
+					Domain: kubevirtcorev1.DomainSpec{
+						Devices: kubevirtcorev1.Devices{
+							Interfaces:                 []kubevirtcorev1.Interface{*defaultBridgeNetwork},
 							Disks:                      getVMDisks(c),
 							NetworkInterfaceMultiQueue: ptr.To(c.EnableNetworkMultiQueue),
 						},
@@ -852,14 +851,14 @@ func (p *provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *c
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
-	sigClient, err := client.New(c.RestConfig, client.Options{})
+	sigClient, err := ctrlruntimeclient.New(c.RestConfig, ctrlruntimeclient.Options{})
 	if err != nil {
 		return false, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
 
-	vm := &kubevirtv1.VirtualMachine{}
+	vm := &kubevirtcorev1.VirtualMachine{}
 	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, vm); err != nil {
-		if !kerrors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %w", machine.Name, err)
 		}
 		return true, nil
@@ -902,44 +901,44 @@ func dnsPolicy(policy string) (corev1.DNSPolicy, error) {
 	return "", fmt.Errorf("unknown dns policy: %s", policy)
 }
 
-func getVMDisks(config *Config) []kubevirtv1.Disk {
-	disks := []kubevirtv1.Disk{
+func getVMDisks(config *Config) []kubevirtcorev1.Disk {
+	disks := []kubevirtcorev1.Disk{
 		{
 			Name:       "datavolumedisk",
-			DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+			DiskDevice: kubevirtcorev1.DiskDevice{Disk: &kubevirtcorev1.DiskTarget{Bus: "virtio"}},
 		},
 		{
 			Name:       "cloudinitdisk",
-			DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+			DiskDevice: kubevirtcorev1.DiskDevice{Disk: &kubevirtcorev1.DiskTarget{Bus: "virtio"}},
 		},
 	}
 	for _, sd := range config.SecondaryDisks {
-		disks = append(disks, kubevirtv1.Disk{
+		disks = append(disks, kubevirtcorev1.Disk{
 			Name:       sd.Name,
-			DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+			DiskDevice: kubevirtcorev1.DiskDevice{Disk: &kubevirtcorev1.DiskTarget{Bus: "virtio"}},
 		})
 	}
 	return disks
 }
 
-func defaultBridgeNetwork() *kubevirtv1.Interface {
-	return kubevirtv1.DefaultBridgeNetworkInterface()
+func defaultBridgeNetwork() *kubevirtcorev1.Interface {
+	return kubevirtcorev1.DefaultBridgeNetworkInterface()
 }
 
-func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName string) []kubevirtv1.Volume {
-	volumes := []kubevirtv1.Volume{
+func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName string) []kubevirtcorev1.Volume {
+	volumes := []kubevirtcorev1.Volume{
 		{
 			Name: "datavolumedisk",
-			VolumeSource: kubevirtv1.VolumeSource{
-				DataVolume: &kubevirtv1.DataVolumeSource{
+			VolumeSource: kubevirtcorev1.VolumeSource{
+				DataVolume: &kubevirtcorev1.DataVolumeSource{
 					Name: dataVolumeName,
 				},
 			},
 		},
 		{
 			Name: "cloudinitdisk",
-			VolumeSource: kubevirtv1.VolumeSource{
-				CloudInitNoCloud: &kubevirtv1.CloudInitNoCloudSource{
+			VolumeSource: kubevirtcorev1.VolumeSource{
+				CloudInitNoCloud: &kubevirtcorev1.CloudInitNoCloudSource{
 					UserDataSecretRef: &corev1.LocalObjectReference{
 						Name: userDataSecretName,
 					},
@@ -948,10 +947,10 @@ func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName stri
 		},
 	}
 	for _, sd := range config.SecondaryDisks {
-		volumes = append(volumes, kubevirtv1.Volume{
+		volumes = append(volumes, kubevirtcorev1.Volume{
 			Name: sd.Name,
-			VolumeSource: kubevirtv1.VolumeSource{
-				DataVolume: &kubevirtv1.DataVolumeSource{
+			VolumeSource: kubevirtcorev1.VolumeSource{
+				DataVolume: &kubevirtcorev1.DataVolumeSource{
 					Name: sd.Name,
 				}},
 		})
@@ -959,15 +958,15 @@ func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName stri
 	return volumes
 }
 
-func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations map[string]string) []kubevirtv1.DataVolumeTemplateSpec {
+func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations map[string]string) []kubevirtcorev1.DataVolumeTemplateSpec {
 	pvcRequest := corev1.ResourceList{corev1.ResourceStorage: config.PVCSize}
-	dataVolumeTemplates := []kubevirtv1.DataVolumeTemplateSpec{
+	dataVolumeTemplates := []kubevirtcorev1.DataVolumeTemplateSpec{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        dataVolumeName,
 				Annotations: annotations,
 			},
-			Spec: cdiv1beta1.DataVolumeSpec{
+			Spec: cdicorev1beta1.DataVolumeSpec{
 				Source: config.OSImageSource,
 			},
 		},
@@ -985,7 +984,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations m
 			},
 		}
 	default:
-		dataVolumeTemplates[0].Spec.Storage = &cdiv1beta1.StorageSpec{
+		dataVolumeTemplates[0].Spec.Storage = &cdicorev1beta1.StorageSpec{
 			StorageClassName: ptr.To(config.StorageClassName),
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				config.StorageAccessType,
@@ -997,11 +996,11 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string, annotations m
 	}
 
 	for _, sd := range config.SecondaryDisks {
-		dataVolumeTemplates = append(dataVolumeTemplates, kubevirtv1.DataVolumeTemplateSpec{
+		dataVolumeTemplates = append(dataVolumeTemplates, kubevirtcorev1.DataVolumeTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: sd.Name,
 			},
-			Spec: cdiv1beta1.DataVolumeSpec{
+			Spec: cdicorev1beta1.DataVolumeSpec{
 				PVC: &corev1.PersistentVolumeClaimSpec{
 					StorageClassName: ptr.To(sd.StorageClassName),
 					AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -1109,7 +1108,7 @@ func appendTopologiesLabels(ctx context.Context, c *Config, labels map[string]st
 }
 
 func getStorageTopologies(ctx context.Context, storageClasName string, c *Config, labels map[string]string) error {
-	kubeClient, err := client.New(c.RestConfig, client.Options{})
+	kubeClient, err := ctrlruntimeclient.New(c.RestConfig, ctrlruntimeclient.Options{})
 	if err != nil {
 		return fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
@@ -1154,7 +1153,7 @@ func setOVNAnnotations(c *Config, annotations map[string]string) error {
 	return nil
 }
 
-func (p *provider) configureStorage(infraClient client.Client, template kubevirttypes.Template) (corev1.PersistentVolumeAccessMode, []SecondaryDisks, error) {
+func (p *provider) configureStorage(infraClient ctrlruntimeclient.Client, template kubevirttypes.Template) (corev1.PersistentVolumeAccessMode, []SecondaryDisks, error) {
 	secondaryDisks := make([]SecondaryDisks, 0, len(template.SecondaryDisks))
 	for i, sd := range template.SecondaryDisks {
 		sdSizeString, err := p.configVarResolver.GetConfigVarStringValue(sd.Size)

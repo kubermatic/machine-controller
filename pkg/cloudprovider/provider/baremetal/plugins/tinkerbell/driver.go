@@ -22,18 +22,18 @@ import (
 	"fmt"
 
 	"github.com/aws/smithy-go/ptr"
-	"go.uber.org/zap"
-	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
-
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
-
 	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
+	"go.uber.org/zap"
+
+	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
 	"k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client"
-	tinktypes "k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
+	tinkerbelltypes "k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
+	tinktypes "k8c.io/machine-controller/sdk/cloudprovider/baremetal/plugins/tinkerbell"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubectl/pkg/scheme"
@@ -94,7 +94,7 @@ func (d *driver) GetServer(ctx context.Context) (plugins.Server, error) {
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
-	server := tinktypes.Hardware{Hardware: targetHardware}
+	server := tinkerbelltypes.Hardware{Hardware: targetHardware}
 	return &server, nil
 }
 
@@ -129,7 +129,7 @@ func (d *driver) ProvisionServer(ctx context.Context, _ *zap.SugaredLogger, meta
 	}
 
 	// Create Workflow to match the template and server
-	server := tinktypes.Hardware{Hardware: hardware}
+	server := tinkerbelltypes.Hardware{Hardware: hardware}
 	if err = d.WorkflowClient.CreateWorkflow(ctx, userdata, client.ProvisionWorkerNodeTemplate, d.OSImageURL, server); err != nil {
 		return nil, err
 	}

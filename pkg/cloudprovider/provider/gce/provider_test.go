@@ -26,8 +26,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
-	"k8c.io/machine-controller/pkg/providerconfig"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -126,13 +126,13 @@ func TestValidate(t *testing.T) {
 	p := New(providerconfig.NewConfigVarResolver(context.Background(), fake2.NewClientBuilder().Build()))
 	tests := []struct {
 		name      string
-		mspec     v1alpha1.MachineSpec
+		mspec     clusterv1alpha1.MachineSpec
 		expectErr bool
 	}{
 		{
 			"without IP family",
-			v1alpha1.MachineSpec{
-				ProviderSpec: v1alpha1.ProviderSpec{
+			clusterv1alpha1.MachineSpec{
+				ProviderSpec: clusterv1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
 						Raw: rawBytes(testProviderSpec()),
 					},
@@ -142,8 +142,8 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			"empty IP family",
-			v1alpha1.MachineSpec{
-				ProviderSpec: v1alpha1.ProviderSpec{
+			clusterv1alpha1.MachineSpec{
+				ProviderSpec: clusterv1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
 						Raw: rawBytes(testMap(testProviderSpec()).
 							with("network.ipFamily", ""),
@@ -155,8 +155,8 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			"with IP family",
-			v1alpha1.MachineSpec{
-				ProviderSpec: v1alpha1.ProviderSpec{
+			clusterv1alpha1.MachineSpec{
+				ProviderSpec: clusterv1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
 						Raw: rawBytes(testMap(testProviderSpec()).
 							with("network.ipFamily", "IPv4+IPv6"),

@@ -26,8 +26,8 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	dutil "k8c.io/machine-controller/pkg/controller/util"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,7 +36,7 @@ import (
 	apirand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/retry"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // sync is responsible for reconciling deployments on scaling events or when they
@@ -184,7 +184,7 @@ func (r *ReconcileMachineDeployment) getNewMachineSet(ctx context.Context, log *
 		alreadyExists = true
 
 		ms := &clusterv1alpha1.MachineSet{}
-		msErr := r.Get(ctx, client.ObjectKey{Namespace: newMS.Namespace, Name: newMS.Name}, ms)
+		msErr := r.Get(ctx, ctrlruntimeclient.ObjectKey{Namespace: newMS.Namespace, Name: newMS.Name}, ms)
 		if msErr != nil {
 			return nil, msErr
 		}
@@ -201,12 +201,12 @@ func (r *ReconcileMachineDeployment) getNewMachineSet(ctx context.Context, log *
 
 		return nil, err
 	case err != nil:
-		log.Errorw("Failed to create new MachineSet", "machineset", client.ObjectKeyFromObject(&newMS), zap.Error(err))
+		log.Errorw("Failed to create new MachineSet", "machineset", ctrlruntimeclient.ObjectKeyFromObject(&newMS), zap.Error(err))
 		return nil, err
 	}
 
 	if !alreadyExists {
-		log.Debugw("Created new MachineSet", "machineset", client.ObjectKeyFromObject(createdMS))
+		log.Debugw("Created new MachineSet", "machineset", ctrlruntimeclient.ObjectKeyFromObject(createdMS))
 	}
 
 	err = r.updateMachineDeployment(ctx, d, func(md *clusterv1alpha1.MachineDeployment) {
@@ -277,7 +277,7 @@ func (r *ReconcileMachineDeployment) scale(ctx context.Context, log *zap.Sugared
 		for i := range allMSs {
 			ms := allMSs[i]
 			if ms.Spec.Replicas == nil {
-				log.Errorw("spec.replicas for MachineSet is nil, this is unexpected.", "machineset", client.ObjectKeyFromObject(ms))
+				log.Errorw("spec.replicas for MachineSet is nil, this is unexpected.", "machineset", ctrlruntimeclient.ObjectKeyFromObject(ms))
 				continue
 			}
 
@@ -429,7 +429,7 @@ func (r *ReconcileMachineDeployment) cleanupDeployment(ctx context.Context, log 
 			continue
 		}
 
-		log.Debugw("Trying to cleanup MachineSet for MachineDeployment", "machineset", client.ObjectKeyFromObject(ms))
+		log.Debugw("Trying to cleanup MachineSet for MachineDeployment", "machineset", ctrlruntimeclient.ObjectKeyFromObject(ms))
 		if err := r.Delete(ctx, ms); err != nil && !apierrors.IsNotFound(err) {
 			// Return error instead of aggregating and continuing DELETEs on the theory
 			// that we may be overloading the api server.
@@ -445,7 +445,7 @@ func (r *ReconcileMachineDeployment) updateMachineDeployment(ctx context.Context
 }
 
 // We have this as standalone variant to be able to use it from the tests.
-func updateMachineDeployment(ctx context.Context, c client.Client, d *clusterv1alpha1.MachineDeployment, modify func(*clusterv1alpha1.MachineDeployment)) error {
+func updateMachineDeployment(ctx context.Context, c ctrlruntimeclient.Client, d *clusterv1alpha1.MachineDeployment, modify func(*clusterv1alpha1.MachineDeployment)) error {
 	dCopy := d.DeepCopy()
 	modify(dCopy)
 	if equality.Semantic.DeepEqual(dCopy, d) {

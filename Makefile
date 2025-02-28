@@ -52,12 +52,12 @@ build-machine-controller: machine-controller
 
 .PHONY: clean
 clean:
-	rm -f machine-controller \
-		webhook
+	rm -f machine-controller webhook
 
 .PHONY: lint
 lint:
 	golangci-lint run -v
+	make -C sdk lint
 
 yamllint:
 	yamllint -c .yamllint.conf .
@@ -91,15 +91,18 @@ test-unit-docker:
 .PHONY: test-unit
 test-unit:
 	go test -v ./...
+	cd sdk && go test -v ./...
 
 .PHONY: build-tests
 build-tests:
 	go test -run nope ./...
+	cd sdk && go test -run nope ./...
 	go test -tags e2e -run nope ./...
 
 .PHONY: check-dependencies
 check-dependencies:
 	go mod verify
+	cd sdk && go mod verify
 
 .PHONY: download-gocache
 download-gocache:

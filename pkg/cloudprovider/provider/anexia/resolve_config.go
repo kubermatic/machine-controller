@@ -20,13 +20,12 @@ import (
 	"context"
 	"fmt"
 
+	"go.anx.io/go-anxcloud/pkg/api"
+	anxcorev1 "go.anx.io/go-anxcloud/pkg/apis/core/v1"
+	anxvspherev1 "go.anx.io/go-anxcloud/pkg/apis/vsphere/v1"
 	"go.uber.org/zap"
 
-	"go.anx.io/go-anxcloud/pkg/api"
-	corev1 "go.anx.io/go-anxcloud/pkg/apis/core/v1"
-	vspherev1 "go.anx.io/go-anxcloud/pkg/apis/vsphere/v1"
-
-	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
+	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
 )
 
 // resolvedDisk contains the resolved values from types.RawDisk.
@@ -71,7 +70,7 @@ func (p *provider) resolveTemplateID(ctx context.Context, a api.API, config anxt
 		return "", fmt.Errorf("failed to get 'templateBuild': %w", err)
 	}
 
-	template, err := vspherev1.FindNamedTemplate(ctx, a, templateName, templateBuild, corev1.Location{Identifier: locationID})
+	template, err := anxvspherev1.FindNamedTemplate(ctx, a, templateName, templateBuild, anxcorev1.Location{Identifier: locationID})
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve named template: %w", err)
 	}
@@ -83,7 +82,7 @@ func (p *provider) resolveNetworkConfig(log *zap.SugaredLogger, config anxtypes.
 	legacyVlanIDConfig, _ := config.VlanID.MarshalJSON()
 	if string(legacyVlanIDConfig) != `""` {
 		if len(config.Networks) != 0 {
-			return nil, ErrConfigVlanIDAndNetworks
+			return nil, anxtypes.ErrConfigVlanIDAndNetworks
 		}
 
 		log.Info("Configuration uses the deprecated VlanID attribute, please migrate to the Networks array instead.")
@@ -130,7 +129,7 @@ func (p *provider) resolveNetworkConfig(log *zap.SugaredLogger, config anxtypes.
 func (p *provider) resolveDiskConfig(log *zap.SugaredLogger, config anxtypes.RawConfig) (*[]resolvedDisk, error) {
 	if config.DiskSize != 0 {
 		if len(config.Disks) != 0 {
-			return nil, ErrConfigDiskSizeAndDisks
+			return nil, anxtypes.ErrConfigDiskSizeAndDisks
 		}
 
 		log.Info("Configuration uses the deprecated DiskSize attribute, please migrate to the Disks array instead.")

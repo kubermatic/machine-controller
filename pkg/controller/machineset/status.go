@@ -23,12 +23,12 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -36,7 +36,7 @@ const (
 	statusUpdateRetries = 1
 )
 
-func (c *ReconcileMachineSet) calculateStatus(ctx context.Context, log *zap.SugaredLogger, ms *v1alpha1.MachineSet, filteredMachines []*v1alpha1.Machine) v1alpha1.MachineSetStatus {
+func (c *ReconcileMachineSet) calculateStatus(ctx context.Context, log *zap.SugaredLogger, ms *clusterv1alpha1.MachineSet, filteredMachines []*clusterv1alpha1.Machine) clusterv1alpha1.MachineSetStatus {
 	newStatus := ms.Status
 	// Count the number of machines that have labels matching the labels of the machine
 	// template of the replica set, the matching machines may have more
@@ -53,7 +53,7 @@ func (c *ReconcileMachineSet) calculateStatus(ctx context.Context, log *zap.Suga
 		}
 		node, err := c.getMachineNode(ctx, machine)
 		if err != nil {
-			log.Debugw("Failed to get node for machine", "machine", client.ObjectKeyFromObject(machine), zap.Error(err))
+			log.Debugw("Failed to get node for machine", "machine", ctrlruntimeclient.ObjectKeyFromObject(machine), zap.Error(err))
 			continue
 		}
 		if isNodeReady(node) {
@@ -72,7 +72,7 @@ func (c *ReconcileMachineSet) calculateStatus(ctx context.Context, log *zap.Suga
 }
 
 // updateMachineSetStatus attempts to update the Status.Replicas of the given MachineSet, with a single GET/PUT retry.
-func updateMachineSetStatus(ctx context.Context, log *zap.SugaredLogger, c client.Client, ms *v1alpha1.MachineSet, newStatus v1alpha1.MachineSetStatus) (*v1alpha1.MachineSet, error) {
+func updateMachineSetStatus(ctx context.Context, log *zap.SugaredLogger, c ctrlruntimeclient.Client, ms *clusterv1alpha1.MachineSet, newStatus clusterv1alpha1.MachineSetStatus) (*clusterv1alpha1.MachineSet, error) {
 	// This is the steady state. It happens when the MachineSet doesn't have any expectations, since
 	// we do a periodic relist every 30s. If the generations differ but the replicas are
 	// the same, a caller might've resized to the same replica count.
@@ -121,7 +121,7 @@ func updateMachineSetStatus(ctx context.Context, log *zap.SugaredLogger, c clien
 			break
 		}
 		// Update the MachineSet with the latest resource version for the next poll
-		if getErr = c.Get(ctx, client.ObjectKey{Namespace: ms.Namespace, Name: ms.Name}, ms); getErr != nil {
+		if getErr = c.Get(ctx, ctrlruntimeclient.ObjectKey{Namespace: ms.Namespace, Name: ms.Name}, ms); getErr != nil {
 			// If the GET fails we can't trust status.Replicas anymore. This error
 			// is bound to be more interesting than the update failure.
 			return nil, getErr
@@ -131,14 +131,14 @@ func updateMachineSetStatus(ctx context.Context, log *zap.SugaredLogger, c clien
 	return nil, updateErr
 }
 
-func (c *ReconcileMachineSet) getMachineNode(ctx context.Context, machine *v1alpha1.Machine) (*corev1.Node, error) {
+func (c *ReconcileMachineSet) getMachineNode(ctx context.Context, machine *clusterv1alpha1.Machine) (*corev1.Node, error) {
 	nodeRef := machine.Status.NodeRef
 	if nodeRef == nil {
 		return nil, errors.New("machine has no node ref")
 	}
 
 	node := &corev1.Node{}
-	err := c.Client.Get(ctx, client.ObjectKey{Name: nodeRef.Name}, node)
+	err := c.Client.Get(ctx, ctrlruntimeclient.ObjectKey{Name: nodeRef.Name}, node)
 	return node, err
 }
 

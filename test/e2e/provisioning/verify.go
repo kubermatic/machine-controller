@@ -23,13 +23,13 @@ import (
 	"strings"
 	"time"
 
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	machinecontroller "k8c.io/machine-controller/pkg/controller/machine"
-	evictiontypes "k8c.io/machine-controller/pkg/node/eviction/types"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	nodetypes "k8c.io/machine-controller/sdk/node"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -89,7 +89,7 @@ func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []stri
 	// Enforce the kube-system namespace, otherwise cleanup won't work
 	newMachineDeployment.Namespace = metav1.NamespaceSystem
 	// Dont evict during testing
-	newMachineDeployment.Spec.Template.Spec.Annotations = map[string]string{evictiontypes.SkipEvictionAnnotationKey: "true"}
+	newMachineDeployment.Spec.Template.Spec.Annotations = map[string]string{nodetypes.SkipEvictionAnnotationKey: "true"}
 
 	return client, newMachineDeployment, nil
 }
@@ -109,7 +109,7 @@ func prepareMachine(kubeConfig, manifestPath string, parameters []string) (ctrlr
 	// Enforce the kube-system namespace, otherwise cleanup won't work
 	newMachine.Namespace = metav1.NamespaceSystem
 	// Dont evict during testing
-	newMachine.Spec.Annotations = map[string]string{evictiontypes.SkipEvictionAnnotationKey: "true"}
+	newMachine.Spec.Annotations = map[string]string{nodetypes.SkipEvictionAnnotationKey: "true"}
 
 	return client, newMachine, nil
 }
@@ -260,7 +260,7 @@ func deleteAndAssure(ctx context.Context, machineDeployment *clusterv1alpha1.Mac
 	}
 	return wait.PollUntilContextTimeout(ctx, machineReadyCheckPeriod, timeout, false, func(ctx context.Context) (bool, error) {
 		err := client.Get(ctx, types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}, &clusterv1alpha1.MachineDeployment{})
-		if kerrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return true, nil
 		}
 		return false, err
@@ -385,7 +385,7 @@ func getMatchingMachineSets(ctx context.Context, machineDeployment *clusterv1alp
 	if machineDeployment.ResourceVersion == "" {
 		nn := types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}
 		if err := client.Get(ctx, nn, machineDeployment); err != nil {
-			if !kerrors.IsNotFound(err) {
+			if !apierrors.IsNotFound(err) {
 				return nil, fmt.Errorf("failed to get MachineDeployment %s: %w", nn.Name, err)
 			}
 			return nil, nil

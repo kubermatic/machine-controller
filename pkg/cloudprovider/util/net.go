@@ -23,11 +23,6 @@ import (
 	"net"
 )
 
-const (
-	ErrIPv6OnlyUnsupported  = "IPv6 only network family not supported yet"
-	ErrUnknownNetworkFamily = "Unknown IP family %q only IPv4,IPv6,IPv4+IPv6 are valid values"
-)
-
 func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
 	ip, ipNet, err := net.ParseCIDR(ipv4)
 	if err != nil {
@@ -58,33 +53,4 @@ func GenerateRandMAC() (net.HardwareAddr, error) {
 	mac = append(mac, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
 
 	return mac, nil
-}
-
-// IPFamily IPv4 | IPv6 | IPv4+IPv6.
-type IPFamily string
-
-const (
-	IPFamilyUnspecified IPFamily = ""          // interpreted as IPv4
-	IPFamilyIPv4        IPFamily = "IPv4"      // IPv4 only
-	IPFamilyIPv6        IPFamily = "IPv6"      // IPv6 only
-	IPFamilyIPv4IPv6    IPFamily = "IPv4+IPv6" // dualstack with IPv4 as primary
-	IPFamilyIPv6IPv4    IPFamily = "IPv6+IPv4" // dualstack with IPv6 as primary
-)
-
-func (f IPFamily) HasIPv6() bool {
-	return f == IPFamilyIPv6 || f == IPFamilyIPv4IPv6 || f == IPFamilyIPv6IPv4
-}
-
-func (f IPFamily) HasIPv4() bool {
-	return f == IPFamilyUnspecified || f == IPFamilyIPv4 || f == IPFamilyIPv4IPv6 || f == IPFamilyIPv6IPv4
-}
-
-func (f IPFamily) IsDualstack() bool {
-	return f == IPFamilyIPv4IPv6 || f == IPFamilyIPv6IPv4
-}
-
-// IsLinkLocal checks if given ip address is link local..
-func IsLinkLocal(ipAddr string) bool {
-	addr := net.ParseIP(ipAddr)
-	return addr.IsLinkLocalMulticast() || addr.IsLinkLocalUnicast()
 }

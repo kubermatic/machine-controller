@@ -27,17 +27,16 @@ import (
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	hetznertypes "k8c.io/machine-controller/pkg/cloudprovider/provider/hetzner/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	hetznertypes "k8c.io/machine-controller/sdk/cloudprovider/hetzner"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
@@ -69,22 +68,22 @@ type Config struct {
 	AssignIPv6           bool
 }
 
-func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
+func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfigtypes.OperatingSystemUbuntu:
+	case providerconfig.OperatingSystemUbuntu:
 		return "ubuntu-24.04", nil
-	case providerconfigtypes.OperatingSystemRockyLinux:
+	case providerconfig.OperatingSystemRockyLinux:
 		return "rocky-8", nil
 	}
-	return "", providerconfigtypes.ErrOSNotSupported
+	return "", providerconfig.ErrOSNotSupported
 }
 
 func getClient(token string) *hcloud.Client {
 	return hcloud.NewClient(hcloud.WithToken(token))
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -555,20 +554,20 @@ func (s *hetznerServer) ProviderID() string {
 	return fmt.Sprintf("hcloud://%d", s.server.ID)
 }
 
-func (s *hetznerServer) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
+func (s *hetznerServer) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
 	for _, fips := range s.server.PublicNet.FloatingIPs {
-		addresses[fips.IP.String()] = v1.NodeExternalIP
+		addresses[fips.IP.String()] = corev1.NodeExternalIP
 	}
 	for _, privateNetwork := range s.server.PrivateNet {
-		addresses[privateNetwork.IP.String()] = v1.NodeInternalIP
+		addresses[privateNetwork.IP.String()] = corev1.NodeInternalIP
 	}
-	addresses[s.server.PublicNet.IPv4.IP.String()] = v1.NodeExternalIP
+	addresses[s.server.PublicNet.IPv4.IP.String()] = corev1.NodeExternalIP
 	// For a given IPv6 network of 2001:db8:1234::/64, the instance address is 2001:db8:1234::1
 	// Reference: https://github.com/hetznercloud/hcloud-cloud-controller-manager/blob/v1.12.1/hcloud/instances.go#L165-167
 	if s.server.PublicNet.IPv6.IP != nil && !s.server.PublicNet.IPv6.IP.IsUnspecified() {
 		s.server.PublicNet.IPv6.IP[len(s.server.PublicNet.IPv6.IP)-1] |= 0x01
-		addresses[s.server.PublicNet.IPv6.IP.String()] = v1.NodeExternalIP
+		addresses[s.server.PublicNet.IPv6.IP.String()] = corev1.NodeExternalIP
 	}
 	return addresses
 }

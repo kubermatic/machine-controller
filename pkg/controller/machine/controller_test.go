@@ -25,19 +25,18 @@ import (
 	"github.com/go-test/deep"
 	"go.uber.org/zap"
 
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
-	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -319,7 +318,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			}
 
 			err := client.Get(ctx, types.NamespacedName{Name: machine.Name}, &clusterv1alpha1.Machine{})
-			wasDeleted := kerrors.IsNotFound(err)
+			wasDeleted := apierrors.IsNotFound(err)
 
 			if wasDeleted != test.getsDeleted {
 				t.Errorf("Machine was deleted: %v, but expectedDeletion: %v", wasDeleted, test.getsDeleted)
@@ -464,7 +463,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			objects = append(objects, test.existingNodes...)
 			objects = append(objects, test.additionalMachines...)
 
-			client := ctrlruntimefake.NewClientBuilder().
+			client := fakectrlruntimeclient.NewClientBuilder().
 				WithScheme(scheme.Scheme).
 				WithObjects(objects...).
 				Build()
@@ -642,7 +641,7 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 
 			if test.shouldDeleteNode != "" {
 				err = client.Get(ctx, types.NamespacedName{Name: test.shouldDeleteNode}, &corev1.Node{})
-				if !kerrors.IsNotFound(err) {
+				if !apierrors.IsNotFound(err) {
 					t.Errorf("expected node %q to be deleted, but got: %v", test.shouldDeleteNode, err)
 				}
 			} else {

@@ -31,16 +31,15 @@ import (
 	"github.com/OpenNebula/one/src/oca/go/src/goca/schemas/vm/keys"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	opennebulatypes "k8c.io/machine-controller/pkg/cloudprovider/provider/opennebula/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	opennebulatypes "k8c.io/machine-controller/sdk/cloudprovider/opennebula"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -83,8 +82,8 @@ func getClient(config *Config) *goca.Client {
 	return goca.NewDefaultClient(goca.NewConfig(config.Username, config.Password, config.Endpoint))
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -424,12 +423,12 @@ func (i *openNebulaInstance) ProviderID() string {
 	return "opennebula://" + strconv.Itoa(i.vm.ID)
 }
 
-func (i *openNebulaInstance) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
+func (i *openNebulaInstance) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
 
 	for _, nic := range i.vm.Template.GetNICs() {
 		ip, _ := nic.Get(shared.IP)
-		addresses[ip] = v1.NodeInternalIP
+		addresses[ip] = corev1.NodeInternalIP
 	}
 
 	return addresses

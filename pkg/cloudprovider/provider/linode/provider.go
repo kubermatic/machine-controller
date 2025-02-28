@@ -32,17 +32,16 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 
-	common "k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	linodetypes "k8c.io/machine-controller/pkg/cloudprovider/provider/linode/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	common "k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	linodetypes "k8c.io/machine-controller/sdk/cloudprovider/linode"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -81,12 +80,12 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
+func getSlugForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfigtypes.OperatingSystemUbuntu:
+	case providerconfig.OperatingSystemUbuntu:
 		return "linode/ubuntu18.04", nil
 	}
-	return "", providerconfigtypes.ErrOSNotSupported
+	return "", providerconfig.ErrOSNotSupported
 }
 
 func getClient(ctx context.Context, token string) linodego.Client {
@@ -102,8 +101,8 @@ func getClient(ctx context.Context, token string) linodego.Client {
 	return client
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -397,12 +396,12 @@ func (d *linodeInstance) ProviderID() string {
 	return fmt.Sprintf("linode://%s", d.ID())
 }
 
-func (d *linodeInstance) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
+func (d *linodeInstance) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
 	for _, n := range d.linode.IPv4 {
-		addresses[n.String()] = v1.NodeInternalIP
+		addresses[n.String()] = corev1.NodeInternalIP
 	}
-	addresses[d.linode.IPv6] = v1.NodeInternalIP
+	addresses[d.linode.IPv6] = corev1.NodeInternalIP
 	return addresses
 }
 

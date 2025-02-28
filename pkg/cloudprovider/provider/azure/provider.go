@@ -33,19 +33,18 @@ import (
 	gocache "github.com/patrickmn/go-cache"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	azuretypes "k8c.io/machine-controller/pkg/cloudprovider/provider/azure/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/cloudprovider/util"
 	kuberneteshelper "k8c.io/machine-controller/pkg/kubernetes"
-	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	azuretypes "k8c.io/machine-controller/sdk/cloudprovider/azure"
+	"k8c.io/machine-controller/sdk/net"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 )
@@ -112,11 +111,11 @@ type config struct {
 
 type azureVM struct {
 	vm          *compute.VirtualMachine
-	ipAddresses map[string]v1.NodeAddressType
+	ipAddresses map[string]corev1.NodeAddressType
 	status      instance.Status
 }
 
-func (vm *azureVM) Addresses() map[string]v1.NodeAddressType {
+func (vm *azureVM) Addresses() map[string]corev1.NodeAddressType {
 	return vm.ipAddresses
 }
 
@@ -140,26 +139,26 @@ func (vm *azureVM) Status() instance.Status {
 	return vm.status
 }
 
-var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageReference{
-	providerconfigtypes.OperatingSystemUbuntu: {
+var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
+	providerconfig.OperatingSystemUbuntu: {
 		Publisher: to.StringPtr("Canonical"),
 		Offer:     to.StringPtr("ubuntu-24_04-lts"),
 		Sku:       to.StringPtr("server-gen1"),
 		Version:   to.StringPtr("latest"),
 	},
-	providerconfigtypes.OperatingSystemRHEL: {
+	providerconfig.OperatingSystemRHEL: {
 		Publisher: to.StringPtr("RedHat"),
 		Offer:     to.StringPtr("rhel-byos"),
 		Sku:       to.StringPtr("rhel-lvm85"),
 		Version:   to.StringPtr("8.5.20220316"),
 	},
-	providerconfigtypes.OperatingSystemFlatcar: {
+	providerconfig.OperatingSystemFlatcar: {
 		Publisher: to.StringPtr("kinvolk"),
 		Offer:     to.StringPtr("flatcar-container-linux"),
 		Sku:       to.StringPtr("stable"),
 		Version:   to.StringPtr("3374.2.0"),
 	},
-	providerconfigtypes.OperatingSystemRockyLinux: {
+	providerconfig.OperatingSystemRockyLinux: {
 		Publisher: to.StringPtr("procomputers"),
 		Offer:     to.StringPtr("rocky-linux-8-5"),
 		Sku:       to.StringPtr("rocky-linux-8-5"),
@@ -167,18 +166,18 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 	},
 }
 
-var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
-	providerconfigtypes.OperatingSystemFlatcar: {
+var osPlans = map[providerconfig.OperatingSystem]*compute.Plan{
+	providerconfig.OperatingSystemFlatcar: {
 		Name:      ptr.To("stable"),
 		Publisher: ptr.To("kinvolk"),
 		Product:   ptr.To("flatcar-container-linux"),
 	},
-	providerconfigtypes.OperatingSystemRHEL: {
+	providerconfig.OperatingSystemRHEL: {
 		Name:      ptr.To("rhel-lvm85"),
 		Publisher: ptr.To("redhat"),
 		Product:   ptr.To("rhel-byos"),
 	},
-	providerconfigtypes.OperatingSystemRockyLinux: {
+	providerconfig.OperatingSystemRockyLinux: {
 		Name:      ptr.To("rocky-linux-8-5"),
 		Publisher: ptr.To("procomputers"),
 		Product:   ptr.To("rocky-linux-8-5"),
@@ -205,7 +204,7 @@ var (
 	cache     = gocache.New(10*time.Minute, 10*time.Minute)
 )
 
-func getOSImageReference(c *config, os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
+func getOSImageReference(c *config, os providerconfig.OperatingSystem) (*compute.ImageReference, error) {
 	if c.ImageID != "" {
 		return &compute.ImageReference{
 			ID: to.StringPtr(c.ImageID),
@@ -234,8 +233,8 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 	return &provider{configVarResolver: configVarResolver}
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -378,9 +377,9 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	return &c, pconfig, nil
 }
 
-func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm *compute.VirtualMachine, ipFamily util.IPFamily) (map[string]v1.NodeAddressType, error) {
+func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm *compute.VirtualMachine, ipFamily net.IPFamily) (map[string]corev1.NodeAddressType, error) {
 	var (
-		ipAddresses = map[string]v1.NodeAddressType{}
+		ipAddresses = map[string]corev1.NodeAddressType{}
 		err         error
 	)
 
@@ -412,7 +411,7 @@ func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm
 	return ipAddresses, nil
 }
 
-func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, ipFamily util.IPFamily, ifaceName string) (map[string]v1.NodeAddressType, error) {
+func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, ipFamily net.IPFamily, ifaceName string) (map[string]corev1.NodeAddressType, error) {
 	ifClient, err := getInterfacesClient(c)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interfaces client: %w", err)
@@ -423,7 +422,7 @@ func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, i
 		return nil, fmt.Errorf("failed to get interface %q: %w", ifaceName, err)
 	}
 
-	ipAddresses := map[string]v1.NodeAddressType{}
+	ipAddresses := map[string]corev1.NodeAddressType{}
 
 	if netIf.IPConfigurations == nil {
 		return ipAddresses, nil
@@ -448,7 +447,7 @@ func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, i
 				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %w", name, err)
 			}
 			for _, ip := range publicIPs {
-				ipAddresses[ip] = v1.NodeExternalIP
+				ipAddresses[ip] = corev1.NodeExternalIP
 			}
 
 			if ipFamily.HasIPv6() {
@@ -457,7 +456,7 @@ func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, i
 					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %w", name, err)
 				}
 				for _, ip := range publicIP6s {
-					ipAddresses[ip] = v1.NodeExternalIP
+					ipAddresses[ip] = corev1.NodeExternalIP
 				}
 			}
 		}
@@ -467,7 +466,7 @@ func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, i
 			return nil, fmt.Errorf("failed to retrieve internal IP string for IP %q: %w", name, err)
 		}
 		for _, ip := range internalIPs {
-			ipAddresses[ip] = v1.NodeInternalIP
+			ipAddresses[ip] = corev1.NodeInternalIP
 		}
 	}
 	return ipAddresses, nil
@@ -522,7 +521,7 @@ func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.Machin
 	return spec, nil
 }
 
-func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) (*compute.StorageProfile, error) {
+func getStorageProfile(config *config, providerCfg *providerconfig.Config) (*compute.StorageProfile, error) {
 	osRef, err := getOSImageReference(config, providerCfg.OperatingSystem)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get OSImageReference: %w", err)
@@ -1002,14 +1001,14 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 	}
 
 	switch f := providerConfig.Network.GetIPFamily(); f {
-	case util.IPFamilyUnspecified, util.IPFamilyIPv4:
+	case net.IPFamilyUnspecified, net.IPFamilyIPv4:
 		//noop
-	case util.IPFamilyIPv6:
-		return fmt.Errorf(util.ErrIPv6OnlyUnsupported)
-	case util.IPFamilyIPv4IPv6, util.IPFamilyIPv6IPv4:
+	case net.IPFamilyIPv6:
+		return fmt.Errorf(net.ErrIPv6OnlyUnsupported)
+	case net.IPFamilyIPv4IPv6, net.IPFamilyIPv6IPv4:
 		// validate
 	default:
-		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
+		return fmt.Errorf(net.ErrUnknownNetworkFamily, f)
 	}
 
 	if c.PublicIPSKU != nil {
@@ -1109,7 +1108,7 @@ func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machi
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerNIC) {
-		_, err = createOrUpdateNetworkInterface(ctx, log, ifaceName(machine), newUID, config, publicIP, publicIPv6, util.IPFamilyUnspecified, config.EnableAcceleratedNetworking)
+		_, err = createOrUpdateNetworkInterface(ctx, log, ifaceName(machine), newUID, config, publicIP, publicIPv6, net.IPFamilyUnspecified, config.EnableAcceleratedNetworking)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on main network interface: %w", err)
 		}
@@ -1173,9 +1172,9 @@ func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 
-func getOSUsername(os providerconfigtypes.OperatingSystem) string {
+func getOSUsername(os providerconfig.OperatingSystem) string {
 	switch os {
-	case providerconfigtypes.OperatingSystemFlatcar:
+	case providerconfig.OperatingSystemFlatcar:
 		return "core"
 	default:
 		return string(os)

@@ -27,40 +27,31 @@ import (
 	"time"
 
 	"go.anx.io/go-anxcloud/pkg/api"
-	"go.anx.io/go-anxcloud/pkg/client"
 	anxclient "go.anx.io/go-anxcloud/pkg/client"
 	"go.anx.io/go-anxcloud/pkg/vsphere"
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/progress"
 	anxvm "go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	anxtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	cloudproviderutil "k8c.io/machine-controller/pkg/cloudprovider/util"
-	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 const (
 	ProvisionedType = "Provisioned"
-)
-
-var (
-	// ErrConfigDiskSizeAndDisks is returned when the config has both DiskSize and Disks set, which is unsupported.
-	ErrConfigDiskSizeAndDisks = errors.New("both the deprecated DiskSize and new Disks attribute are set")
-
-	// ErrConfigVlanIDAndNetworks is returned when the config has both VlanID and Networks set, which is unsupported.
-	ErrConfigVlanIDAndNetworks = errors.New("both the deprecated VlanID and new Networks attribute are set")
 )
 
 type provider struct {
@@ -96,7 +87,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	// make sure status is reflected in Machine Object
 	defer func() {
 		// if error occurs during updating the machine object don't override the original error
-		retErr = anxtypes.NewMultiError(retErr, updateMachineStatus(machine, status, data.Update))
+		retErr = kerrors.NewAggregate([]error{retErr, updateMachineStatus(machine, status, data.Update)})
 	}()
 
 	// provision machine
@@ -174,9 +165,9 @@ func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.C
 		vm.SSH = sshKey.PublicKey
 
 		provisionResponse, err := vmAPI.Provisioning().VM().Provision(ctx, vm, false)
-		meta.SetStatusCondition(&status.Conditions, v1.Condition{
+		meta.SetStatusCondition(&status.Conditions, metav1.Condition{
 			Type:    ProvisionedType,
-			Status:  v1.ConditionFalse,
+			Status:  metav1.ConditionFalse,
 			Reason:  "Provisioning",
 			Message: "provisioning request was sent",
 		})
@@ -196,9 +187,9 @@ func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.C
 
 	log.Info("Using provisionID from machine to await completion")
 
-	meta.SetStatusCondition(&status.Conditions, v1.Condition{
+	meta.SetStatusCondition(&status.Conditions, metav1.Condition{
 		Type:    ProvisionedType,
-		Status:  v1.ConditionTrue,
+		Status:  metav1.ConditionTrue,
 		Reason:  "Provisioned",
 		Message: "Machine has been successfully created",
 	})
@@ -212,20 +203,20 @@ func isAlreadyProvisioning(ctx context.Context) bool {
 	lastChange := condition.LastTransitionTime.Time
 	const reasonInProvisioning = "InProvisioning"
 	if condition.Reason == reasonInProvisioning && time.Since(lastChange) > 5*time.Minute {
-		meta.SetStatusCondition(&status.Conditions, v1.Condition{
+		meta.SetStatusCondition(&status.Conditions, metav1.Condition{
 			Type:    ProvisionedType,
 			Reason:  "ReInitialising",
 			Message: "Could not find ongoing VM provisioning",
-			Status:  v1.ConditionFalse,
+			Status:  metav1.ConditionFalse,
 		})
 	}
 
-	return condition.Status == v1.ConditionFalse && condition.Reason == reasonInProvisioning
+	return condition.Status == metav1.ConditionFalse && condition.Reason == reasonInProvisioning
 }
 
 func ensureConditions(status *anxtypes.ProviderStatus) {
-	conditions := [...]v1.Condition{
-		{Type: ProvisionedType, Message: "", Status: v1.ConditionUnknown, Reason: "Initialising"},
+	conditions := [...]metav1.Condition{
+		{Type: ProvisionedType, Message: "", Status: metav1.ConditionUnknown, Reason: "Initialising"},
 	}
 	for _, condition := range conditions {
 		if meta.FindStatusCondition(status.Conditions, condition.Type) == nil {
@@ -234,8 +225,8 @@ func ensureConditions(status *anxtypes.ProviderStatus) {
 	}
 }
 
-func (p *provider) getConfig(ctx context.Context, log *zap.SugaredLogger, provSpec clusterv1alpha1.ProviderSpec) (*resolvedConfig, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(ctx context.Context, log *zap.SugaredLogger, provSpec clusterv1alpha1.ProviderSpec) (*resolvedConfig, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -395,7 +386,7 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 	// make sure status is reflected in Machine Object
 	defer func() {
 		// if error occurs during updating the machine object don't override the original error
-		retErr = anxtypes.NewMultiError(retErr, updateMachineStatus(machine, status, data.Update))
+		retErr = kerrors.NewAggregate([]error{retErr, updateMachineStatus(machine, status, data.Update)})
 	}()
 
 	ensureConditions(&status)
@@ -549,7 +540,7 @@ func anexiaErrorToTerminalError(err error, msg string) error {
 		}
 	}
 
-	var responseError *client.ResponseError
+	var responseError *anxclient.ResponseError
 	if errors.As(err, &responseError) && (responseError.ErrorData.Code == http.StatusForbidden || responseError.ErrorData.Code == http.StatusUnauthorized) {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,

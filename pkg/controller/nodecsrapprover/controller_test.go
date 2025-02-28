@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"testing"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -331,13 +331,13 @@ func TestValidateCSRObject(t *testing.T) {
 }
 
 func TestValidateX509CSR(t *testing.T) {
-	machine := v1alpha1.Machine{
+	machine := clusterv1alpha1.Machine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-machine",
 			Namespace: metav1.NamespaceSystem,
 		},
-		Spec: v1alpha1.MachineSpec{},
-		Status: v1alpha1.MachineStatus{
+		Spec: clusterv1alpha1.MachineSpec{},
+		Status: clusterv1alpha1.MachineStatus{
 			NodeRef: &corev1.ObjectReference{
 				APIVersion: "v1",
 				Kind:       "Node",
@@ -359,7 +359,7 @@ func TestValidateX509CSR(t *testing.T) {
 	testCases := []struct {
 		name    string
 		csr     *certificatesv1.CertificateSigningRequest
-		machine v1alpha1.Machine
+		machine clusterv1alpha1.Machine
 		err     error
 	}{
 		{
@@ -407,13 +407,13 @@ func TestValidateX509CSR(t *testing.T) {
 					},
 				},
 			},
-			machine: v1alpha1.Machine{
+			machine: clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-machine",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: v1alpha1.MachineSpec{},
-				Status: v1alpha1.MachineStatus{
+				Spec: clusterv1alpha1.MachineSpec{},
+				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: &corev1.ObjectReference{
 						APIVersion: "v1",
 						Kind:       "Node",

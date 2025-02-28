@@ -20,9 +20,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	"k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
@@ -32,13 +32,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-func validateMachineDeployment(md v1alpha1.MachineDeployment) field.ErrorList {
+func validateMachineDeployment(md clusterv1alpha1.MachineDeployment) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateMachineDeploymentSpec(&md.Spec, field.NewPath("spec"))...)
 	return allErrs
 }
 
-func validateMachineDeploymentSpec(spec *v1alpha1.MachineDeploymentSpec, fldPath *field.Path) field.ErrorList {
+func validateMachineDeploymentSpec(spec *clusterv1alpha1.MachineDeploymentSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, metav1validation.ValidateLabelSelector(&spec.Selector, metav1validation.LabelSelectorValidationOptions{}, fldPath.Child("selector"))...)
 	if len(spec.Selector.MatchLabels)+len(spec.Selector.MatchExpressions) == 0 {
@@ -60,7 +60,7 @@ func validateMachineDeploymentSpec(spec *v1alpha1.MachineDeploymentSpec, fldPath
 	return allErrs
 }
 
-func validateMachineDeploymentStrategy(strategy *v1alpha1.MachineDeploymentStrategy, fldPath *field.Path) field.ErrorList {
+func validateMachineDeploymentStrategy(strategy *clusterv1alpha1.MachineDeploymentStrategy, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	switch strategy.Type {
 	case common.RollingUpdateMachineDeploymentStrategyType:
@@ -73,7 +73,7 @@ func validateMachineDeploymentStrategy(strategy *v1alpha1.MachineDeploymentStrat
 	return allErrs
 }
 
-func validateMachineRollingUpdateDeployment(rollingUpdate *v1alpha1.MachineRollingUpdateDeployment, fldPath *field.Path) field.ErrorList {
+func validateMachineRollingUpdateDeployment(rollingUpdate *clusterv1alpha1.MachineRollingUpdateDeployment, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	var maxUnavailable int
 	var maxSurge int
@@ -110,11 +110,11 @@ func getIntOrPercent(s *intstr.IntOrString, roundUp bool) (int, error) {
 	return intstr.GetValueFromIntOrPercent(s, 100, roundUp)
 }
 
-func machineDeploymentDefaultingFunction(md *v1alpha1.MachineDeployment) {
-	v1alpha1.PopulateDefaultsMachineDeployment(md)
+func machineDeploymentDefaultingFunction(md *clusterv1alpha1.MachineDeployment) {
+	clusterv1alpha1.PopulateDefaultsMachineDeployment(md)
 }
 
-func mutationsForMachineDeployment(md *v1alpha1.MachineDeployment) error {
+func mutationsForMachineDeployment(md *clusterv1alpha1.MachineDeployment) error {
 	providerConfig, err := providerconfigtypes.GetConfig(md.Spec.Template.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to read MachineDeployment.Spec.Template.Spec.ProviderSpec: %w", err)

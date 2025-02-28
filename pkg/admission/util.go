@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 )
 
 const cloudProviderPacket = "packet"

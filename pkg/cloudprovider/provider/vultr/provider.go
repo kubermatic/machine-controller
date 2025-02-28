@@ -29,16 +29,15 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 
-	"k8c.io/machine-controller/pkg/apis/cluster/common"
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	vultrtypes "k8c.io/machine-controller/pkg/cloudprovider/provider/vultr/types"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	vultrtypes "k8c.io/machine-controller/sdk/cloudprovider/vultr"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -78,15 +77,15 @@ type Config struct {
 	Vpc2ID          []string
 }
 
-func getIDForOS(os providerconfigtypes.OperatingSystem) (int, error) {
+func getIDForOS(os providerconfig.OperatingSystem) (int, error) {
 	switch os {
-	case providerconfigtypes.OperatingSystemUbuntu:
+	case providerconfig.OperatingSystemUbuntu:
 		return 1743, nil
 		// name: Rocky Linux 9 x64
-	case providerconfigtypes.OperatingSystemRockyLinux:
+	case providerconfig.OperatingSystemRockyLinux:
 		return 1869, nil
 	}
-	return 0, providerconfigtypes.ErrOSNotSupported
+	return 0, providerconfig.ErrOSNotSupported
 }
 
 func getClient(ctx context.Context, apiKey string) *govultr.Client {
@@ -95,8 +94,8 @@ func getClient(ctx context.Context, apiKey string) *govultr.Client {
 	return govultr.NewClient(oauth2.NewClient(ctx, ts))
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -585,15 +584,15 @@ func (v *vultrPhysicalMachine) ProviderID() string {
 	return "vultr://" + v.instance.ID
 }
 
-func (v *vultrVirtualMachine) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
-	addresses[v.instance.MainIP] = v1.NodeExternalIP
-	addresses[v.instance.InternalIP] = v1.NodeInternalIP
+func (v *vultrVirtualMachine) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
+	addresses[v.instance.MainIP] = corev1.NodeExternalIP
+	addresses[v.instance.InternalIP] = corev1.NodeInternalIP
 	return addresses
 }
-func (v *vultrPhysicalMachine) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
-	addresses[v.instance.MainIP] = v1.NodeExternalIP
+func (v *vultrPhysicalMachine) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
+	addresses[v.instance.MainIP] = corev1.NodeExternalIP
 	return addresses
 }
 
