@@ -32,11 +32,10 @@ import (
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	"k8c.io/machine-controller/pkg/cloudprovider/util"
 	kuberneteshelper "k8c.io/machine-controller/pkg/kubernetes"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	alibabatypes "k8c.io/machine-controller/sdk/cloudprovider/alibaba"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -341,8 +340,8 @@ func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode providers config: %w", err)
 	}
@@ -429,7 +428,7 @@ func getInstance(client *ecs.Client, instanceName string, uid string) (*ecs.Inst
 	return &response.Instances.Instance[0], nil
 }
 
-func (p *provider) getImageIDForOS(machineSpec clusterv1alpha1.MachineSpec, os providerconfigtypes.OperatingSystem) (string, error) {
+func (p *provider) getImageIDForOS(machineSpec clusterv1alpha1.MachineSpec, os providerconfig.OperatingSystem) (string, error) {
 	c, _, err := p.getConfig(machineSpec.ProviderSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get alibaba client: %w", err)
@@ -450,11 +449,11 @@ func (p *provider) getImageIDForOS(machineSpec clusterv1alpha1.MachineSpec, os p
 		return "", fmt.Errorf("failed to describe alibaba images: %w", err)
 	}
 
-	var availableImage = map[providerconfigtypes.OperatingSystem]string{}
+	var availableImage = map[providerconfig.OperatingSystem]string{}
 	for _, image := range response.Images.Image {
 		switch image.OSNameEn {
 		case ubuntuImageName:
-			availableImage[providerconfigtypes.OperatingSystemUbuntu] = image.ImageId
+			availableImage[providerconfig.OperatingSystemUbuntu] = image.ImageId
 		}
 	}
 
@@ -462,5 +461,5 @@ func (p *provider) getImageIDForOS(machineSpec clusterv1alpha1.MachineSpec, os p
 		return imageID, nil
 	}
 
-	return "", providerconfigtypes.ErrOSNotSupported
+	return "", providerconfig.ErrOSNotSupported
 }

@@ -31,11 +31,10 @@ import (
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	equinixmetaltypes "k8c.io/machine-controller/sdk/cloudprovider/equinixmetal"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -81,8 +80,8 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *equinixmetaltypes.RawConfig, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *equinixmetaltypes.RawConfig, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -481,7 +480,7 @@ func setProviderSpec(rawConfig equinixmetaltypes.RawConfig, s clusterv1alpha1.Pr
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
 
-	pconfig, err := providerconfigtypes.GetConfig(s)
+	pconfig, err := providerconfig.GetConfig(s)
 	if err != nil {
 		return nil, err
 	}
@@ -521,16 +520,16 @@ func getDeviceByTag(ctx context.Context, client *metalv1.APIClient, projectID, t
 }
 
 // given a defined Kubermatic constant for an operating system, return the canonical slug for Equinix Metal.
-func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
+func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfigtypes.OperatingSystemUbuntu:
+	case providerconfig.OperatingSystemUbuntu:
 		return "ubuntu_24_04", nil
-	case providerconfigtypes.OperatingSystemFlatcar:
+	case providerconfig.OperatingSystemFlatcar:
 		return "flatcar_stable", nil
-	case providerconfigtypes.OperatingSystemRockyLinux:
+	case providerconfig.OperatingSystemRockyLinux:
 		return "rocky_8", nil
 	}
-	return "", providerconfigtypes.ErrOSNotSupported
+	return "", providerconfig.ErrOSNotSupported
 }
 
 func getClient(apiKey string) *metalv1.APIClient {

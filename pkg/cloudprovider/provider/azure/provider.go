@@ -38,12 +38,11 @@ import (
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	kuberneteshelper "k8c.io/machine-controller/pkg/kubernetes"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	azuretypes "k8c.io/machine-controller/sdk/cloudprovider/azure"
 	"k8c.io/machine-controller/sdk/net"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -140,26 +139,26 @@ func (vm *azureVM) Status() instance.Status {
 	return vm.status
 }
 
-var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageReference{
-	providerconfigtypes.OperatingSystemUbuntu: {
+var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
+	providerconfig.OperatingSystemUbuntu: {
 		Publisher: to.StringPtr("Canonical"),
 		Offer:     to.StringPtr("ubuntu-24_04-lts"),
 		Sku:       to.StringPtr("server-gen1"),
 		Version:   to.StringPtr("latest"),
 	},
-	providerconfigtypes.OperatingSystemRHEL: {
+	providerconfig.OperatingSystemRHEL: {
 		Publisher: to.StringPtr("RedHat"),
 		Offer:     to.StringPtr("rhel-byos"),
 		Sku:       to.StringPtr("rhel-lvm85"),
 		Version:   to.StringPtr("8.5.20220316"),
 	},
-	providerconfigtypes.OperatingSystemFlatcar: {
+	providerconfig.OperatingSystemFlatcar: {
 		Publisher: to.StringPtr("kinvolk"),
 		Offer:     to.StringPtr("flatcar-container-linux"),
 		Sku:       to.StringPtr("stable"),
 		Version:   to.StringPtr("3374.2.0"),
 	},
-	providerconfigtypes.OperatingSystemRockyLinux: {
+	providerconfig.OperatingSystemRockyLinux: {
 		Publisher: to.StringPtr("procomputers"),
 		Offer:     to.StringPtr("rocky-linux-8-5"),
 		Sku:       to.StringPtr("rocky-linux-8-5"),
@@ -167,18 +166,18 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 	},
 }
 
-var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
-	providerconfigtypes.OperatingSystemFlatcar: {
+var osPlans = map[providerconfig.OperatingSystem]*compute.Plan{
+	providerconfig.OperatingSystemFlatcar: {
 		Name:      ptr.To("stable"),
 		Publisher: ptr.To("kinvolk"),
 		Product:   ptr.To("flatcar-container-linux"),
 	},
-	providerconfigtypes.OperatingSystemRHEL: {
+	providerconfig.OperatingSystemRHEL: {
 		Name:      ptr.To("rhel-lvm85"),
 		Publisher: ptr.To("redhat"),
 		Product:   ptr.To("rhel-byos"),
 	},
-	providerconfigtypes.OperatingSystemRockyLinux: {
+	providerconfig.OperatingSystemRockyLinux: {
 		Name:      ptr.To("rocky-linux-8-5"),
 		Publisher: ptr.To("procomputers"),
 		Product:   ptr.To("rocky-linux-8-5"),
@@ -205,7 +204,7 @@ var (
 	cache     = gocache.New(10*time.Minute, 10*time.Minute)
 )
 
-func getOSImageReference(c *config, os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
+func getOSImageReference(c *config, os providerconfig.OperatingSystem) (*compute.ImageReference, error) {
 	if c.ImageID != "" {
 		return &compute.ImageReference{
 			ID: to.StringPtr(c.ImageID),
@@ -234,8 +233,8 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 	return &provider{configVarResolver: configVarResolver}
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -522,7 +521,7 @@ func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.Machin
 	return spec, nil
 }
 
-func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) (*compute.StorageProfile, error) {
+func getStorageProfile(config *config, providerCfg *providerconfig.Config) (*compute.StorageProfile, error) {
 	osRef, err := getOSImageReference(config, providerCfg.OperatingSystem)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get OSImageReference: %w", err)
@@ -1173,9 +1172,9 @@ func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 
-func getOSUsername(os providerconfigtypes.OperatingSystem) string {
+func getOSUsername(os providerconfig.OperatingSystem) string {
 	switch os {
-	case providerconfigtypes.OperatingSystemFlatcar:
+	case providerconfig.OperatingSystemFlatcar:
 		return "core"
 	default:
 		return string(os)

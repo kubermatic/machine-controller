@@ -32,12 +32,11 @@ import (
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	digitaloceantypes "k8c.io/machine-controller/sdk/cloudprovider/digitalocean"
 	"k8c.io/machine-controller/sdk/net"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -82,14 +81,14 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
+func getSlugForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfigtypes.OperatingSystemUbuntu:
+	case providerconfig.OperatingSystemUbuntu:
 		return "ubuntu-24-04-x64", nil
-	case providerconfigtypes.OperatingSystemRockyLinux:
+	case providerconfig.OperatingSystemRockyLinux:
 		return "rockylinux-8-x64", nil
 	}
-	return "", providerconfigtypes.ErrOSNotSupported
+	return "", providerconfig.ErrOSNotSupported
 }
 
 func getClient(ctx context.Context, token string) *godo.Client {
@@ -101,8 +100,8 @@ func getClient(ctx context.Context, token string) *godo.Client {
 	return godo.NewClient(oauthClient)
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}

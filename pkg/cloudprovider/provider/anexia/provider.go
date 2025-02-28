@@ -38,11 +38,10 @@ import (
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	cloudproviderutil "k8c.io/machine-controller/pkg/cloudprovider/util"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -234,8 +233,8 @@ func ensureConditions(status *anxtypes.ProviderStatus) {
 	}
 }
 
-func (p *provider) getConfig(ctx context.Context, log *zap.SugaredLogger, provSpec clusterv1alpha1.ProviderSpec) (*resolvedConfig, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(ctx context.Context, log *zap.SugaredLogger, provSpec clusterv1alpha1.ProviderSpec) (*resolvedConfig, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}

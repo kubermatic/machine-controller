@@ -31,11 +31,10 @@ import (
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	hetznertypes "k8c.io/machine-controller/sdk/cloudprovider/hetzner"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -69,22 +68,22 @@ type Config struct {
 	AssignIPv6           bool
 }
 
-func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
+func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfigtypes.OperatingSystemUbuntu:
+	case providerconfig.OperatingSystemUbuntu:
 		return "ubuntu-24.04", nil
-	case providerconfigtypes.OperatingSystemRockyLinux:
+	case providerconfig.OperatingSystemRockyLinux:
 		return "rocky-8", nil
 	}
-	return "", providerconfigtypes.ErrOSNotSupported
+	return "", providerconfig.ErrOSNotSupported
 }
 
 func getClient(token string) *hcloud.Client {
 	return hcloud.NewClient(hcloud.WithToken(token))
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}

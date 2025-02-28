@@ -28,7 +28,7 @@ import (
 	"go.uber.org/zap"
 
 	cloudprovidertesting "k8c.io/machine-controller/pkg/cloudprovider/testing"
-	"k8c.io/machine-controller/pkg/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	"k8s.io/utils/ptr"
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"

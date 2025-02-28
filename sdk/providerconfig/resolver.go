@@ -18,21 +18,12 @@ package providerconfig
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strconv"
 	"time"
 
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
-	"k8c.io/machine-controller/sdk/userdata/amzn2"
-	"k8c.io/machine-controller/sdk/userdata/flatcar"
-	"k8c.io/machine-controller/sdk/userdata/rhel"
-	"k8c.io/machine-controller/sdk/userdata/rockylinux"
-	"k8c.io/machine-controller/sdk/userdata/ubuntu"
-
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -49,7 +40,7 @@ func NewConfigVarResolver(ctx context.Context, client ctrlruntimeclient.Client) 
 	}
 }
 
-func (cvr *ConfigVarResolver) GetConfigVarDurationValue(configVar providerconfigtypes.ConfigVarString) (time.Duration, error) {
+func (cvr *ConfigVarResolver) GetConfigVarDurationValue(configVar ConfigVarString) (time.Duration, error) {
 	durStr, err := cvr.GetConfigVarStringValue(configVar)
 	if err != nil {
 		return 0, err
@@ -58,7 +49,7 @@ func (cvr *ConfigVarResolver) GetConfigVarDurationValue(configVar providerconfig
 	return time.ParseDuration(durStr)
 }
 
-func (cvr *ConfigVarResolver) GetConfigVarDurationValueOrDefault(configVar providerconfigtypes.ConfigVarString, defaultDuration time.Duration) (time.Duration, error) {
+func (cvr *ConfigVarResolver) GetConfigVarDurationValueOrDefault(configVar ConfigVarString, defaultDuration time.Duration) (time.Duration, error) {
 	durStr, err := cvr.GetConfigVarStringValue(configVar)
 	if err != nil {
 		return 0, err
@@ -80,7 +71,7 @@ func (cvr *ConfigVarResolver) GetConfigVarDurationValueOrDefault(configVar provi
 	return duration, nil
 }
 
-func (cvr *ConfigVarResolver) GetConfigVarStringValue(configVar providerconfigtypes.ConfigVarString) (string, error) {
+func (cvr *ConfigVarResolver) GetConfigVarStringValue(configVar ConfigVarString) (string, error) {
 	// We need all three of these to fetch and use a secret
 	if configVar.SecretKeyRef.Name != "" && configVar.SecretKeyRef.Namespace != "" && configVar.SecretKeyRef.Key != "" {
 		secret := &corev1.Secret{}
@@ -112,7 +103,7 @@ func (cvr *ConfigVarResolver) GetConfigVarStringValue(configVar providerconfigty
 
 // GetConfigVarStringValueOrEnv tries to get the value from ConfigVarString, when it fails, it falls back to
 // getting the value from an environment variable specified by envVarName parameter.
-func (cvr *ConfigVarResolver) GetConfigVarStringValueOrEnv(configVar providerconfigtypes.ConfigVarString, envVarName string) (string, error) {
+func (cvr *ConfigVarResolver) GetConfigVarStringValueOrEnv(configVar ConfigVarString, envVarName string) (string, error) {
 	cfgVar, err := cvr.GetConfigVarStringValue(configVar)
 	if err == nil && len(cfgVar) > 0 {
 		return cfgVar, err
@@ -124,7 +115,7 @@ func (cvr *ConfigVarResolver) GetConfigVarStringValueOrEnv(configVar providercon
 
 // GetConfigVarBoolValue returns a boolean from a ConfigVarBool. If there is no valid source for the boolean,
 // the second bool returned will be false (to be able to differentiate between "false" and "unset").
-func (cvr *ConfigVarResolver) GetConfigVarBoolValue(configVar providerconfigtypes.ConfigVarBool) (bool, bool, error) {
+func (cvr *ConfigVarResolver) GetConfigVarBoolValue(configVar ConfigVarBool) (bool, bool, error) {
 	// We need all three of these to fetch and use a secret
 	if configVar.SecretKeyRef.Name != "" && configVar.SecretKeyRef.Namespace != "" && configVar.SecretKeyRef.Key != "" {
 		secret := &corev1.Secret{}
@@ -160,7 +151,7 @@ func (cvr *ConfigVarResolver) GetConfigVarBoolValue(configVar providerconfigtype
 	return configVar.Value != nil && *configVar.Value, true, nil
 }
 
-func (cvr *ConfigVarResolver) GetConfigVarBoolValueOrEnv(configVar providerconfigtypes.ConfigVarBool, envVarName string) (bool, error) {
+func (cvr *ConfigVarResolver) GetConfigVarBoolValueOrEnv(configVar ConfigVarBool, envVarName string) (bool, error) {
 	boolVal, valid, err := cvr.GetConfigVarBoolValue(configVar)
 	if valid && err == nil {
 		return boolVal, nil
@@ -176,21 +167,4 @@ func (cvr *ConfigVarResolver) GetConfigVarBoolValueOrEnv(configVar providerconfi
 	}
 
 	return false, nil
-}
-
-func DefaultOperatingSystemSpec(os providerconfigtypes.OperatingSystem, operatingSystemSpec runtime.RawExtension) (runtime.RawExtension, error) {
-	switch os {
-	case providerconfigtypes.OperatingSystemAmazonLinux2:
-		return amzn2.DefaultConfig(operatingSystemSpec), nil
-	case providerconfigtypes.OperatingSystemFlatcar:
-		return flatcar.DefaultConfig(operatingSystemSpec), nil
-	case providerconfigtypes.OperatingSystemRHEL:
-		return rhel.DefaultConfig(operatingSystemSpec), nil
-	case providerconfigtypes.OperatingSystemUbuntu:
-		return ubuntu.DefaultConfig(operatingSystemSpec), nil
-	case providerconfigtypes.OperatingSystemRockyLinux:
-		return rockylinux.DefaultConfig(operatingSystemSpec), nil
-	}
-
-	return operatingSystemSpec, errors.New("unknown OperatingSystem")
 }

@@ -41,11 +41,10 @@ import (
 	kuberneteshelper "k8c.io/machine-controller/pkg/kubernetes"
 	"k8c.io/machine-controller/pkg/node/eviction"
 	"k8c.io/machine-controller/pkg/node/poddeletion"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	"k8c.io/machine-controller/pkg/rhsm"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 	"k8c.io/machine-controller/sdk/userdata/rhel"
 
 	corev1 "k8s.io/api/core/v1"
@@ -406,7 +405,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 		machine.Spec.Name = machine.Name
 	}
 
-	providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
+	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider config: %w", err)
 	}
@@ -457,7 +456,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 	}
 
 	// case 3.2: if the node exists and both external and internal CCM are not available. Then set the provider-id for the node.
-	inTree := providerconfigtypes.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider)
+	inTree := providerconfig.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider)
 	if !inTree && !r.nodeSettings.ExternalCloudProvider && node.Spec.ProviderID == "" {
 		providerID := fmt.Sprintf(ProviderIDPattern, providerConfig.CloudProvider, machine.UID)
 		if err := r.updateNode(ctx, node, func(n *corev1.Node) {
@@ -506,9 +505,9 @@ func (r *Reconciler) machineHasValidNode(ctx context.Context, machine *clusterv1
 	return true, nil
 }
 
-func (r *Reconciler) shouldCleanupVolumes(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, providerName providerconfigtypes.CloudProvider) (bool, error) {
+func (r *Reconciler) shouldCleanupVolumes(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, providerName providerconfig.CloudProvider) (bool, error) {
 	// we need to wait for volumeAttachments clean up only for vSphere
-	if providerName != providerconfigtypes.CloudProviderVsphere {
+	if providerName != providerconfig.CloudProviderVsphere {
 		return false, nil
 	}
 
@@ -581,7 +580,7 @@ func (r *Reconciler) deleteMachine(
 	ctx context.Context,
 	log *zap.SugaredLogger,
 	prov cloudprovidertypes.Provider,
-	providerName providerconfigtypes.CloudProvider,
+	providerName providerconfig.CloudProvider,
 	machine *clusterv1alpha1.Machine,
 	skipEviction bool,
 ) (*reconcile.Result, error) {
@@ -704,19 +703,19 @@ func (r *Reconciler) deleteCloudProviderInstance(ctx context.Context, log *zap.S
 		return &reconcile.Result{RequeueAfter: deletionRetryWaitPeriod}, nil
 	}
 
-	machineConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
+	machineConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider config: %w", err)
 	}
 
-	if machineConfig.OperatingSystem == providerconfigtypes.OperatingSystemRHEL {
+	if machineConfig.OperatingSystem == providerconfig.OperatingSystemRHEL {
 		rhelConfig, err := rhel.LoadConfig(machineConfig.OperatingSystemSpec)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get rhel os specs: %w", err)
 		}
 
 		machineName := machine.Name
-		if machineConfig.CloudProvider == providerconfigtypes.CloudProviderAWS {
+		if machineConfig.CloudProvider == providerconfig.CloudProviderAWS {
 			for _, address := range machine.Status.Addresses {
 				if address.Type == corev1.NodeInternalDNS {
 					machineName = address.Address
@@ -755,7 +754,7 @@ func (r *Reconciler) deleteCloudProviderInstance(ctx context.Context, log *zap.S
 		// removed by an administrator or an external service. This is because the machine controller lacks access to cloud
 		// instances and cannot ensure their deletion. If the external service fails to delete the instance, it may result
 		// in orphaned resources or nodes without a machine reference.
-		if machineConfig.CloudProvider != providerconfigtypes.CloudProviderExternal {
+		if machineConfig.CloudProvider != providerconfig.CloudProviderExternal {
 			finalizers.Delete(FinalizerDeleteInstance)
 			m.Finalizers = finalizers.List()
 		}
@@ -788,7 +787,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	log *zap.SugaredLogger,
 	prov cloudprovidertypes.Provider,
 	machine *clusterv1alpha1.Machine,
-	providerConfig *providerconfigtypes.Config,
+	providerConfig *providerconfig.Config,
 ) (*reconcile.Result, error) {
 	log.Debug("Requesting instance for machine from cloudprovider because no associated node with status ready found...")
 
@@ -832,7 +831,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				message := fmt.Sprintf("%v. Failed to create a machine.", err)
 				return nil, r.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to create machine at cloudprovider")
 			}
-			if providerConfig.OperatingSystem == providerconfigtypes.OperatingSystemRHEL {
+			if providerConfig.OperatingSystem == providerconfig.OperatingSystemRHEL {
 				if err := rhsm.AddRHELSubscriptionFinalizer(machine, r.updateMachine); err != nil {
 					return nil, fmt.Errorf("failed to add redhat subscription finalizer: %w", err)
 				}
@@ -899,7 +898,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 
 	var providerID string
 	if machine.Spec.ProviderID == nil {
-		inTree := providerconfigtypes.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider)
+		inTree := providerconfig.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider)
 		// If both external and internal CCM are not available. We set provider-id for the machine explicitly.
 		if !inTree && !r.nodeSettings.ExternalCloudProvider {
 			providerID = fmt.Sprintf(ProviderIDPattern, providerConfig.CloudProvider, machine.UID)
@@ -918,7 +917,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	return r.ensureNodeOwnerRef(ctx, log, providerInstance, machine, providerConfig)
 }
 
-func (r *Reconciler) ensureNodeOwnerRef(ctx context.Context, log *zap.SugaredLogger, providerInstance instance.Instance, machine *clusterv1alpha1.Machine, providerConfig *providerconfigtypes.Config) (*reconcile.Result, error) {
+func (r *Reconciler) ensureNodeOwnerRef(ctx context.Context, log *zap.SugaredLogger, providerInstance instance.Instance, machine *clusterv1alpha1.Machine, providerConfig *providerconfig.Config) (*reconcile.Result, error) {
 	node, exists, err := r.getNode(ctx, log, providerInstance, providerConfig.CloudProvider)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node for machine %s: %w", machine.Name, err)
@@ -1043,7 +1042,7 @@ func (r *Reconciler) updateMachineStatus(machine *clusterv1alpha1.Machine, node 
 	return nil
 }
 
-func (r *Reconciler) getNode(ctx context.Context, log *zap.SugaredLogger, instance instance.Instance, provider providerconfigtypes.CloudProvider) (node *corev1.Node, exists bool, err error) {
+func (r *Reconciler) getNode(ctx context.Context, log *zap.SugaredLogger, instance instance.Instance, provider providerconfig.CloudProvider) (node *corev1.Node, exists bool, err error) {
 	if instance == nil {
 		return nil, false, fmt.Errorf("getNode called with nil provider instance")
 	}
@@ -1081,7 +1080,7 @@ func (r *Reconciler) getNode(ctx context.Context, log *zap.SugaredLogger, instan
 				// TODO: We should do this for other providers, but there are providers where
 				// the node and the instance names will not match, so it requires further
 				// investigation (e.g. AWS).
-				if provider == providerconfigtypes.CloudProviderHetzner && node.Name != instance.Name() {
+				if provider == providerconfig.CloudProviderHetzner && node.Name != instance.Name() {
 					continue
 				}
 				if nodeAddress.Address == instanceAddress {
@@ -1094,7 +1093,7 @@ func (r *Reconciler) getNode(ctx context.Context, log *zap.SugaredLogger, instan
 	return nil, false, nil
 }
 
-func findNodeByProviderID(instance instance.Instance, provider providerconfigtypes.CloudProvider, nodes []corev1.Node) *corev1.Node {
+func findNodeByProviderID(instance instance.Instance, provider providerconfig.CloudProvider, nodes []corev1.Node) *corev1.Node {
 	providerID := instance.ProviderID()
 	if providerID == "" {
 		return nil
@@ -1109,7 +1108,7 @@ func findNodeByProviderID(instance instance.Instance, provider providerconfigtyp
 		//   * aws:///<availability-zone>/<instance-id>
 		//   * aws:///<instance-id>
 		// The first case is handled above, while the second here is handled here.
-		if provider == providerconfigtypes.CloudProviderAWS {
+		if provider == providerconfig.CloudProviderAWS {
 			pid := strings.Split(node.Spec.ProviderID, "aws:///")
 			if len(pid) == 2 && pid[1] == instance.ID() {
 				return node.DeepCopy()
@@ -1205,7 +1204,7 @@ func (r *Reconciler) handleNodeFailuresWithExternalCCM(
 	ctx context.Context,
 	log *zap.SugaredLogger,
 	prov cloudprovidertypes.Provider,
-	provConfig *providerconfigtypes.Config,
+	provConfig *providerconfig.Config,
 	node *corev1.Node,
 	machine *clusterv1alpha1.Machine,
 ) (*reconcile.Result, error) {
@@ -1223,10 +1222,10 @@ func (r *Reconciler) handleNodeFailuresWithExternalCCM(
 		return nil, err
 	} else if taintExists(node, taintShutdown) {
 		switch provConfig.CloudProvider {
-		case providerconfigtypes.CloudProviderKubeVirt:
+		case providerconfig.CloudProviderKubeVirt:
 			log.Infof("Deleting a shut-down machine %q that cannot recover", machine.Name)
 			skipEviction := true
-			return r.deleteMachine(ctx, log, prov, providerconfigtypes.CloudProviderKubeVirt, machine, skipEviction)
+			return r.deleteMachine(ctx, log, prov, providerconfig.CloudProviderKubeVirt, machine, skipEviction)
 		}
 	}
 

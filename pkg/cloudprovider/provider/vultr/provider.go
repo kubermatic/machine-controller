@@ -32,11 +32,10 @@ import (
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	vultrtypes "k8c.io/machine-controller/sdk/cloudprovider/vultr"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -78,15 +77,15 @@ type Config struct {
 	Vpc2ID          []string
 }
 
-func getIDForOS(os providerconfigtypes.OperatingSystem) (int, error) {
+func getIDForOS(os providerconfig.OperatingSystem) (int, error) {
 	switch os {
-	case providerconfigtypes.OperatingSystemUbuntu:
+	case providerconfig.OperatingSystemUbuntu:
 		return 1743, nil
 		// name: Rocky Linux 9 x64
-	case providerconfigtypes.OperatingSystemRockyLinux:
+	case providerconfig.OperatingSystemRockyLinux:
 		return 1869, nil
 	}
-	return 0, providerconfigtypes.ErrOSNotSupported
+	return 0, providerconfig.ErrOSNotSupported
 }
 
 func getClient(ctx context.Context, apiKey string) *govultr.Client {
@@ -95,8 +94,8 @@ func getClient(ctx context.Context, apiKey string) *govultr.Client {
 	return govultr.NewClient(oauth2.NewClient(ctx, ts))
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}

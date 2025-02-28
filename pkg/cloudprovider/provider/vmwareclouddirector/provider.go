@@ -29,10 +29,9 @@ import (
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	vcdtypes "k8c.io/machine-controller/sdk/cloudprovider/vmwareclouddirector"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -255,7 +254,7 @@ func (p *provider) create(_ context.Context, machine *clusterv1alpha1.Machine, u
 
 	// 5. Before powering on the VM, configure customization to attach userdata with the VM
 	// update guest properties.
-	err = setUserData(userdata, vm, providerConfig.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar)
+	err = setUserData(userdata, vm, providerConfig.OperatingSystem == providerconfig.OperatingSystemFlatcar)
 	if err != nil {
 		return nil, err
 	}
@@ -309,8 +308,8 @@ func (p *provider) Get(_ context.Context, _ *zap.SugaredLogger, machine *cluster
 	return p.getInstance(vm)
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *vcdtypes.RawConfig, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, *vcdtypes.RawConfig, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -549,7 +548,7 @@ func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec cluste
 }
 
 func setProviderSpec(rawConfig vcdtypes.RawConfig, provSpec clusterv1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, err
 	}

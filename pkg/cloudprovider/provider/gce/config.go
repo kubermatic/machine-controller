@@ -32,10 +32,9 @@ import (
 	googleoauth "golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
 
-	"k8c.io/machine-controller/pkg/providerconfig"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	gcetypes "k8c.io/machine-controller/sdk/cloudprovider/gce"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 )
 
 // Environment variables for the configuration of the Google Cloud project access.
@@ -44,15 +43,15 @@ const (
 )
 
 // imageProjects maps the OS to the Google Cloud image projects.
-var imageProjects = map[providerconfigtypes.OperatingSystem]string{
-	providerconfigtypes.OperatingSystemUbuntu:  "ubuntu-os-cloud",
-	providerconfigtypes.OperatingSystemFlatcar: "kinvolk-public",
+var imageProjects = map[providerconfig.OperatingSystem]string{
+	providerconfig.OperatingSystemUbuntu:  "ubuntu-os-cloud",
+	providerconfig.OperatingSystemFlatcar: "kinvolk-public",
 }
 
 // imageFamilies maps the OS to the Google Cloud image projects.
-var imageFamilies = map[providerconfigtypes.OperatingSystem]string{
-	providerconfigtypes.OperatingSystemUbuntu:  "ubuntu-2404-lts-amd64",
-	providerconfigtypes.OperatingSystemFlatcar: "flatcar-stable",
+var imageFamilies = map[providerconfig.OperatingSystem]string{
+	providerconfig.OperatingSystemUbuntu:  "ubuntu-2404-lts-amd64",
+	providerconfig.OperatingSystemFlatcar: "flatcar-stable",
 }
 
 // diskTypes are the disk types of the Google Cloud. Map is used for
@@ -70,9 +69,9 @@ const (
 
 // newCloudProviderSpec creates a cloud provider specification out of the
 // given ProviderSpec.
-func newCloudProviderSpec(provSpec clusterv1alpha1.ProviderSpec) (*gcetypes.CloudProviderSpec, *providerconfigtypes.Config, error) {
+func newCloudProviderSpec(provSpec clusterv1alpha1.ProviderSpec) (*gcetypes.CloudProviderSpec, *providerconfig.Config, error) {
 	// Retrieve provider configuration from machine specification.
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %w", err)
 	}
@@ -105,7 +104,7 @@ type config struct {
 	provisioningModel            *string
 	labels                       map[string]string
 	tags                         []string
-	providerConfig               *providerconfigtypes.Config
+	providerConfig               *providerconfig.Config
 	assignPublicIPAddress        bool
 	multizone                    bool
 	regional                     bool
@@ -311,11 +310,11 @@ func (cfg *config) sourceImageDescriptor() (string, error) {
 	}
 	project, ok := imageProjects[cfg.providerConfig.OperatingSystem]
 	if !ok {
-		return "", providerconfigtypes.ErrOSNotSupported
+		return "", providerconfig.ErrOSNotSupported
 	}
 	family, ok := imageFamilies[cfg.providerConfig.OperatingSystem]
 	if !ok {
-		return "", providerconfigtypes.ErrOSNotSupported
+		return "", providerconfig.ErrOSNotSupported
 	}
 	return fmt.Sprintf("projects/%s/global/images/family/%s", project, family), nil
 }

@@ -34,8 +34,8 @@ import (
 
 	cloudprovidertesting "k8c.io/machine-controller/pkg/cloudprovider/testing"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"

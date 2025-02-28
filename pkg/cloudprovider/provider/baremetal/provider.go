@@ -30,12 +30,11 @@ import (
 	tink "k8c.io/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	"k8c.io/machine-controller/pkg/cloudprovider/util"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	baremetaltypes "k8c.io/machine-controller/sdk/cloudprovider/baremetal"
 	tinktypes "k8c.io/machine-controller/sdk/cloudprovider/baremetal/plugins/tinkerbell"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -87,12 +86,12 @@ type Config struct {
 	driverSpec runtime.RawExtension
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
 	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
 
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -35,11 +35,10 @@ import (
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	controllerutil "k8c.io/machine-controller/pkg/controller/util"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	kubevirttypes "k8c.io/machine-controller/sdk/cloudprovider/kubevirt"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -144,7 +143,7 @@ const (
 	noAffinityType = ""
 )
 
-func (p *provider) affinityType(affinityType providerconfigtypes.ConfigVarString) (AffinityType, error) {
+func (p *provider) affinityType(affinityType providerconfig.ConfigVarString) (AffinityType, error) {
 	podAffinityPresetString, err := p.configVarResolver.GetConfigVarStringValue(affinityType)
 	if err != nil {
 		return "", fmt.Errorf(`failed to parse "podAffinityPreset" field: %w`, err)
@@ -213,8 +212,8 @@ func (k *kubeVirtServer) Status() instance.Status {
 
 var _ instance.Instance = &kubeVirtServer{}
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -374,7 +373,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	return &config, pconfig, nil
 }
 
-func (p *provider) getStorageAccessType(ctx context.Context, accessType providerconfigtypes.ConfigVarString,
+func (p *provider) getStorageAccessType(ctx context.Context, accessType providerconfig.ConfigVarString,
 	infraClient ctrlruntimeclient.Client, storageClassName string) (corev1.PersistentVolumeAccessMode, error) {
 	at, _ := p.configVarResolver.GetConfigVarStringValue(accessType)
 	if at == "" {
@@ -537,7 +536,7 @@ func getNamespace() string {
 	return ns
 }
 
-func (p *provider) getPullMethod(pullMethod providerconfigtypes.ConfigVarString) (cdicorev1beta1.RegistryPullMethod, error) {
+func (p *provider) getPullMethod(pullMethod providerconfig.ConfigVarString) (cdicorev1beta1.RegistryPullMethod, error) {
 	resolvedPM, err := p.configVarResolver.GetConfigVarStringValue(pullMethod)
 	if err != nil {
 		return "", err
@@ -627,7 +626,7 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 		return fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
 	if _, ok := kubevirttypes.SupportedOS[pc.OperatingSystem]; !ok {
-		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
+		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, providerconfig.ErrOSNotSupported)
 	}
 	if c.DNSPolicy == corev1.DNSNone {
 		if c.DNSConfig == nil || len(c.DNSConfig.Nameservers) == 0 {
@@ -733,7 +732,7 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 	return &kubeVirtServer{}, nil
 }
 
-func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, machine *clusterv1alpha1.Machine,
+func (p *provider) newVirtualMachine(c *Config, pc *providerconfig.Config, machine *clusterv1alpha1.Machine,
 	labels map[string]string, userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter) (*kubevirtcorev1.VirtualMachine, error) {
 	// We add the timestamp because the secret name must be different when we recreate the VMI
 	// because its pod got deleted
@@ -774,7 +773,7 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 	// Add machineName as prefix to secondaryDisks.
 	addPrefixToSecondaryDisk(c.SecondaryDisks, dataVolumeName)
 
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
+	if pc.OperatingSystem == providerconfig.OperatingSystemFlatcar {
 		annotations["kubevirt.io/ignitiondata"] = userdata
 	}
 

@@ -28,9 +28,8 @@ import (
 	"k8c.io/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	providerconfig "k8c.io/machine-controller/sdk/providerconfig"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -76,7 +75,7 @@ func verifyMigrateUID(ctx context.Context, _, manifestPath string, parameters []
 		Client: fakeClient,
 	}
 
-	providerSpec, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
+	providerSpec, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get provideSpec: %w", err)
 	}

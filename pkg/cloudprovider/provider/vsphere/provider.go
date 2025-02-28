@@ -34,11 +34,10 @@ import (
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	vspheretypes "k8c.io/machine-controller/sdk/cloudprovider/vsphere"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	ktypes "k8s.io/apimachinery/pkg/types"
@@ -120,8 +119,8 @@ func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.Machin
 	return spec, nil
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *vspheretypes.RawConfig, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, *vspheretypes.RawConfig, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -365,7 +364,7 @@ func (p *provider) create(ctx context.Context, log *zap.SugaredLogger, machine *
 	defer session.Logout(ctx)
 
 	var containerLinuxUserdata string
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
+	if pc.OperatingSystem == providerconfig.OperatingSystemFlatcar {
 		containerLinuxUserdata = userdata
 	}
 
@@ -397,7 +396,7 @@ func (p *provider) create(ctx context.Context, log *zap.SugaredLogger, machine *
 		}
 	}
 
-	if pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
+	if pc.OperatingSystem != providerconfig.OperatingSystemFlatcar {
 		localUserdataIsoFilePath, err := generateLocalUserdataISO(userdata, machine.Spec.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate local userdadata iso: %w", err)
@@ -520,7 +519,7 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		return false, fmt.Errorf("failed to destroy vm %s: %w", virtualMachine.Name(), err)
 	}
 
-	if pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
+	if pc.OperatingSystem != providerconfig.OperatingSystemFlatcar {
 		filemanager := datastore.NewFileManager(session.Datacenter, false)
 
 		if err := filemanager.Delete(ctx, virtualMachine.Name()); err != nil {

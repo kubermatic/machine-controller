@@ -14,30 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package providerconfig
+package userdata
 
 import (
 	"testing"
 
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestDefaultOperatingSystemSpec(t *testing.T) {
-	// this test validates that DefaultOperatingSystemSpec takes into accoult all listed operating systems in
+	// this test validates that DefaultOperatingSystemSpec takes into account all listed operating systems in
 	// AllOperatingSystems
-	for _, osys := range providerconfigtypes.AllOperatingSystems {
-		osys := osys
+	for _, osys := range providerconfig.AllOperatingSystems {
 		t.Run(string(osys), func(t *testing.T) {
 			operatingSystemSpec, err := DefaultOperatingSystemSpec(osys, runtime.RawExtension{})
-
 			if err != nil {
-				t.Error("no error expected")
+				t.Fatalf("no error expected, but got: %v", err)
 			}
 
 			if operatingSystemSpec.Raw == nil {
-				t.Errorf("expected not nil")
+				t.Error("expected not nil")
 			}
 		})
 	}

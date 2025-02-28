@@ -25,9 +25,8 @@ import (
 
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -72,7 +71,7 @@ func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.Machin
 
 // Validate returns success or failure based according to its FakeCloudProviderSpec.
 func (p *provider) Validate(_ context.Context, log *zap.SugaredLogger, machinespec clusterv1alpha1.MachineSpec) error {
-	pconfig, err := providerconfigtypes.GetConfig(machinespec.ProviderSpec)
+	pconfig, err := providerconfig.GetConfig(machinespec.ProviderSpec)
 	if err != nil {
 		return err
 	}

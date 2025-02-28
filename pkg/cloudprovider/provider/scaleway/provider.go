@@ -30,11 +30,10 @@ import (
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	cloudInstance "k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	scalewaytypes "k8c.io/machine-controller/sdk/cloudprovider/scaleway"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -75,18 +74,18 @@ func (c *Config) getInstanceAPI() (*instance.API, error) {
 	return instance.NewAPI(client), nil
 }
 
-func getImageNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
+func getImageNameForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfigtypes.OperatingSystemUbuntu:
+	case providerconfig.OperatingSystemUbuntu:
 		// ubuntu_focal doesn't work (see https://bugs.launchpad.net/ubuntu/+source/linux-kvm/+bug/1880522)
 		// modprobe ip_vs will fail
 		return "ubuntu_bionic", nil
 	}
-	return "", providerconfigtypes.ErrOSNotSupported
+	return "", providerconfig.ErrOSNotSupported
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	pconfig, err := providerconfigtypes.GetConfig(provSpec)
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}

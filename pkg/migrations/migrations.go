@@ -28,12 +28,11 @@ import (
 	"k8c.io/machine-controller/pkg/cloudprovider"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	machinecontroller "k8c.io/machine-controller/pkg/controller/machine"
-	"k8c.io/machine-controller/pkg/providerconfig"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/sdk/apis/cluster/v1alpha1/conversions"
 	"k8c.io/machine-controller/sdk/apis/machines"
 	machinesv1alpha1 "k8c.io/machine-controller/sdk/apis/machines/v1alpha1"
-	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -231,7 +230,7 @@ func migrateMachines(ctx context.Context, log *zap.SugaredLogger, client ctrlrun
 
 		// Some providers need to update the provider instance to the new UID, we get the provider as early as possible
 		// to not fail in a half-migrated state when the providerconfig is invalid
-		providerConfig, err := providerconfigtypes.GetConfig(convertedClusterv1alpha1Machine.Spec.ProviderSpec)
+		providerConfig, err := providerconfig.GetConfig(convertedClusterv1alpha1Machine.Spec.ProviderSpec)
 		if err != nil {
 			return fmt.Errorf("failed to get provider config: %w", err)
 		}
