@@ -616,7 +616,7 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 	// If instancetype is specified, skip CPU and Memory validation.
 	// Values will come from instancetype.
 	if c.Instancetype == nil {
-		if _, err := parseResources(c.CPUs, c.Memory); err != nil {
+		if _, err := parseResources(c.Memory); err != nil {
 			return err
 		}
 	}
@@ -753,7 +753,7 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfig.Config, machi
 
 	// if no instancetype, resources are from config.
 	if c.Instancetype == nil {
-		requestsAndLimits, err := parseResources(c.CPUs, c.Memory)
+		requestsAndLimits, err := parseResources(c.Memory)
 		if err != nil {
 			return nil, err
 		}
@@ -801,6 +801,12 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfig.Config, machi
 		runStrategy = kubevirtcorev1.RunStrategyAlways
 	}
 
+	cpusAsUint64, err := strconv.ParseUint(c.CPUs, 0, 64)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse cpu cores: %w", err)
+	}
+
 	virtualMachine := &kubevirtcorev1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      machine.Name,
@@ -822,6 +828,9 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfig.Config, machi
 						*kubevirtcorev1.DefaultPodNetwork(),
 					},
 					Domain: kubevirtcorev1.DomainSpec{
+						CPU: &kubevirtcorev1.CPU{
+							Cores: uint32(cpusAsUint64),
+						},
 						Devices: kubevirtcorev1.Devices{
 							Interfaces:                 []kubevirtcorev1.Interface{*defaultBridgeNetwork},
 							Disks:                      getVMDisks(c),
@@ -867,18 +876,13 @@ func (p *provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *c
 	return false, sigClient.Delete(ctx, vm)
 }
 
-func parseResources(cpus, memory string) (*corev1.ResourceList, error) {
+func parseResources(memory string) (*corev1.ResourceList, error) {
 	memoryResource, err := resource.ParseQuantity(memory)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse memory requests: %w", err)
 	}
-	cpuResource, err := resource.ParseQuantity(cpus)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse cpu request: %w", err)
-	}
 	return &corev1.ResourceList{
 		corev1.ResourceMemory: memoryResource,
-		corev1.ResourceCPU:    cpuResource,
 	}, nil
 }
 
