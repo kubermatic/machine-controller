@@ -45,6 +45,8 @@ spec:
     spec:
       affinity: {}
       domain:
+        cpu:
+          cores: 2
         devices:
           disks:
             - disk:

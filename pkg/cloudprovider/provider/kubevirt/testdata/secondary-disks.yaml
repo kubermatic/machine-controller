@@ -65,6 +65,8 @@ spec:
     spec:
       affinity: {}
       domain:
+        cpu:
+          cores: 2
         devices:
           disks:
             - disk:
@@ -85,10 +87,8 @@ spec:
           networkInterfaceMultiqueue: true
         resources:
           limits:
-            cpu: "2"
             memory: 2Gi
           requests:
-            cpu: "2"
             memory: 2Gi
       networks:
         - name: default
