@@ -806,16 +806,23 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				return nil, fmt.Errorf("failed to find machine's MachineDployment: %w", err)
 			}
 
-			bootstrapSecretName := fmt.Sprintf(bootstrap.CloudConfigSecretNamePattern,
-				referencedMachineDeployment,
-				machine.Namespace,
-				bootstrap.BootstrapCloudConfig)
+			bootstrapSecretKey := types.NamespacedName{
+				Name: fmt.Sprintf(
+					bootstrap.CloudConfigSecretNamePattern,
+					referencedMachineDeployment,
+					machine.Namespace,
+					bootstrap.BootstrapCloudConfig,
+				),
+				Namespace: util.CloudInitNamespace,
+			}
 
 			bootstrapSecret := &corev1.Secret{}
 			if err := r.client.Get(ctx,
-				types.NamespacedName{Name: bootstrapSecretName, Namespace: util.CloudInitNamespace},
-				bootstrapSecret); err != nil {
-				log.Errorw("cloud-init configuration: cloud config is not ready yet", "secret", bootstrap.BootstrapCloudConfig)
+				bootstrapSecretKey,
+				bootstrapSecret,
+			); err != nil {
+				log.Errorw("cloud-init configuration: cloud config is not ready yet", "secret", bootstrapSecretKey.String())
+
 				return &reconcile.Result{RequeueAfter: 3 * time.Second}, nil
 			}
 
