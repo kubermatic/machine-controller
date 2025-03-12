@@ -5,19 +5,15 @@ metadata:
   labels:
     cluster.x-k8s.io/cluster-name: cluster-name
     cluster.x-k8s.io/role: worker
-    kubevirt.io/vm: use-storage-as-storage-target
+    kubevirt.io/vm: dedicated-vcpus
     md: md-name
-  name: use-storage-as-storage-target
+  name: dedicated-vcpus
   namespace: test-namespace
 spec:
   dataVolumeTemplates:
     - metadata:
-        name: use-storage-as-storage-target
-        annotations: {}
+        name: dedicated-vcpus
       spec:
-        source:
-          http:
-            url: "http://x.y.z.t/ubuntu.img"
         storage:
           accessModes:
             - ReadWriteMany
@@ -25,6 +21,9 @@ spec:
             requests:
               storage: 10Gi
           storageClassName: longhorn
+        source:
+          http:
+            url: http://x.y.z.t/ubuntu.img
   runStrategy: Once
   template:
     metadata:
@@ -35,11 +34,13 @@ spec:
       labels:
         cluster.x-k8s.io/cluster-name: cluster-name
         cluster.x-k8s.io/role: worker
-        kubevirt.io/vm: use-storage-as-storage-target
+        kubevirt.io/vm: dedicated-vcpus
         md: md-name
     spec:
       affinity: {}
       domain:
+        cpu:
+          cores: 2
         devices:
           disks:
             - disk:
@@ -54,10 +55,8 @@ spec:
           networkInterfaceMultiqueue: true
         resources:
           limits:
-            cpu: "2"
             memory: 2Gi
           requests:
-            cpu: "2"
             memory: 2Gi
       networks:
         - name: default
@@ -72,7 +71,7 @@ spec:
               md: md-name
       volumes:
         - dataVolume:
-            name: use-storage-as-storage-target
+            name: dedicated-vcpus
           name: datavolumedisk
         - cloudInitNoCloud:
             secretRef:

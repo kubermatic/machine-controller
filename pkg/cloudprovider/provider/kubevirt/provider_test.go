@@ -72,6 +72,7 @@ type kubevirtProviderSpecConf struct {
 	ProviderNetwork          *kubevirt.ProviderNetwork
 	ExtraHeadersSet          bool
 	EvictStrategy            string
+	MachineAnnotations       map[string]string
 }
 
 func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -283,6 +284,10 @@ func TestNewVirtualMachine(t *testing.T) {
 			name:     "eviction-strategy-live-migrate",
 			specConf: kubevirtProviderSpecConf{EvictStrategy: "LiveMigrate"},
 		},
+		{
+			name:     "dedicated-vcpus",
+			specConf: kubevirtProviderSpecConf{MachineAnnotations: map[string]string{kubevirt.UseDedicatedKubevirtVCPUAnnotationKey: "true"}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -294,6 +299,7 @@ func TestNewVirtualMachine(t *testing.T) {
 			machine := cloudprovidertesting.Creator{
 				Name:               tt.name,
 				Namespace:          "kubevirt",
+				MachineAnnotations: tt.specConf.MachineAnnotations,
 				ProviderSpecGetter: tt.specConf.rawProviderSpec,
 			}.CreateMachine(t)
 

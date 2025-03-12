@@ -25,6 +25,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const (
+	UseDedicatedKubevirtVCPUAnnotationKey = "kubermatic.io/use-dedicated-kubevirt-cpu"
+)
+
 var SupportedOS = map[providerconfig.OperatingSystem]*struct{}{
 	providerconfig.OperatingSystemUbuntu:     nil,
 	providerconfig.OperatingSystemRHEL:       nil,
