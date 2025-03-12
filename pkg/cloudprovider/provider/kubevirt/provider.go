@@ -98,6 +98,7 @@ type Config struct {
 	DNSConfig                 *corev1.PodDNSConfig
 	DNSPolicy                 corev1.DNSPolicy
 	CPUs                      string
+	VCPUsEnabled              bool
 	Memory                    string
 	Namespace                 string
 	OSImageSource             *cdicorev1beta1.DataVolumeSource
@@ -277,6 +278,13 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "cpus" field: %w`, err)
 	}
+
+	// we can suppress the value which indicates if the value is set or not because the default should be false
+	config.VCPUsEnabled, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.VirtualMachine.Template.VCPUsEnabled)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "vcpusEnabled" field: %w`, err)
+	}
+
 	config.Memory, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.Memory)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %w`, err)
@@ -616,7 +624,7 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 	// If instancetype is specified, skip CPU and Memory validation.
 	// Values will come from instancetype.
 	if c.Instancetype == nil {
-		if _, err := parseResources(c.CPUs, c.Memory, isDedicatedVCPURequested(spec.Annotations)); err != nil {
+		if _, err := parseResources(c.CPUs, c.Memory, c.VCPUsEnabled); err != nil {
 			return err
 		}
 	}
@@ -753,7 +761,7 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfig.Config, machi
 
 	// if no instancetype, resources are from config.
 	if c.Instancetype == nil {
-		requestsAndLimits, err := parseResources(c.CPUs, c.Memory, isDedicatedVCPURequested(machine.Spec.Annotations))
+		requestsAndLimits, err := parseResources(c.CPUs, c.Memory, c.VCPUsEnabled)
 		if err != nil {
 			return nil, err
 		}
@@ -841,13 +849,11 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfig.Config, machi
 		},
 	}
 
-	if isDedicatedVCPURequested(machine.Spec.Annotations) {
+	if c.VCPUsEnabled {
 		cpusAsUint64, err := strconv.ParseUint(c.CPUs, 0, 64)
-
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse cpu cores: %w", err)
 		}
-
 		virtualMachine.Spec.Template.Spec.Domain.CPU = &kubevirtcorev1.CPU{
 			Cores: uint32(cpusAsUint64),
 		}
@@ -878,16 +884,6 @@ func (p *provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *c
 	}
 
 	return false, sigClient.Delete(ctx, vm)
-}
-
-func isDedicatedVCPURequested(machineAnnotations map[string]string) bool {
-	dedicatedVCPUValue, ok := machineAnnotations[kubevirttypes.UseDedicatedKubevirtVCPUAnnotationKey]
-	if !ok {
-		return false
-	}
-	// we can suppress the error here because this would indicate that the annotation is not set
-	dedicatedVCPUEnabled, _ := strconv.ParseBool(dedicatedVCPUValue)
-	return dedicatedVCPUEnabled
 }
 
 func parseResources(cpus, memory string, dedicatedVCPUEnabled bool) (*corev1.ResourceList, error) {

@@ -72,7 +72,7 @@ type kubevirtProviderSpecConf struct {
 	ProviderNetwork          *kubevirt.ProviderNetwork
 	ExtraHeadersSet          bool
 	EvictStrategy            string
-	MachineAnnotations       map[string]string
+	VCPUsEnabled             bool
 }
 
 func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -133,6 +133,9 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 			},
 			{{- end }}
 			"template": {
+				{{- if .VCPUsEnabled }}
+				"vcpusEnabled": true,
+				{{- end }}
 				"cpus": "2",
 				"memory": "2Gi",
 				{{- if .SecondaryDisks }}
@@ -286,7 +289,7 @@ func TestNewVirtualMachine(t *testing.T) {
 		},
 		{
 			name:     "dedicated-vcpus",
-			specConf: kubevirtProviderSpecConf{MachineAnnotations: map[string]string{kubevirt.UseDedicatedKubevirtVCPUAnnotationKey: "true"}},
+			specConf: kubevirtProviderSpecConf{VCPUsEnabled: true},
 		},
 	}
 	for _, tt := range tests {
@@ -299,7 +302,6 @@ func TestNewVirtualMachine(t *testing.T) {
 			machine := cloudprovidertesting.Creator{
 				Name:               tt.name,
 				Namespace:          "kubevirt",
-				MachineAnnotations: tt.specConf.MachineAnnotations,
 				ProviderSpecGetter: tt.specConf.rawProviderSpec,
 			}.CreateMachine(t)
 
