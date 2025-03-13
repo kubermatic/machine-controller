@@ -70,11 +70,18 @@ type Flavor struct {
 
 // Template.
 type Template struct {
-	VCPUsEnabled   providerconfig.ConfigVarBool   `json:"vcpusEnabled,omitempty"`
+	VCPUs          VCPUs                          `json:"vcpus,omitempty"`
 	CPUs           providerconfig.ConfigVarString `json:"cpus,omitempty"`
 	Memory         providerconfig.ConfigVarString `json:"memory,omitempty"`
 	PrimaryDisk    PrimaryDisk                    `json:"primaryDisk,omitempty"`
 	SecondaryDisks []SecondaryDisks               `json:"secondaryDisks,omitempty"`
+}
+
+// VCPUs.
+type VCPUs struct {
+	Cores   int `json:"cores,omitempty"`
+	Sockets int `json:"sockets,omitempty"`
+	Threads int `json:"threads,omitempty"`
 }
 
 // PrimaryDisk.
