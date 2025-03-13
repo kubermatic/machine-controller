@@ -287,7 +287,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	config.Resources, config.VCPUs, err = parseResources(cpus, memory, rawConfig.VirtualMachine.Template.VCPUs)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "vcpusEnabled" field: %w`, err)
+		return nil, nil, fmt.Errorf(`failed to configure resource requests and limits and vcpus: %w`, err)
 	}
 
 	config.Namespace = getNamespace()
@@ -626,11 +626,15 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 	// Values will come from instancetype.
 	if c.Instancetype == nil {
 		if c.Resources == nil {
-			return fmt.Errorf("no memory requests set for the virtual machine")
+			return fmt.Errorf("no resource requests set for the virtual machine")
 		}
 
-		if (c.VCPUs == nil && c.Resources.Cpu() == nil) || (c.VCPUs != nil && c.Resources.Cpu() != nil) {
-			return fmt.Errorf("invalid/no cpus configured. Either vpus or cpus have to be configured.")
+		if c.VCPUs == nil && c.Resources.Cpu() == nil {
+			return fmt.Errorf("no CPUs configured. Either vCPUs or CPUs have to be set.")
+		}
+
+		if c.VCPUs != nil && c.Resources.Cpu() != nil {
+			return fmt.Errorf("vCPUs and CPUs cannot be configured at the same time.")
 		}
 	}
 

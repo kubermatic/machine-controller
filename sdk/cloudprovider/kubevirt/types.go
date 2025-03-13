@@ -70,7 +70,12 @@ type Flavor struct {
 
 // Template.
 type Template struct {
-	VCPUs          VCPUs                          `json:"vcpus,omitempty"`
+	// VCPUs is to configure vcpus used by a the virtual machine
+	// when using kubevirts cpuAllocationRatio feature this leads to auto assignment of the
+	// calculated ratio as resource cpu requests for the pod which launches the virtual machine
+	VCPUs VCPUs `json:"vcpus,omitempty"`
+	// CPUs is to configure cpu requests and limits directly for the pod which launches the virtual machine
+	// and is related to the underlying hardware
 	CPUs           providerconfig.ConfigVarString `json:"cpus,omitempty"`
 	Memory         providerconfig.ConfigVarString `json:"memory,omitempty"`
 	PrimaryDisk    PrimaryDisk                    `json:"primaryDisk,omitempty"`
@@ -79,9 +84,7 @@ type Template struct {
 
 // VCPUs.
 type VCPUs struct {
-	Cores   int `json:"cores,omitempty"`
-	Sockets int `json:"sockets,omitempty"`
-	Threads int `json:"threads,omitempty"`
+	Cores int `json:"cores,omitempty"`
 }
 
 // PrimaryDisk.
