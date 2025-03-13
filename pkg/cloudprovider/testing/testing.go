@@ -32,7 +32,6 @@ type ProviderSpecGetter func(t *testing.T) []byte
 type Creator struct {
 	Name               string
 	Namespace          string
-	MachineAnnotations map[string]string
 	ProviderSpecGetter ProviderSpecGetter
 }
 
@@ -44,9 +43,8 @@ func (c Creator) CreateMachine(t *testing.T) *clusterv1alpha1.Machine {
 		},
 		Spec: clusterv1alpha1.MachineSpec{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        c.Name,
-				Namespace:   c.Namespace,
-				Annotations: c.MachineAnnotations,
+				Name:      c.Name,
+				Namespace: c.Namespace,
 			},
 			ProviderSpec: clusterv1alpha1.ProviderSpec{
 				Value: &runtime.RawExtension{

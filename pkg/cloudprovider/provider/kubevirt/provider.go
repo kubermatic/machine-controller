@@ -902,7 +902,6 @@ func parseResources(cpus, memory string, vpcus kubevirttypes.VCPUs) (*corev1.Res
 		corev1.ResourceMemory: memoryResource,
 		corev1.ResourceCPU:    cpuResource,
 	}, nil, nil
-
 }
 
 func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
