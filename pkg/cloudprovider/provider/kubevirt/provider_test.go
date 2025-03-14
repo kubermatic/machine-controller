@@ -72,6 +72,7 @@ type kubevirtProviderSpecConf struct {
 	ProviderNetwork          *kubevirt.ProviderNetwork
 	ExtraHeadersSet          bool
 	EvictStrategy            string
+	VCPUs                    uint32
 }
 
 func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -132,7 +133,13 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 			},
 			{{- end }}
 			"template": {
+				{{- if .VCPUs }}
+				"vcpus": {
+					"cores": {{ .VCPUs }}
+				},
+				{{- else }}
 				"cpus": "2",
+				{{- end }}
 				"memory": "2Gi",
 				{{- if .SecondaryDisks }}
 				"secondaryDisks": [{
@@ -282,6 +289,10 @@ func TestNewVirtualMachine(t *testing.T) {
 		{
 			name:     "eviction-strategy-live-migrate",
 			specConf: kubevirtProviderSpecConf{EvictStrategy: "LiveMigrate"},
+		},
+		{
+			name:     "dedicated-vcpus",
+			specConf: kubevirtProviderSpecConf{VCPUs: 2},
 		},
 	}
 	for _, tt := range tests {
