@@ -99,6 +99,8 @@ type Config struct {
 	DNSConfig                 *corev1.PodDNSConfig
 	DNSPolicy                 corev1.DNSPolicy
 	CPUs                      string
+	VCPUs                     *kubevirtv1.CPU
+	Resources                 *corev1.ResourceList
 	Memory                    string
 	Namespace                 string
 	OSImageSource             *cdiv1beta1.DataVolumeSource
@@ -274,14 +276,21 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, fmt.Errorf("failed to decode kubeconfig: %w", err)
 	}
 
-	config.CPUs, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.CPUs)
+	cpus, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.CPUs)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "cpus" field: %w`, err)
 	}
-	config.Memory, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.Memory)
+
+	memory, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.Memory)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %w`, err)
 	}
+
+	config.Resources, config.VCPUs, err = parseResources(cpus, memory, rawConfig.VirtualMachine.Template.VCPUs)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to configure resource requests and limits and vcpus: %w`, err)
+	}
+
 	config.Namespace = getNamespace()
 	if len(rawConfig.VirtualMachine.Template.PrimaryDisk.ExtraHeaders) > 0 {
 		config.ExtraHeaders = rawConfig.VirtualMachine.Template.PrimaryDisk.ExtraHeaders
@@ -617,8 +626,16 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 	// If instancetype is specified, skip CPU and Memory validation.
 	// Values will come from instancetype.
 	if c.Instancetype == nil {
-		if _, err := parseResources(c.CPUs, c.Memory); err != nil {
-			return err
+		if c.Resources == nil {
+			return fmt.Errorf("no resource requests set for the virtual machine")
+		}
+
+		if c.VCPUs == nil && c.Resources.Cpu() == nil {
+			return fmt.Errorf("no CPUs configured. Either vCPUs or CPUs have to be set")
+		}
+
+		if c.VCPUs != nil && c.Resources.Cpu() != nil {
+			return fmt.Errorf("vCPUs and CPUs cannot be configured at the same time")
 		}
 	}
 
@@ -754,12 +771,8 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 
 	// if no instancetype, resources are from config.
 	if c.Instancetype == nil {
-		requestsAndLimits, err := parseResources(c.CPUs, c.Memory)
-		if err != nil {
-			return nil, err
-		}
-		resourceRequirements.Requests = *requestsAndLimits
-		resourceRequirements.Limits = *requestsAndLimits
+		resourceRequirements.Requests = *c.Resources
+		resourceRequirements.Limits = *c.Resources
 	}
 
 	// Add cluster labels
@@ -841,6 +854,13 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfigtypes.Config, 
 			DataVolumeTemplates: getDataVolumeTemplates(c, dataVolumeName, dvAnnotations),
 		},
 	}
+
+	if c.VCPUs != nil {
+		virtualMachine.Spec.Template.Spec.Domain.CPU = &kubevirtv1.CPU{
+			Cores: c.VCPUs.Cores,
+		}
+	}
+
 	return virtualMachine, nil
 }
 
@@ -868,19 +888,25 @@ func (p *provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *c
 	return false, sigClient.Delete(ctx, vm)
 }
 
-func parseResources(cpus, memory string) (*corev1.ResourceList, error) {
+func parseResources(cpus, memory string, vpcus kubevirttypes.VCPUs) (*corev1.ResourceList, *kubevirtv1.CPU, error) {
 	memoryResource, err := resource.ParseQuantity(memory)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse memory requests: %w", err)
+		return nil, nil, fmt.Errorf("failed to parse memory requests: %w", err)
 	}
+
+	if vpcus.Cores != 0 {
+		return &corev1.ResourceList{corev1.ResourceMemory: memoryResource}, &kubevirtv1.CPU{Cores: uint32(vpcus.Cores)}, nil
+	}
+
 	cpuResource, err := resource.ParseQuantity(cpus)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse cpu request: %w", err)
+		return nil, nil, fmt.Errorf("failed to parse cpu requests: %w", err)
 	}
+
 	return &corev1.ResourceList{
 		corev1.ResourceMemory: memoryResource,
 		corev1.ResourceCPU:    cpuResource,
-	}, nil
+	}, nil, nil
 }
 
 func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
