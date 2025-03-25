@@ -38,7 +38,7 @@ const (
 	IPStateUnbound        = "Unbound"
 	IPProvisioningExpires = 1800 * time.Second
 
-	VmxNet3NIC       = "vmxnet3"
+	VirtioNIC       = "virtio"
 	MachinePoweredOn = "poweredOn"
 )
 

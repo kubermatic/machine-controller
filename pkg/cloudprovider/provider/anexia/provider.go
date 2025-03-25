@@ -144,7 +144,7 @@ func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.C
 			return newError(common.CreateMachineError, "failed to reserve IP: %v", err)
 		}
 		networkInterfaces := []anxvm.Network{{
-			NICType: anxtypes.VmxNet3NIC,
+			NICType: anxtypes.Virtio,
 			IPs:     []string{reservedIP},
 			VLAN:    config.VlanID,
 		}}

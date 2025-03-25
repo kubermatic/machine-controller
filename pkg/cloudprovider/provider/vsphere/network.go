@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	ethCardType = "vmxnet3"
+	ethCardType = "virtio"
 )
 
 // Based on https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/v1.7.0/pkg/services/govmomi/vcenter/clone.go#L372
