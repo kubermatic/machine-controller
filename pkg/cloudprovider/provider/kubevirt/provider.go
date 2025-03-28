@@ -285,9 +285,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %w`, err)
 	}
 
-	config.Resources, config.VCPUs, err = parseResources(cpus, memory, rawConfig.VirtualMachine.Template.VCPUs)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to configure resource requests and limits and vcpus: %w`, err)
+	if rawConfig.VirtualMachine.Instancetype == nil {
+		config.Resources, config.VCPUs, err = parseResources(cpus, memory, rawConfig.VirtualMachine.Template.VCPUs)
+		if err != nil {
+			return nil, nil, fmt.Errorf(`failed to configure resource requests and limits and vcpus: %w`, err)
+		}
 	}
 
 	config.Namespace = getNamespace()
