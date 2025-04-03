@@ -45,11 +45,11 @@ import (
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 // New returns a VSphere provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	provider := &provider{configVarResolver: configVarResolver}
 	return provider
 }
@@ -135,82 +135,82 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	c := Config{}
-	c.TemplateVMName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TemplateVMName)
+	c.TemplateVMName, err = p.configVarResolver.GetStringValue(rawConfig.TemplateVMName)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	//nolint:staticcheck
 	//lint:ignore SA1019: rawConfig.VMNetName is deprecated: use networks instead.
-	c.VMNetName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VMNetName)
+	c.VMNetName, err = p.configVarResolver.GetStringValue(rawConfig.VMNetName)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	for _, network := range rawConfig.Networks {
-		networkValue, err := p.configVarResolver.GetConfigVarStringValue(network)
+		networkValue, err := p.configVarResolver.GetStringValue(network)
 		if err != nil {
 			return nil, nil, rawConfig, err
 		}
 		c.Networks = append(c.Networks, networkValue)
 	}
 
-	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "VSPHERE_USERNAME")
+	c.Username, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Username, "VSPHERE_USERNAME")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.Password, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Password, "VSPHERE_PASSWORD")
+	c.Password, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Password, "VSPHERE_PASSWORD")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.VSphereURL, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.VSphereURL, "VSPHERE_ADDRESS")
+	c.VSphereURL, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.VSphereURL, "VSPHERE_ADDRESS")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.Datacenter, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datacenter)
+	c.Datacenter, err = p.configVarResolver.GetStringValue(rawConfig.Datacenter)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.Cluster, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Cluster)
+	c.Cluster, err = p.configVarResolver.GetStringValue(rawConfig.Cluster)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.Folder, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Folder)
+	c.Folder, err = p.configVarResolver.GetStringValue(rawConfig.Folder)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.ResourcePool, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ResourcePool)
+	c.ResourcePool, err = p.configVarResolver.GetStringValue(rawConfig.ResourcePool)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.Datastore, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datastore)
+	c.Datastore, err = p.configVarResolver.GetStringValue(rawConfig.Datastore)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.DatastoreCluster, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DatastoreCluster)
+	c.DatastoreCluster, err = p.configVarResolver.GetStringValue(rawConfig.DatastoreCluster)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.AllowInsecure, err = p.configVarResolver.GetConfigVarBoolValueOrEnv(rawConfig.AllowInsecure, "VSPHERE_ALLOW_INSECURE")
+	c.AllowInsecure, err = p.configVarResolver.GetBoolValueOrEnv(rawConfig.AllowInsecure, "VSPHERE_ALLOW_INSECURE")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.VMAntiAffinity, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.VMAntiAffinity)
+	c.VMAntiAffinity, _, err = p.configVarResolver.GetBoolValue(rawConfig.VMAntiAffinity)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.VMGroup, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VMGroup)
+	c.VMGroup, err = p.configVarResolver.GetStringValue(rawConfig.VMGroup)
 	if err != nil {
 		return nil, nil, nil, err
 	}

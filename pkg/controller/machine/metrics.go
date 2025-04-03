@@ -26,6 +26,7 @@ import (
 	"k8c.io/machine-controller/pkg/cloudprovider"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig/configvar"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -122,7 +123,7 @@ func (l *machineMetricLabels) Counter(value uint) prometheus.Counter {
 
 func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *MachineCollector {
 	// Start periodically calling the providers SetMetricsForMachines in a dedicated go routine
-	skg := providerconfig.NewConfigVarResolver(ctx, client)
+	configResolver := configvar.NewResolver(ctx, client)
 	go func() {
 		metricGatheringExecutor := func() {
 			machines := &clusterv1alpha1.MachineList{}
@@ -152,7 +153,7 @@ func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *
 			}
 
 			for provider, providerMachineList := range providerMachineMap {
-				prov, err := cloudprovider.ForProvider(provider, skg)
+				prov, err := cloudprovider.ForProvider(provider, configResolver)
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("failed to get cloud provider for SetMetricsForMachines:: %q: %w", provider, err))
 					continue
@@ -205,7 +206,7 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	cvr := providerconfig.NewConfigVarResolver(mc.ctx, mc.client)
+	configResolver := configvar.NewResolver(mc.ctx, mc.client)
 	machineCountByLabels := make(map[*machineMetricLabels]uint)
 
 	for _, machine := range machines.Items {
@@ -231,7 +232,7 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 
-		provider, err := cloudprovider.ForProvider(providerConfig.CloudProvider, cvr)
+		provider, err := cloudprovider.ForProvider(providerConfig.CloudProvider, configResolver)
 		if err != nil {
 			utilruntime.HandleError(fmt.Errorf("failed to determine provider provider: %w", err))
 			continue

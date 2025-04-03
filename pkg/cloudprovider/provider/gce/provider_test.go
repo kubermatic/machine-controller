@@ -27,7 +27,7 @@ import (
 	"go.uber.org/zap"
 
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
-	"k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig/configvar"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	fake2 "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -123,7 +123,7 @@ func TestValidate(t *testing.T) {
 		return data
 	}
 
-	p := New(providerconfig.NewConfigVarResolver(context.Background(), fake2.NewClientBuilder().Build()))
+	p := New(configvar.NewResolver(context.Background(), fake2.NewClientBuilder().Build()))
 	tests := []struct {
 		name      string
 		mspec     clusterv1alpha1.MachineSpec

@@ -66,13 +66,13 @@ type clientGetterFunc func(c *Config) (*gophercloud.ProviderClient, error)
 type portReadinessWaiterFunc func(ctx context.Context, instanceLog *zap.SugaredLogger, netClient *gophercloud.ServiceClient, serverID string, networkID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error
 
 type provider struct {
-	configVarResolver   *providerconfig.ConfigVarResolver
+	configVarResolver   providerconfig.ConfigVarResolver
 	clientGetter        clientGetterFunc
 	portReadinessWaiter portReadinessWaiterFunc
 }
 
 // New returns a openstack provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{
 		configVarResolver:   configVarResolver,
 		clientGetter:        getClient,
@@ -125,44 +125,44 @@ var floatingIPAssignLock = &sync.Mutex{}
 
 // Get the Project name from config or env var. If not defined fallback to tenant name.
 func (p *provider) getProjectNameOrTenantName(rawConfig *openstacktypes.RawConfig) (string, error) {
-	projectName, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectName, "OS_PROJECT_NAME")
+	projectName, err := p.configVarResolver.GetStringValueOrEnv(rawConfig.ProjectName, "OS_PROJECT_NAME")
 	if err == nil && len(projectName) > 0 {
 		return projectName, nil
 	}
 
 	//fallback to tenantName.
-	return p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
+	return p.configVarResolver.GetStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
 }
 
 // Get the Project id from config or env var. If not defined fallback to tenant id.
 func (p *provider) getProjectIDOrTenantID(rawConfig *openstacktypes.RawConfig) (string, error) {
-	projectID, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "OS_PROJECT_ID")
+	projectID, err := p.configVarResolver.GetStringValueOrEnv(rawConfig.ProjectID, "OS_PROJECT_ID")
 	if err == nil && len(projectID) > 0 {
 		return projectID, nil
 	}
 
 	//fallback to tenantName.
-	return p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantID, "OS_TENANT_ID")
+	return p.configVarResolver.GetStringValueOrEnv(rawConfig.TenantID, "OS_TENANT_ID")
 }
 
 func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig) error {
 	var err error
-	c.ApplicationCredentialID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ApplicationCredentialID, "OS_APPLICATION_CREDENTIAL_ID")
+	c.ApplicationCredentialID, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.ApplicationCredentialID, "OS_APPLICATION_CREDENTIAL_ID")
 	if err != nil {
 		return fmt.Errorf("failed to get the value of \"applicationCredentialID\" field, error = %w", err)
 	}
 	if c.ApplicationCredentialID != "" {
-		c.ApplicationCredentialSecret, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ApplicationCredentialSecret, "OS_APPLICATION_CREDENTIAL_SECRET")
+		c.ApplicationCredentialSecret, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.ApplicationCredentialSecret, "OS_APPLICATION_CREDENTIAL_SECRET")
 		if err != nil {
 			return fmt.Errorf("failed to get the value of \"applicationCredentialSecret\" field, error = %w", err)
 		}
 		return nil
 	}
-	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "OS_USER_NAME")
+	c.Username, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Username, "OS_USER_NAME")
 	if err != nil {
 		return fmt.Errorf("failed to get the value of \"username\" field, error = %w", err)
 	}
-	c.Password, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Password, "OS_PASSWORD")
+	c.Password, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Password, "OS_PASSWORD")
 	if err != nil {
 		return fmt.Errorf("failed to get the value of \"password\" field, error = %w", err)
 	}
@@ -193,7 +193,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	cfg := Config{}
-	cfg.IdentityEndpoint, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.IdentityEndpoint, "OS_AUTH_URL")
+	cfg.IdentityEndpoint, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.IdentityEndpoint, "OS_AUTH_URL")
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"identityEndpoint\" field, error = %w", err)
 	}
@@ -205,80 +205,80 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	// Ignore Region not found as Region might not be found and we can default it later.
-	cfg.Region, _ = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Region, "OS_REGION_NAME")
+	cfg.Region, _ = p.configVarResolver.GetStringValueOrEnv(rawConfig.Region, "OS_REGION_NAME")
 
-	cfg.InstanceReadyCheckPeriod, err = p.configVarResolver.GetConfigVarDurationValueOrDefault(rawConfig.InstanceReadyCheckPeriod, 5*time.Second)
+	cfg.InstanceReadyCheckPeriod, err = p.configVarResolver.GetDurationValueOrDefault(rawConfig.InstanceReadyCheckPeriod, 5*time.Second)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf(`failed to get the value of "InstanceReadyCheckPeriod" field, error = %w`, err)
 	}
 
-	cfg.InstanceReadyCheckTimeout, err = p.configVarResolver.GetConfigVarDurationValueOrDefault(rawConfig.InstanceReadyCheckTimeout, 10*time.Second)
+	cfg.InstanceReadyCheckTimeout, err = p.configVarResolver.GetDurationValueOrDefault(rawConfig.InstanceReadyCheckTimeout, 10*time.Second)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf(`failed to get the value of "InstanceReadyCheckTimeout" field, error = %w`, err)
 	}
 
 	// We ignore errors here because the OS domain is only required when using Identity API V3.
-	cfg.DomainName, _ = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.DomainName, "OS_DOMAIN_NAME")
-	cfg.TokenID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TokenID)
+	cfg.DomainName, _ = p.configVarResolver.GetStringValueOrEnv(rawConfig.DomainName, "OS_DOMAIN_NAME")
+	cfg.TokenID, err = p.configVarResolver.GetStringValue(rawConfig.TokenID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	cfg.Image, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Image)
+	cfg.Image, err = p.configVarResolver.GetStringValue(rawConfig.Image)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	cfg.Flavor, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Flavor)
+	cfg.Flavor, err = p.configVarResolver.GetStringValue(rawConfig.Flavor)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	for _, securityGroup := range rawConfig.SecurityGroups {
-		securityGroupValue, err := p.configVarResolver.GetConfigVarStringValue(securityGroup)
+		securityGroupValue, err := p.configVarResolver.GetStringValue(securityGroup)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		cfg.SecurityGroups = append(cfg.SecurityGroups, securityGroupValue)
 	}
 
-	cfg.Network, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Network)
+	cfg.Network, err = p.configVarResolver.GetStringValue(rawConfig.Network)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	cfg.Subnet, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Subnet)
+	cfg.Subnet, err = p.configVarResolver.GetStringValue(rawConfig.Subnet)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	cfg.FloatingIPPool, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.FloatingIPPool)
+	cfg.FloatingIPPool, err = p.configVarResolver.GetStringValue(rawConfig.FloatingIPPool)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	cfg.AvailabilityZone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AvailabilityZone)
+	cfg.AvailabilityZone, err = p.configVarResolver.GetStringValue(rawConfig.AvailabilityZone)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	cfg.TrustDevicePath, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.TrustDevicePath)
+	cfg.TrustDevicePath, _, err = p.configVarResolver.GetBoolValue(rawConfig.TrustDevicePath)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	cfg.ConfigDrive, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.ConfigDrive)
+	cfg.ConfigDrive, _, err = p.configVarResolver.GetBoolValue(rawConfig.ConfigDrive)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	cfg.ComputeAPIVersion, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ComputeAPIVersion)
+	cfg.ComputeAPIVersion, err = p.configVarResolver.GetStringValue(rawConfig.ComputeAPIVersion)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	cfg.RootDiskSizeGB = rawConfig.RootDiskSizeGB
-	cfg.RootDiskVolumeType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.RootDiskVolumeType)
+	cfg.RootDiskVolumeType, err = p.configVarResolver.GetStringValue(rawConfig.RootDiskVolumeType)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -289,7 +289,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		cfg.Tags = map[string]string{}
 	}
 
-	cfg.ServerGroup, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ServerGroup)
+	cfg.ServerGroup, err = p.configVarResolver.GetStringValue(rawConfig.ServerGroup)
 	if err != nil {
 		return nil, nil, nil, err
 	}

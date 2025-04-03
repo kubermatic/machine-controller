@@ -83,11 +83,11 @@ const (
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 // New returns a Kubevirt provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -146,7 +146,7 @@ const (
 )
 
 func (p *provider) affinityType(affinityType providerconfig.ConfigVarString) (AffinityType, error) {
-	podAffinityPresetString, err := p.configVarResolver.GetConfigVarStringValue(affinityType)
+	podAffinityPresetString, err := p.configVarResolver.GetStringValue(affinityType)
 	if err != nil {
 		return "", fmt.Errorf(`failed to parse "podAffinityPreset" field: %w`, err)
 	}
@@ -243,7 +243,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	} else {
 		// Environment variable or secret reference was used for providing the value of kubeconfig
 		// We have to be lenient in this case and allow unencoded values as well.
-		config.Kubeconfig, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Auth.Kubeconfig, "KUBEVIRT_KUBECONFIG")
+		config.Kubeconfig, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Auth.Kubeconfig, "KUBEVIRT_KUBECONFIG")
 		if err != nil {
 			return nil, nil, fmt.Errorf(`failed to get value of "kubeconfig" field: %w`, err)
 		}
@@ -256,7 +256,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	var enableNetworkMultiQueueSet bool
-	config.EnableNetworkMultiQueue, enableNetworkMultiQueueSet, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.VirtualMachine.EnableNetworkMultiQueue)
+	config.EnableNetworkMultiQueue, enableNetworkMultiQueueSet, err = p.configVarResolver.GetBoolValue(rawConfig.VirtualMachine.EnableNetworkMultiQueue)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "enableNetworkMultiQueue" field: %w`, err)
 	}
@@ -265,7 +265,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		config.EnableNetworkMultiQueue = true
 	}
 
-	config.ClusterName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ClusterName)
+	config.ClusterName, err = p.configVarResolver.GetStringValue(rawConfig.ClusterName)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "clusterName" field: %w`, err)
 	}
@@ -275,12 +275,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, fmt.Errorf("failed to decode kubeconfig: %w", err)
 	}
 
-	cpus, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.CPUs)
+	cpus, err := p.configVarResolver.GetStringValue(rawConfig.VirtualMachine.Template.CPUs)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "cpus" field: %w`, err)
 	}
 
-	memory, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.Memory)
+	memory, err := p.configVarResolver.GetStringValue(rawConfig.VirtualMachine.Template.Memory)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %w`, err)
 	}
@@ -296,12 +296,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if len(rawConfig.VirtualMachine.Template.PrimaryDisk.ExtraHeaders) > 0 {
 		config.ExtraHeaders = rawConfig.VirtualMachine.Template.PrimaryDisk.ExtraHeaders
 	}
-	dataVolumeSecretRef, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.DataVolumeSecretRef)
+	dataVolumeSecretRef, err := p.configVarResolver.GetStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.DataVolumeSecretRef)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "dataVolumeSecretRef" field: %w`, err)
 	}
 	config.DataVolumeSecretRef = dataVolumeSecretRef
-	extraHeadersSecretRef, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.ExtraHeadersSecretRef)
+	extraHeadersSecretRef, err := p.configVarResolver.GetStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.ExtraHeadersSecretRef)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "extraHeadersSecretRef" field: %w`, err)
 	}
@@ -314,20 +314,20 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, fmt.Errorf(`failed to get value of "osImageSource" field: %w`, err)
 	}
 
-	storageTarget, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageTarget)
+	storageTarget, err := p.configVarResolver.GetStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageTarget)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "storageTarget" field: %w`, err)
 	}
 	config.StorageTarget = StorageTarget(storageTarget)
 
-	pvcSize, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.Size)
+	pvcSize, err := p.configVarResolver.GetStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.Size)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "pvcSize" field: %w`, err)
 	}
 	if config.PVCSize, err = resource.ParseQuantity(pvcSize); err != nil {
 		return nil, nil, fmt.Errorf(`failed to parse value of "pvcSize" field: %w`, err)
 	}
-	config.StorageClassName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageClassName)
+	config.StorageClassName, err = p.configVarResolver.GetStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageClassName)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "storageClassName" field: %w`, err)
 	}
@@ -335,7 +335,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	config.Instancetype = rawConfig.VirtualMachine.Instancetype
 	config.Preference = rawConfig.VirtualMachine.Preference
 
-	dnsPolicyString, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.DNSPolicy)
+	dnsPolicyString, err := p.configVarResolver.GetStringValue(rawConfig.VirtualMachine.DNSPolicy)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to parse "dnsPolicy" field: %w`, err)
 	}
@@ -386,7 +386,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 func (p *provider) getStorageAccessType(ctx context.Context, accessType providerconfig.ConfigVarString,
 	infraClient ctrlruntimeclient.Client, storageClassName string) (corev1.PersistentVolumeAccessMode, error) {
-	at, _ := p.configVarResolver.GetConfigVarStringValue(accessType)
+	at, _ := p.configVarResolver.GetStringValue(accessType)
 	if at == "" {
 		sp := &cdicorev1beta1.StorageProfile{}
 		if err := infraClient.Get(ctx, types.NamespacedName{Name: storageClassName}, sp); err != nil {
@@ -416,13 +416,13 @@ func (p *provider) parseNodeAffinityPreset(nodeAffinityPreset kubevirttypes.Node
 	if err != nil {
 		return nodeAffinity, fmt.Errorf(`failed to parse "nodeAffinity.type" field: %w`, err)
 	}
-	nodeAffinity.Key, err = p.configVarResolver.GetConfigVarStringValue(nodeAffinityPreset.Key)
+	nodeAffinity.Key, err = p.configVarResolver.GetStringValue(nodeAffinityPreset.Key)
 	if err != nil {
 		return nodeAffinity, fmt.Errorf(`failed to parse "nodeAffinity.key" field: %w`, err)
 	}
 	nodeAffinity.Values = make([]string, 0, len(nodeAffinityPreset.Values))
 	for _, v := range nodeAffinityPreset.Values {
-		valueString, err := p.configVarResolver.GetConfigVarStringValue(v)
+		valueString, err := p.configVarResolver.GetStringValue(v)
 		if err != nil {
 			return nodeAffinity, fmt.Errorf(`failed to parse "nodeAffinity.value" field: %w`, err)
 		}
@@ -434,7 +434,7 @@ func (p *provider) parseNodeAffinityPreset(nodeAffinityPreset kubevirttypes.Node
 func (p *provider) parseTopologySpreadConstraint(topologyConstraints []kubevirttypes.TopologySpreadConstraint) ([]corev1.TopologySpreadConstraint, error) {
 	parsedTopologyConstraints := make([]corev1.TopologySpreadConstraint, 0, len(topologyConstraints))
 	for _, constraint := range topologyConstraints {
-		maxSkewString, err := p.configVarResolver.GetConfigVarStringValue(constraint.MaxSkew)
+		maxSkewString, err := p.configVarResolver.GetStringValue(constraint.MaxSkew)
 		if err != nil {
 			return nil, fmt.Errorf(`failed to parse "topologySpreadConstraint.maxSkew" field: %w`, err)
 		}
@@ -442,11 +442,11 @@ func (p *provider) parseTopologySpreadConstraint(topologyConstraints []kubevirtt
 		if err != nil {
 			return nil, fmt.Errorf(`failed to parse "topologySpreadConstraint.maxSkew" field: %w`, err)
 		}
-		topologyKey, err := p.configVarResolver.GetConfigVarStringValue(constraint.TopologyKey)
+		topologyKey, err := p.configVarResolver.GetStringValue(constraint.TopologyKey)
 		if err != nil {
 			return nil, fmt.Errorf(`failed to parse "topologySpreadConstraint.topologyKey" field: %w`, err)
 		}
-		whenUnsatisfiable, err := p.configVarResolver.GetConfigVarStringValue(constraint.WhenUnsatisfiable)
+		whenUnsatisfiable, err := p.configVarResolver.GetStringValue(constraint.WhenUnsatisfiable)
 		if err != nil {
 			return nil, fmt.Errorf(`failed to parse "topologySpreadConstraint.whenUnsatisfiable" field: %w`, err)
 		}
@@ -460,11 +460,11 @@ func (p *provider) parseTopologySpreadConstraint(topologyConstraints []kubevirtt
 }
 
 func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, config *Config) (*cdicorev1beta1.DataVolumeSource, error) {
-	osImage, err := p.configVarResolver.GetConfigVarStringValue(primaryDisk.OsImage)
+	osImage, err := p.configVarResolver.GetStringValue(primaryDisk.OsImage)
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "primaryDisk.osImage" field: %w`, err)
 	}
-	osImageSource, err := p.configVarResolver.GetConfigVarStringValue(primaryDisk.Source)
+	osImageSource, err := p.configVarResolver.GetStringValue(primaryDisk.Source)
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "primaryDisk.source" field: %w`, err)
 	}
@@ -548,7 +548,7 @@ func getNamespace() string {
 }
 
 func (p *provider) getPullMethod(pullMethod providerconfig.ConfigVarString) (cdicorev1beta1.RegistryPullMethod, error) {
-	resolvedPM, err := p.configVarResolver.GetConfigVarStringValue(pullMethod)
+	resolvedPM, err := p.configVarResolver.GetStringValue(pullMethod)
 	if err != nil {
 		return "", err
 	}
@@ -1184,7 +1184,7 @@ func setOVNAnnotations(c *Config, annotations map[string]string) error {
 func (p *provider) configureStorage(infraClient ctrlruntimeclient.Client, template kubevirttypes.Template) (corev1.PersistentVolumeAccessMode, []SecondaryDisks, error) {
 	secondaryDisks := make([]SecondaryDisks, 0, len(template.SecondaryDisks))
 	for i, sd := range template.SecondaryDisks {
-		sdSizeString, err := p.configVarResolver.GetConfigVarStringValue(sd.Size)
+		sdSizeString, err := p.configVarResolver.GetStringValue(sd.Size)
 		if err != nil {
 			return "", nil, fmt.Errorf(`failed to parse "secondaryDisks.size" field: %w`, err)
 		}
@@ -1193,7 +1193,7 @@ func (p *provider) configureStorage(infraClient ctrlruntimeclient.Client, templa
 			return "", nil, fmt.Errorf(`failed to parse value of "secondaryDisks.size" field: %w`, err)
 		}
 
-		scString, err := p.configVarResolver.GetConfigVarStringValue(sd.StorageClassName)
+		scString, err := p.configVarResolver.GetStringValue(sd.StorageClassName)
 		if err != nil {
 			return "", nil, fmt.Errorf(`failed to parse value of "secondaryDisks.storageClass" field: %w`, err)
 		}
@@ -1208,7 +1208,7 @@ func (p *provider) configureStorage(infraClient ctrlruntimeclient.Client, templa
 			StorageAccessType: storageAccessMode,
 		})
 	}
-	scString, err := p.configVarResolver.GetConfigVarStringValue(template.PrimaryDisk.StorageClassName)
+	scString, err := p.configVarResolver.GetStringValue(template.PrimaryDisk.StorageClassName)
 	if err != nil {
 		return "", nil, fmt.Errorf(`failed to parse value of "primaryDisk.storageClass" field: %w`, err)
 	}

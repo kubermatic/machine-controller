@@ -28,6 +28,7 @@ import (
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig/configvar"
 	"k8c.io/machine-controller/sdk/userdata"
 
 	admissionv1 "k8s.io/api/admission/v1"
@@ -129,8 +130,8 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 		}
 	}
 
-	skg := providerconfig.NewConfigVarResolver(ctx, ad.workerClient)
-	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
+	configResolver := configvar.NewResolver(ctx, ad.workerClient)
+	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, configResolver)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %w", providerConfig.CloudProvider, err)
 	}

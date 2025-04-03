@@ -55,11 +55,11 @@ type ValidVPC struct {
 }
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 // New returns a new vultr provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -111,22 +111,22 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	c := Config{}
 
-	c.APIKey, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.APIKey, "VULTR_API_KEY")
+	c.APIKey, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.APIKey, "VULTR_API_KEY")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %w", err)
 	}
 
-	c.Plan, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Plan)
+	c.Plan, err = p.configVarResolver.GetStringValue(rawConfig.Plan)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
+	c.Region, err = p.configVarResolver.GetStringValue(rawConfig.Region)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	c.OsID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.OsID)
+	c.OsID, err = p.configVarResolver.GetStringValue(rawConfig.OsID)
 	if err != nil {
 		return nil, nil, err
 	}

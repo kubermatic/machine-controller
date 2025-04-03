@@ -48,7 +48,7 @@ const (
 )
 
 // New returns a Equinix Metal provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -77,7 +77,7 @@ func populateDefaults(c *equinixmetaltypes.RawConfig) {
 }
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *equinixmetaltypes.RawConfig, *providerconfig.Config, error) {
@@ -96,49 +96,49 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *e
 	}
 
 	c := Config{}
-	c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "METAL_AUTH_TOKEN")
+	c.Token, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Token, "METAL_AUTH_TOKEN")
 	if err != nil || len(c.Token) == 0 {
 		// This retry is temporary and is only required to facilitate migration from Packet to Equinix Metal
 		// We look for env variable PACKET_API_KEY associated with Packet to ensure that nothing breaks during automated migration for the Machines
 		// TODO(@ahmedwaleedmalik) Remove this after a release period
-		c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "PACKET_API_KEY")
+		c.Token, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Token, "PACKET_API_KEY")
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %w", err)
 		}
 	}
-	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "METAL_PROJECT_ID")
+	c.ProjectID, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.ProjectID, "METAL_PROJECT_ID")
 	if err != nil || len(c.ProjectID) == 0 {
 		// This retry is temporary and is only required to facilitate migration from Packet to Equinix Metal
 		// We look for env variable PACKET_PROJECT_ID associated with Packet to ensure that nothing breaks during automated migration for the Machines
 		// TODO(@ahmedwaleedmalik) Remove this after a release period
-		c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "PACKET_PROJECT_ID")
+		c.ProjectID, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.ProjectID, "PACKET_PROJECT_ID")
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %w", err)
 		}
 	}
-	c.InstanceType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
+	c.InstanceType, err = p.configVarResolver.GetStringValue(rawConfig.InstanceType)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"instanceType\" field, error = %w", err)
 	}
-	c.BillingCycle, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.BillingCycle)
+	c.BillingCycle, err = p.configVarResolver.GetStringValue(rawConfig.BillingCycle)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"billingCycle\" field, error = %w", err)
 	}
 	for i, tag := range rawConfig.Tags {
-		tagValue, err := p.configVarResolver.GetConfigVarStringValue(tag)
+		tagValue, err := p.configVarResolver.GetStringValue(tag)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to read the value for the Tag at index %d of the \"tags\" field, error = %w", i, err)
 		}
 		c.Tags = append(c.Tags, tagValue)
 	}
 	for i, facility := range rawConfig.Facilities {
-		facilityValue, err := p.configVarResolver.GetConfigVarStringValue(facility)
+		facilityValue, err := p.configVarResolver.GetStringValue(facility)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to read the value for the Tag at index %d of the \"facilities\" field, error = %w", i, err)
 		}
 		c.Facilities = append(c.Facilities, facilityValue)
 	}
-	c.Metro, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Metro)
+	c.Metro, err = p.configVarResolver.GetStringValue(rawConfig.Metro)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"metro\" field, error = %w", err)
 	}

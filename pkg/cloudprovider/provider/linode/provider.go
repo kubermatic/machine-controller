@@ -47,11 +47,11 @@ import (
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 // New returns a linode provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -117,29 +117,29 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	c := Config{}
-	c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "LINODE_TOKEN")
+	c.Token, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Token, "LINODE_TOKEN")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"token\" field, error = %w", err)
 	}
-	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
+	c.Region, err = p.configVarResolver.GetStringValue(rawConfig.Region)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Type, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Type)
+	c.Type, err = p.configVarResolver.GetStringValue(rawConfig.Type)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Backups, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.Backups)
+	c.Backups, _, err = p.configVarResolver.GetBoolValue(rawConfig.Backups)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.PrivateNetworking, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.PrivateNetworking)
+	c.PrivateNetworking, _, err = p.configVarResolver.GetBoolValue(rawConfig.PrivateNetworking)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	for _, tag := range rawConfig.Tags {
-		tagVal, err := p.configVarResolver.GetConfigVarStringValue(tag)
+		tagVal, err := p.configVarResolver.GetStringValue(tag)
 		if err != nil {
 			return nil, nil, err
 		}

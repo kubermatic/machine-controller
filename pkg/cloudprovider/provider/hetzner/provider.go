@@ -46,11 +46,11 @@ const (
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 // New returns a Hetzner provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -98,38 +98,38 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	c := Config{}
-	c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "HZ_TOKEN")
+	c.Token, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Token, "HZ_TOKEN")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"token\" field, error = %w", err)
 	}
 
-	c.ServerType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ServerType)
+	c.ServerType, err = p.configVarResolver.GetStringValue(rawConfig.ServerType)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	c.Datacenter, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datacenter)
+	c.Datacenter, err = p.configVarResolver.GetStringValue(rawConfig.Datacenter)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	c.Image, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Image)
+	c.Image, err = p.configVarResolver.GetStringValue(rawConfig.Image)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	c.Location, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Location)
+	c.Location, err = p.configVarResolver.GetStringValue(rawConfig.Location)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	c.PlacementGroupPrefix, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.PlacementGroupPrefix)
+	c.PlacementGroupPrefix, err = p.configVarResolver.GetStringValue(rawConfig.PlacementGroupPrefix)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	for _, network := range rawConfig.Networks {
-		networkValue, err := p.configVarResolver.GetConfigVarStringValue(network)
+		networkValue, err := p.configVarResolver.GetStringValue(network)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -137,7 +137,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	for _, firewall := range rawConfig.Firewalls {
-		firewallValue, err := p.configVarResolver.GetConfigVarStringValue(firewall)
+		firewallValue, err := p.configVarResolver.GetStringValue(firewall)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -609,12 +609,12 @@ func hzErrorToTerminalError(err error, msg string) error {
 }
 
 func (p *provider) publicIPsAssignment(rawConfig *hetznertypes.RawConfig) (bool, bool, error) {
-	assignIPv4, ipv4Set, err := p.configVarResolver.GetConfigVarBoolValue(rawConfig.AssignPublicIPv4)
+	assignIPv4, ipv4Set, err := p.configVarResolver.GetBoolValue(rawConfig.AssignPublicIPv4)
 	if err != nil {
 		return false, false, err
 	}
 
-	assignIPv6, ipv6Set, err := p.configVarResolver.GetConfigVarBoolValue(rawConfig.AssignPublicIPv6)
+	assignIPv6, ipv6Set, err := p.configVarResolver.GetBoolValue(rawConfig.AssignPublicIPv6)
 	if err != nil {
 		return false, false, err
 	}

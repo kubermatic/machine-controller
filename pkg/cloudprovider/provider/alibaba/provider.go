@@ -56,7 +56,7 @@ const (
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 type Config struct {
@@ -104,7 +104,7 @@ func (a *alibabaInstance) Status() instance.Status {
 }
 
 // New returns an Alibaba cloud provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -356,40 +356,40 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	c := Config{}
-	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKeyID, "ALIBABA_ACCESS_KEY_ID")
+	c.AccessKeyID, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.AccessKeyID, "ALIBABA_ACCESS_KEY_ID")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"AccessKeyID\" field, error = %w", err)
 	}
-	c.AccessKeySecret, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKeySecret, "ALIBABA_ACCESS_KEY_SECRET")
+	c.AccessKeySecret, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.AccessKeySecret, "ALIBABA_ACCESS_KEY_SECRET")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"AccessKeySecret\" field, error = %w", err)
 	}
-	c.InstanceType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
+	c.InstanceType, err = p.configVarResolver.GetStringValue(rawConfig.InstanceType)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"instanceType\" field, error = %w", err)
 	}
-	c.RegionID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.RegionID)
+	c.RegionID, err = p.configVarResolver.GetStringValue(rawConfig.RegionID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"regionID\" field, error = %w", err)
 	}
-	c.VSwitchID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VSwitchID)
+	c.VSwitchID, err = p.configVarResolver.GetStringValue(rawConfig.VSwitchID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"vSwitchID\" field, error = %w", err)
 	}
-	c.ZoneID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ZoneID)
+	c.ZoneID, err = p.configVarResolver.GetStringValue(rawConfig.ZoneID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"zoneID\" field, error = %w", err)
 	}
-	c.InternetMaxBandwidthOut, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InternetMaxBandwidthOut)
+	c.InternetMaxBandwidthOut, err = p.configVarResolver.GetStringValue(rawConfig.InternetMaxBandwidthOut)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"internetMaxBandwidthOut\" field, error = %w", err)
 	}
 	c.Labels = rawConfig.Labels
-	c.DiskType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskType)
+	c.DiskType, err = p.configVarResolver.GetStringValue(rawConfig.DiskType)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"diskType\" field, error = %w", err)
 	}
-	c.DiskSize, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskSize)
+	c.DiskSize, err = p.configVarResolver.GetStringValue(rawConfig.DiskSize)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"diskSize\" field, error = %w", err)
 	}

@@ -35,7 +35,7 @@ import (
 	cloudprovidertesting "k8c.io/machine-controller/pkg/cloudprovider/testing"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
-	"k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig/configvar"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -275,7 +275,7 @@ func TestCreateServer(t *testing.T) {
 			ExpectServerCreated(t, tt.wantServerReq)
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakectrlruntimeclient.NewClientBuilder().Build()),
+				configVarResolver: configvar.NewResolver(context.Background(), fakectrlruntimeclient.NewClientBuilder().Build()),
 				// mock client config getter
 				clientGetter: func(*Config) (*gophercloud.ProviderClient, error) {
 					pc := client.ServiceClient()
@@ -339,7 +339,7 @@ func TestProjectAuthVarsAreCorrectlyLoaded(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakectrlruntimeclient.
+				configVarResolver: configvar.NewResolver(context.Background(), fakectrlruntimeclient.
 					NewClientBuilder().
 					Build()),
 			}
