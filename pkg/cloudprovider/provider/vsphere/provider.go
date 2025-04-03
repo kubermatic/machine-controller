@@ -509,14 +509,14 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 
 	datastore, err := getDatastoreFromVM(ctx, session, virtualMachine)
 	if err != nil {
-		return false, fmt.Errorf("Error getting datastore from VM %s: %w", virtualMachine.Name(), err)
+		return false, fmt.Errorf("failed to get datastore from VM %s: %w", virtualMachine.Name(), err)
 	}
 	destroyTask, err := virtualMachine.Destroy(ctx)
 	if err != nil {
-		return false, fmt.Errorf("failed to destroy vm %s: %w", virtualMachine.Name(), err)
+		return false, fmt.Errorf("failed to destroy VM %s: %w", virtualMachine.Name(), err)
 	}
 	if err := destroyTask.WaitEx(ctx); err != nil {
-		return false, fmt.Errorf("failed to destroy vm %s: %w", virtualMachine.Name(), err)
+		return false, fmt.Errorf("failed to destroy VM %s: %w", virtualMachine.Name(), err)
 	}
 
 	if pc.OperatingSystem != providerconfig.OperatingSystemFlatcar {
@@ -530,7 +530,7 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		}
 	}
 
-	log.Infow("Successfully destroyed vm", "vm", virtualMachine.Name())
+	log.Infow("Successfully destroyed VM", "vm", virtualMachine.Name())
 	return true, nil
 }
 

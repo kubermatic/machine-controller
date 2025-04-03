@@ -195,7 +195,7 @@ func createRandomPassword() (string, error) {
 	rawRootPass := make([]byte, 50)
 	_, err := rand.Read(rawRootPass)
 	if err != nil {
-		return "", fmt.Errorf("Failed to generate random password")
+		return "", fmt.Errorf("failed to generate random password: %w", err)
 	}
 	rootPass := base64.StdEncoding.EncodeToString(rawRootPass)
 	return rootPass, nil

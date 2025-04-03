@@ -318,7 +318,7 @@ func TestNewVirtualMachine(t *testing.T) {
 
 			// Check the created VirtualMachine
 			vm, _ := p.newVirtualMachine(c, pc, machine, labels, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter())
-			vm.TypeMeta.APIVersion, vm.TypeMeta.Kind = kubevirtcorev1.VirtualMachineGroupVersionKind.ToAPIVersionAndKind()
+			vm.APIVersion, vm.Kind = kubevirtcorev1.VirtualMachineGroupVersionKind.ToAPIVersionAndKind()
 
 			if !equality.Semantic.DeepEqual(vm, expectedVms[tt.name]) {
 				t.Errorf("Diff %v", diff.ObjectGoPrintDiff(expectedVms[tt.name], vm))

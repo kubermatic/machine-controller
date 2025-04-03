@@ -67,7 +67,7 @@ func verifyCreateAndDelete(ctx context.Context, kubeConfig, manifestPath string,
 	}
 
 	if err := deleteAndAssure(ctx, machineDeployment, client, timeout); err != nil {
-		return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%w", err)
+		return fmt.Errorf("failed to verify if a machine/node has been created/deleted, due to: \n%w", err)
 	}
 
 	klog.Infof("Successfully finished test for MachineDeployment %s", machineDeployment.Name)
@@ -122,7 +122,7 @@ func prepare(kubeConfig, manifestPath string, parameters []string) (ctrlruntimec
 	// init kube related stuff
 	cfg, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
 	if err != nil {
-		return nil, "", fmt.Errorf("Error building kubeconfig: %w", err)
+		return nil, "", fmt.Errorf("error building kubeconfig: %w", err)
 	}
 	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
@@ -339,7 +339,7 @@ func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (strin
 		if len(kv) != 2 {
 			return "", fmt.Errorf("the given key value pair = %v is incorrect, the correct form is key=value", keyValuePair)
 		}
-		content = strings.Replace(content, kv[0], kv[1], -1)
+		content = strings.ReplaceAll(content, kv[0], kv[1])
 	}
 
 	return content, nil

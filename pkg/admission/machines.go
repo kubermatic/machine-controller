@@ -19,6 +19,7 @@ package admission
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/Masterminds/semver/v3"
@@ -142,7 +143,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 
 	// Check kubelet version
 	if spec.Versions.Kubelet == "" {
-		return fmt.Errorf("Kubelet version must be set")
+		return errors.New("kubelet version must be set")
 	}
 
 	kubeletVer, err := semver.NewVersion(spec.Versions.Kubelet)
@@ -161,7 +162,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 
 	// Validate SSH keys
 	if err := validatePublicKeys(providerConfig.SSHPublicKeys); err != nil {
-		return fmt.Errorf("Invalid public keys specified: %w", err)
+		return fmt.Errorf("invalid public keys specified: %w", err)
 	}
 
 	defaultedOperatingSystemSpec, err := userdata.DefaultOperatingSystemSpec(

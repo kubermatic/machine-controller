@@ -138,7 +138,7 @@ func (c *ReconcileMachineSet) getMachineNode(ctx context.Context, machine *clust
 	}
 
 	node := &corev1.Node{}
-	err := c.Client.Get(ctx, ctrlruntimeclient.ObjectKey{Name: nodeRef.Name}, node)
+	err := c.Get(ctx, ctrlruntimeclient.ObjectKey{Name: nodeRef.Name}, node)
 	return node, err
 }
 

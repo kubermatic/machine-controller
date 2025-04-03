@@ -339,7 +339,7 @@ func createOrUpdateNetworkInterface(ctx context.Context, log *zap.SugaredLogger,
 		Tags: map[string]*string{machineUIDTag: to.StringPtr(string(machineUID))},
 	}
 
-	*ifSpec.InterfacePropertiesFormat.IPConfigurations = append(*ifSpec.InterfacePropertiesFormat.IPConfigurations, network.InterfaceIPConfiguration{
+	*ifSpec.IPConfigurations = append(*ifSpec.IPConfigurations, network.InterfaceIPConfiguration{
 		Name: to.StringPtr("ip-config-1"),
 		InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
 			Subnet:                    &subnet,
@@ -350,7 +350,7 @@ func createOrUpdateNetworkInterface(ctx context.Context, log *zap.SugaredLogger,
 	})
 
 	if ipFamily.IsDualstack() {
-		*ifSpec.InterfacePropertiesFormat.IPConfigurations = append(*ifSpec.InterfacePropertiesFormat.IPConfigurations, network.InterfaceIPConfiguration{
+		*ifSpec.IPConfigurations = append(*ifSpec.IPConfigurations, network.InterfaceIPConfiguration{
 			Name: to.StringPtr("ip-config-2"),
 			InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
 				PrivateIPAllocationMethod: network.Dynamic,
@@ -362,7 +362,7 @@ func createOrUpdateNetworkInterface(ctx context.Context, log *zap.SugaredLogger,
 		})
 	}
 
-	ifSpec.InterfacePropertiesFormat.EnableAcceleratedNetworking = enableAcceleratedNetworking
+	ifSpec.EnableAcceleratedNetworking = enableAcceleratedNetworking
 
 	if config.SecurityGroupName != "" {
 		authorizer, err := auth.NewClientCredentialsConfig(config.ClientID, config.ClientSecret, config.TenantID).Authorizer()

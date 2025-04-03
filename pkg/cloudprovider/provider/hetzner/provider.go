@@ -512,8 +512,8 @@ func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machi
 	if err != nil {
 		return fmt.Errorf("failed to update UID label: %w", err)
 	}
-	if response.Response.StatusCode != http.StatusOK {
-		return fmt.Errorf("got unexpected response code %v, expected %v", response.Response.Status, http.StatusOK)
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("got unexpected response code %v, expected %v", response.Status, http.StatusOK)
 	}
 	// This succeeds, but does not result in a label on the server, seems to be a bug
 	// on Hetzner side

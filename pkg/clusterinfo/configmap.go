@@ -130,11 +130,11 @@ func getSecurePort(endpointSubset corev1.EndpointSubset) *corev1.EndpointPort {
 }
 
 func getCAData(config *rest.Config) ([]byte, error) {
-	if len(config.TLSClientConfig.CAData) > 0 {
-		return config.TLSClientConfig.CAData, nil
+	if len(config.CAData) > 0 {
+		return config.CAData, nil
 	}
 
-	return os.ReadFile(config.TLSClientConfig.CAFile)
+	return os.ReadFile(config.CAFile)
 }
 
 func (p *KubeconfigProvider) GetBearerToken() string {

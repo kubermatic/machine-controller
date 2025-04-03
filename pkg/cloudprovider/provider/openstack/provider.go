@@ -603,7 +603,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		log.Infow("Creating security group for worker nodes", "group", securityGroupName)
 		err = ensureKubernetesSecurityGroupExist(log, client, cfg.Region, securityGroupName)
 		if err != nil {
-			return nil, fmt.Errorf("Error occurred creating security groups: %w", err)
+			return nil, fmt.Errorf("error occurred creating security groups: %w", err)
 		}
 		securityGroups = append(securityGroups, securityGroupName)
 	}

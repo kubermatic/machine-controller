@@ -280,7 +280,7 @@ func TestCreateServer(t *testing.T) {
 				clientGetter: func(*Config) (*gophercloud.ProviderClient, error) {
 					pc := client.ServiceClient()
 					// endpoint locator used to redirect to local test endpoint
-					pc.ProviderClient.EndpointLocator = func(_ gophercloud.EndpointOpts) (string, error) {
+					pc.EndpointLocator = func(_ gophercloud.EndpointOpts) (string, error) {
 						return pc.Endpoint, nil
 					}
 					return pc.ProviderClient, nil

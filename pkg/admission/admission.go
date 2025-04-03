@@ -169,7 +169,7 @@ func handleFuncFactory(log *zap.SugaredLogger, mutate mutator) http.HandlerFunc 
 			// proper AdmissionReview responses require metadata that is not available
 			// in broken requests, so we return a basic failure response
 			w.WriteHeader(http.StatusBadRequest)
-			if _, err := w.Write([]byte(fmt.Sprintf("invalid request: %v", err))); err != nil {
+			if _, err := fmt.Fprintf(w, "invalid request: %v", err); err != nil {
 				log.Errorw("Failed to write badRequest", zap.Error(err))
 			}
 			return

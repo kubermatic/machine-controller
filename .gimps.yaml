@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This is the configuration for https://github.com/xrstf/gimps.
+# This is the configuration for https://codeberg.org/xrstf/gimps.
 
 importOrder: [std, external, kubermatic, kubernetes]
 sets:

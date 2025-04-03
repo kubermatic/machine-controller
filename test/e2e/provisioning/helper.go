@@ -201,8 +201,8 @@ func testScenario(ctx context.Context, t *testing.T, testCase scenario, cloudPro
 	}
 
 	kubernetesCompliantName := fmt.Sprintf("%s-%s", testCase.name, cloudProvider)
-	kubernetesCompliantName = strings.Replace(kubernetesCompliantName, " ", "-", -1)
-	kubernetesCompliantName = strings.Replace(kubernetesCompliantName, ".", "-", -1)
+	kubernetesCompliantName = strings.ReplaceAll(kubernetesCompliantName, " ", "-")
+	kubernetesCompliantName = strings.ReplaceAll(kubernetesCompliantName, ".", "-")
 	kubernetesCompliantName = strings.ToLower(kubernetesCompliantName)
 
 	scenarioParams := append([]string(nil), testParams...)

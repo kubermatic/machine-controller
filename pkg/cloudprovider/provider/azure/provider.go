@@ -387,7 +387,7 @@ func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm
 		return nil, fmt.Errorf("machine is missing properties")
 	}
 
-	if vm.VirtualMachineProperties.NetworkProfile == nil {
+	if vm.NetworkProfile == nil {
 		return nil, fmt.Errorf("machine has no network profile")
 	}
 
@@ -689,7 +689,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		config.AssignAvailabilitySet != nil && *config.AssignAvailabilitySet && config.AvailabilitySet != "" {
 		// Azure expects the full path to the resource
 		asURI := fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/availabilitySets/%s", config.SubscriptionID, config.ResourceGroup, config.AvailabilitySet)
-		vmSpec.VirtualMachineProperties.AvailabilitySet = &compute.SubResource{ID: to.StringPtr(asURI)}
+		vmSpec.AvailabilitySet = &compute.SubResource{ID: to.StringPtr(asURI)}
 	}
 
 	if config.EnableBootDiagnostics {
