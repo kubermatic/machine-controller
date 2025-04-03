@@ -197,14 +197,14 @@ type configVarStringWithoutUnmarshaller ConfigVarString
 // https://github.com/golang/go/issues/11939.
 func (configVarString ConfigVarString) MarshalJSON() ([]byte, error) {
 	var secretKeyRefEmpty, configMapKeyRefEmpty bool
-	if configVarString.SecretKeyRef.ObjectReference.Namespace == "" &&
-		configVarString.SecretKeyRef.ObjectReference.Name == "" &&
+	if configVarString.SecretKeyRef.Namespace == "" &&
+		configVarString.SecretKeyRef.Name == "" &&
 		configVarString.SecretKeyRef.Key == "" {
 		secretKeyRefEmpty = true
 	}
 
-	if configVarString.ConfigMapKeyRef.ObjectReference.Namespace == "" &&
-		configVarString.ConfigMapKeyRef.ObjectReference.Name == "" &&
+	if configVarString.ConfigMapKeyRef.Namespace == "" &&
+		configVarString.ConfigMapKeyRef.Name == "" &&
 		configVarString.ConfigMapKeyRef.Key == "" {
 		configMapKeyRefEmpty = true
 	}
@@ -219,7 +219,7 @@ func (configVarString ConfigVarString) MarshalJSON() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		buffer.WriteString(fmt.Sprintf(`"secretKeyRef":%s`, string(jsonVal)))
+		fmt.Fprintf(buffer, `"secretKeyRef":%s`, string(jsonVal))
 	}
 
 	if !configMapKeyRefEmpty {
@@ -231,11 +231,11 @@ func (configVarString ConfigVarString) MarshalJSON() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		buffer.WriteString(fmt.Sprintf(`%s"configMapKeyRef":%s`, leadingComma, jsonVal))
+		fmt.Fprintf(buffer, `%s"configMapKeyRef":%s`, leadingComma, jsonVal)
 	}
 
 	if configVarString.Value != "" {
-		buffer.WriteString(fmt.Sprintf(`,"value":"%s"`, configVarString.Value))
+		fmt.Fprintf(buffer, `,"value":"%s"`, configVarString.Value)
 	}
 
 	buffer.WriteString("}")
@@ -285,14 +285,14 @@ type configVarBoolWithoutUnmarshaller ConfigVarBool
 // https://github.com/golang/go/issues/11939
 func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 	var secretKeyRefEmpty, configMapKeyRefEmpty bool
-	if configVarBool.SecretKeyRef.ObjectReference.Namespace == "" &&
-		configVarBool.SecretKeyRef.ObjectReference.Name == "" &&
+	if configVarBool.SecretKeyRef.Namespace == "" &&
+		configVarBool.SecretKeyRef.Name == "" &&
 		configVarBool.SecretKeyRef.Key == "" {
 		secretKeyRefEmpty = true
 	}
 
-	if configVarBool.ConfigMapKeyRef.ObjectReference.Namespace == "" &&
-		configVarBool.ConfigMapKeyRef.ObjectReference.Name == "" &&
+	if configVarBool.ConfigMapKeyRef.Namespace == "" &&
+		configVarBool.ConfigMapKeyRef.Name == "" &&
 		configVarBool.ConfigMapKeyRef.Key == "" {
 		configMapKeyRefEmpty = true
 	}
@@ -311,7 +311,7 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		buffer.WriteString(fmt.Sprintf(`"secretKeyRef":%s`, string(jsonVal)))
+		fmt.Fprintf(buffer, `"secretKeyRef":%s`, string(jsonVal))
 	}
 
 	if !configMapKeyRefEmpty {
@@ -323,7 +323,7 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		buffer.WriteString(fmt.Sprintf(`%s"configMapKeyRef":%s`, leadingComma, jsonVal))
+		fmt.Fprintf(buffer, `%s"configMapKeyRef":%s`, leadingComma, jsonVal)
 	}
 
 	if configVarBool.Value != nil {
@@ -332,7 +332,7 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 			return []byte{}, err
 		}
 
-		buffer.WriteString(fmt.Sprintf(`,"value":%v`, string(jsonVal)))
+		fmt.Fprintf(buffer, `,"value":%v`, string(jsonVal))
 	}
 
 	buffer.WriteString("}")
@@ -344,7 +344,7 @@ func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
 		var val *bool
 		if err := json.Unmarshal(b, &val); err != nil {
-			return fmt.Errorf("Error parsing value: '%w'", err)
+			return fmt.Errorf("error parsing value: '%w'", err)
 		}
 		configVarBool.Value = val
 

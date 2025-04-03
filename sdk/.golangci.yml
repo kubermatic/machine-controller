@@ -18,22 +18,36 @@
 # root's .golangci.yml and once with the SDK's config file.
 #
 
+version: "2"
 run:
-  timeout: 10m
   modules-download-mode: readonly
-
 linters:
+  default: none
   enable:
     - depguard
-  disable-all: true
-
-linters-settings:
-  depguard:
-    rules:
-      noreverse:
-        deny:
-          - { pkg: k8c.io/machine-controller/pkg, desc: SDK must not depend on the main module }
-
-issues:
-  exclude-files:
-    - zz_generated.*.go
+  settings:
+    depguard:
+      rules:
+        noreverse:
+          deny:
+            - pkg: k8c.io/machine-controller/pkg
+              desc: SDK must not depend on the main module
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - zz_generated.*.go
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
