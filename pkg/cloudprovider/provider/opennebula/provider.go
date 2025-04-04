@@ -44,7 +44,7 @@ import (
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 type CloudProviderSpec struct {
@@ -56,7 +56,7 @@ const (
 )
 
 // New returns a OpenNebula provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -94,17 +94,17 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	c := Config{}
-	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "ONE_USERNAME")
+	c.Username, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Username, "ONE_USERNAME")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"username\" field, error = %w", err)
 	}
 
-	c.Password, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Password, "ONE_PASSWORD")
+	c.Password, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Password, "ONE_PASSWORD")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"password\" field, error = %w", err)
 	}
 
-	c.Endpoint, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Endpoint, "ONE_ENDPOINT")
+	c.Endpoint, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Endpoint, "ONE_ENDPOINT")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"endpoint\" field, error = %w", err)
 	}
@@ -115,24 +115,24 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	c.Memory = rawConfig.Memory
 
-	c.Image, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Image)
+	c.Image, err = p.configVarResolver.GetStringValue(rawConfig.Image)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	c.Datastore, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datastore)
+	c.Datastore, err = p.configVarResolver.GetStringValue(rawConfig.Datastore)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	c.DiskSize = rawConfig.DiskSize
 
-	c.Network, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Network)
+	c.Network, err = p.configVarResolver.GetStringValue(rawConfig.Network)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	c.EnableVNC, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.EnableVNC)
+	c.EnableVNC, _, err = p.configVarResolver.GetBoolValue(rawConfig.EnableVNC)
 	if err != nil {
 		return nil, nil, err
 	}

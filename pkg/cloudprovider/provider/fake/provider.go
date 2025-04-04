@@ -61,7 +61,7 @@ func (f CloudProviderInstance) Status() instance.Status {
 }
 
 // New returns a fake cloud provider.
-func New(_ *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(_ providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{}
 }
 

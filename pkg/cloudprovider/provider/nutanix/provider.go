@@ -62,7 +62,7 @@ type Config struct {
 }
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 // Server holds Nutanix server information.
@@ -103,7 +103,7 @@ func (nutanixServer Server) Status() instance.Status {
 }
 
 // New returns a nutanix provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	provider := &provider{configVarResolver: configVarResolver}
 	return provider
 }
@@ -125,12 +125,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	c := Config{}
 
-	c.Endpoint, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Endpoint, "NUTANIX_ENDPOINT")
+	c.Endpoint, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Endpoint, "NUTANIX_ENDPOINT")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	port, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Port, "NUTANIX_PORT")
+	port, err := p.configVarResolver.GetStringValueOrEnv(rawConfig.Port, "NUTANIX_PORT")
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -144,46 +144,46 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		c.Port = ptr.To(portInt)
 	}
 
-	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "NUTANIX_USERNAME")
+	c.Username, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Username, "NUTANIX_USERNAME")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.Password, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Password, "NUTANIX_PASSWORD")
+	c.Password, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Password, "NUTANIX_PASSWORD")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.AllowInsecure, err = p.configVarResolver.GetConfigVarBoolValueOrEnv(rawConfig.AllowInsecure, "NUTANIX_INSECURE")
+	c.AllowInsecure, err = p.configVarResolver.GetBoolValueOrEnv(rawConfig.AllowInsecure, "NUTANIX_INSECURE")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.ProxyURL, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProxyURL, "NUTANIX_PROXY_URL")
+	c.ProxyURL, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.ProxyURL, "NUTANIX_PROXY_URL")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.ClusterName, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ClusterName, "NUTANIX_CLUSTER_NAME")
+	c.ClusterName, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.ClusterName, "NUTANIX_CLUSTER_NAME")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	if rawConfig.ProjectName != nil {
-		c.ProjectName, err = p.configVarResolver.GetConfigVarStringValue(*rawConfig.ProjectName)
+		c.ProjectName, err = p.configVarResolver.GetStringValue(*rawConfig.ProjectName)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 	}
 
-	c.SubnetName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SubnetName)
+	c.SubnetName, err = p.configVarResolver.GetStringValue(rawConfig.SubnetName)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	c.AdditionalSubnetNames = append(c.AdditionalSubnetNames, rawConfig.AdditionalSubnetNames...)
 
-	c.ImageName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ImageName)
+	c.ImageName, err = p.configVarResolver.GetStringValue(rawConfig.ImageName)
 	if err != nil {
 		return nil, nil, nil, err
 	}

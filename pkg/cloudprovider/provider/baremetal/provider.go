@@ -71,11 +71,11 @@ func (b bareMetalServer) Status() instance.Status {
 }
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 // New returns a new BareMetal provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{
 		configVarResolver: configVarResolver,
 	}
@@ -108,7 +108,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	c := Config{}
 
-	driverName, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.Driver)
+	driverName, err := p.configVarResolver.GetStringValue(rawConfig.Driver)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get baremetal provider's driver name: %w", err)
 	}
@@ -124,7 +124,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 			return nil, nil, fmt.Errorf("failed to unmarshal tinkerbell driver spec: %w", err)
 		}
 
-		tinkConfig, err := tink.GetConfig(*driverConfig, p.configVarResolver.GetConfigVarStringValueOrEnv)
+		tinkConfig, err := tink.GetConfig(*driverConfig, p.configVarResolver.GetStringValueOrEnv)
 
 		if err != nil {
 			return nil, nil, err

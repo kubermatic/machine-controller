@@ -30,7 +30,7 @@ import (
 
 	cloudprovidertesting "k8c.io/machine-controller/pkg/cloudprovider/testing"
 	"k8c.io/machine-controller/sdk/cloudprovider/kubevirt"
-	"k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig/configvar"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -299,7 +299,7 @@ func TestNewVirtualMachine(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakeclient),
+				configVarResolver: configvar.NewResolver(context.Background(), fakeclient),
 			}
 
 			machine := cloudprovidertesting.Creator{

@@ -33,6 +33,7 @@ import (
 	"k8c.io/machine-controller/sdk/apis/machines"
 	machinesv1alpha1 "k8c.io/machine-controller/sdk/apis/machines/v1alpha1"
 	"k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig/configvar"
 
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -234,8 +235,8 @@ func migrateMachines(ctx context.Context, log *zap.SugaredLogger, client ctrlrun
 		if err != nil {
 			return fmt.Errorf("failed to get provider config: %w", err)
 		}
-		skg := providerconfig.NewConfigVarResolver(ctx, client)
-		prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
+		configResolver := configvar.NewResolver(ctx, client)
+		prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, configResolver)
 		if err != nil {
 			return fmt.Errorf("failed to get cloud provider %q: %w", providerConfig.CloudProvider, err)
 		}

@@ -45,6 +45,7 @@ import (
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/sdk/bootstrap"
 	"k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig/configvar"
 	"k8c.io/machine-controller/sdk/userdata/rhel"
 
 	corev1 "k8s.io/api/core/v1"
@@ -409,8 +410,8 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider config: %w", err)
 	}
-	skg := providerconfig.NewConfigVarResolver(ctx, r.client)
-	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
+	configResolver := configvar.NewResolver(ctx, r.client)
+	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, configResolver)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cloud provider %q: %w", providerConfig.CloudProvider, err)
 	}

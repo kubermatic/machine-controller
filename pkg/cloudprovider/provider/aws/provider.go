@@ -77,11 +77,11 @@ func init() {
 }
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 // New returns a aws provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -352,55 +352,55 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	c := Config{}
-	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKeyID, "AWS_ACCESS_KEY_ID")
+	c.AccessKeyID, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.AccessKeyID, "AWS_ACCESS_KEY_ID")
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"accessKeyId\" field, error = %w", err)
 	}
-	c.SecretAccessKey, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.SecretAccessKey, "AWS_SECRET_ACCESS_KEY")
+	c.SecretAccessKey, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.SecretAccessKey, "AWS_SECRET_ACCESS_KEY")
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"secretAccessKey\" field, error = %w", err)
 	}
-	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
+	c.Region, err = p.configVarResolver.GetStringValue(rawConfig.Region)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.VpcID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VpcID)
+	c.VpcID, err = p.configVarResolver.GetStringValue(rawConfig.VpcID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.SubnetID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SubnetID)
+	c.SubnetID, err = p.configVarResolver.GetStringValue(rawConfig.SubnetID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.AvailabilityZone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AvailabilityZone)
+	c.AvailabilityZone, err = p.configVarResolver.GetStringValue(rawConfig.AvailabilityZone)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	for _, securityGroupIDRaw := range rawConfig.SecurityGroupIDs {
-		securityGroupID, err := p.configVarResolver.GetConfigVarStringValue(securityGroupIDRaw)
+		securityGroupID, err := p.configVarResolver.GetStringValue(securityGroupIDRaw)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		c.SecurityGroupIDs = append(c.SecurityGroupIDs, securityGroupID)
 	}
-	c.InstanceProfile, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceProfile)
+	c.InstanceProfile, err = p.configVarResolver.GetStringValue(rawConfig.InstanceProfile)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	instanceTypeStr, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
+	instanceTypeStr, err := p.configVarResolver.GetStringValue(rawConfig.InstanceType)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	c.InstanceType = ec2types.InstanceType(instanceTypeStr)
 
-	c.AMI, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AMI)
+	c.AMI, err = p.configVarResolver.GetStringValue(rawConfig.AMI)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	c.DiskSize = rawConfig.DiskSize
-	diskTypeStr, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskType)
+	diskTypeStr, err := p.configVarResolver.GetStringValue(rawConfig.DiskType)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -428,7 +428,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		c.DiskIops = rawConfig.DiskIops
 	}
 
-	c.EBSVolumeEncrypted, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.EBSVolumeEncrypted)
+	c.EBSVolumeEncrypted, _, err = p.configVarResolver.GetBoolValue(rawConfig.EBSVolumeEncrypted)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get ebsVolumeEncrypted value: %w", err)
 	}
@@ -436,30 +436,30 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	c.AssignPublicIP = rawConfig.AssignPublicIP
 	c.IsSpotInstance = rawConfig.IsSpotInstance
 	if rawConfig.SpotInstanceConfig != nil && c.IsSpotInstance != nil && *c.IsSpotInstance {
-		maxPrice, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.SpotInstanceConfig.MaxPrice)
+		maxPrice, err := p.configVarResolver.GetStringValue(rawConfig.SpotInstanceConfig.MaxPrice)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		c.SpotMaxPrice = ptr.To(maxPrice)
 
-		persistentRequest, _, err := p.configVarResolver.GetConfigVarBoolValue(rawConfig.SpotInstanceConfig.PersistentRequest)
+		persistentRequest, _, err := p.configVarResolver.GetBoolValue(rawConfig.SpotInstanceConfig.PersistentRequest)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		c.SpotPersistentRequest = ptr.To(persistentRequest)
 
-		interruptionBehavior, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.SpotInstanceConfig.InterruptionBehavior)
+		interruptionBehavior, err := p.configVarResolver.GetStringValue(rawConfig.SpotInstanceConfig.InterruptionBehavior)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		c.SpotInterruptionBehavior = ptr.To(interruptionBehavior)
 	}
-	assumeRoleARN, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AssumeRoleARN, "AWS_ASSUME_ROLE_ARN")
+	assumeRoleARN, err := p.configVarResolver.GetStringValueOrEnv(rawConfig.AssumeRoleARN, "AWS_ASSUME_ROLE_ARN")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	c.AssumeRoleARN = assumeRoleARN
-	assumeRoleExternalID, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AssumeRoleExternalID, "AWS_ASSUME_ROLE_EXTERNAL_ID")
+	assumeRoleExternalID, err := p.configVarResolver.GetStringValueOrEnv(rawConfig.AssumeRoleExternalID, "AWS_ASSUME_ROLE_EXTERNAL_ID")
 	if err != nil {
 		return nil, nil, nil, err
 	}

@@ -72,7 +72,7 @@ const (
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 type config struct {
@@ -229,7 +229,7 @@ func getOSImageReference(c *config, os providerconfig.OperatingSystem) (*compute
 }
 
 // New returns a new azure provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -249,32 +249,32 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	}
 
 	c := config{}
-	c.SubscriptionID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.SubscriptionID, envSubscriptionID)
+	c.SubscriptionID, err = p.configVarResolver.GetStringValueOrEnv(rawCfg.SubscriptionID, envSubscriptionID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"subscriptionID\" field, error = %w", err)
 	}
 
-	c.TenantID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.TenantID, envTenantID)
+	c.TenantID, err = p.configVarResolver.GetStringValueOrEnv(rawCfg.TenantID, envTenantID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"tenantID\" field, error = %w", err)
 	}
 
-	c.ClientID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.ClientID, envClientID)
+	c.ClientID, err = p.configVarResolver.GetStringValueOrEnv(rawCfg.ClientID, envClientID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"clientID\" field, error = %w", err)
 	}
 
-	c.ClientSecret, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.ClientSecret, envClientSecret)
+	c.ClientSecret, err = p.configVarResolver.GetStringValueOrEnv(rawCfg.ClientSecret, envClientSecret)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"clientSecret\" field, error = %w", err)
 	}
 
-	c.ResourceGroup, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ResourceGroup)
+	c.ResourceGroup, err = p.configVarResolver.GetStringValue(rawCfg.ResourceGroup)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"resourceGroup\" field, error = %w", err)
 	}
 
-	c.VNetResourceGroup, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.VNetResourceGroup)
+	c.VNetResourceGroup, err = p.configVarResolver.GetStringValue(rawCfg.VNetResourceGroup)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"vnetResourceGroup\" field, error = %w", err)
 	}
@@ -283,37 +283,37 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 		c.VNetResourceGroup = c.ResourceGroup
 	}
 
-	c.Location, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.Location)
+	c.Location, err = p.configVarResolver.GetStringValue(rawCfg.Location)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"location\" field, error = %w", err)
 	}
 
-	c.VMSize, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.VMSize)
+	c.VMSize, err = p.configVarResolver.GetStringValue(rawCfg.VMSize)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"vmSize\" field, error = %w", err)
 	}
 
-	c.VNetName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.VNetName)
+	c.VNetName, err = p.configVarResolver.GetStringValue(rawCfg.VNetName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"vnetName\" field, error = %w", err)
 	}
 
-	c.SubnetName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.SubnetName)
+	c.SubnetName, err = p.configVarResolver.GetStringValue(rawCfg.SubnetName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"subnetName\" field, error = %w", err)
 	}
 
-	c.LoadBalancerSku, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.LoadBalancerSku)
+	c.LoadBalancerSku, err = p.configVarResolver.GetStringValue(rawCfg.LoadBalancerSku)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"loadBalancerSku\" field, error = %w", err)
 	}
 
-	c.RouteTableName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.RouteTableName)
+	c.RouteTableName, err = p.configVarResolver.GetStringValue(rawCfg.RouteTableName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"routeTableName\" field, error = %w", err)
 	}
 
-	c.AssignPublicIP, _, err = p.configVarResolver.GetConfigVarBoolValue(rawCfg.AssignPublicIP)
+	c.AssignPublicIP, _, err = p.configVarResolver.GetBoolValue(rawCfg.AssignPublicIP)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"assignPublicIP\" field, error = %w", err)
 	}
@@ -325,12 +325,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	c.AssignAvailabilitySet = rawCfg.AssignAvailabilitySet
 	c.EnableAcceleratedNetworking = rawCfg.EnableAcceleratedNetworking
 
-	c.AvailabilitySet, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.AvailabilitySet)
+	c.AvailabilitySet, err = p.configVarResolver.GetStringValue(rawCfg.AvailabilitySet)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"availabilitySet\" field, error = %w", err)
 	}
 
-	c.SecurityGroupName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.SecurityGroupName)
+	c.SecurityGroupName, err = p.configVarResolver.GetStringValue(rawCfg.SecurityGroupName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"securityGroupName\" field, error = %w", err)
 	}
@@ -365,7 +365,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 		}
 	}
 
-	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ImageID)
+	c.ImageID, err = p.configVarResolver.GetStringValue(rawCfg.ImageID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get image id: %w", err)
 	}

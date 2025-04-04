@@ -29,7 +29,8 @@ import (
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
-	providerconfig "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig/configvar"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -79,7 +80,7 @@ func verifyMigrateUID(ctx context.Context, _, manifestPath string, parameters []
 	if err != nil {
 		return fmt.Errorf("failed to get provideSpec: %w", err)
 	}
-	skg := providerconfig.NewConfigVarResolver(ctx, fakeClient)
+	skg := configvar.NewResolver(ctx, fakeClient)
 	prov, err := cloudprovider.ForProvider(providerSpec.CloudProvider, skg)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %w", providerSpec.CloudProvider, err)

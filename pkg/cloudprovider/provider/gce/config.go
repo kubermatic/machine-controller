@@ -122,7 +122,7 @@ type clientConfig struct {
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
-func newConfig(resolver *providerconfig.ConfigVarResolver, spec clusterv1alpha1.ProviderSpec) (*config, error) {
+func newConfig(resolver providerconfig.ConfigVarResolver, spec clusterv1alpha1.ProviderSpec) (*config, error) {
 	// Create cloud provider spec.
 	cpSpec, providerConfig, err := newCloudProviderSpec(spec)
 	if err != nil {
@@ -138,12 +138,12 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec clusterv1alpha1.
 		guestOSFeatures: cpSpec.GuestOSFeatures,
 	}
 
-	cfg.serviceAccount, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ServiceAccount, envGoogleServiceAccount)
+	cfg.serviceAccount, err = resolver.GetStringValueOrEnv(cpSpec.ServiceAccount, envGoogleServiceAccount)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve service account: %w", err)
 	}
 
-	cfg.projectID, err = resolver.GetConfigVarStringValue(cpSpec.ProjectID)
+	cfg.projectID, err = resolver.GetStringValue(cpSpec.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve project id: %w", err)
 	}
@@ -153,38 +153,38 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec clusterv1alpha1.
 		return nil, fmt.Errorf("cannot prepare JWT: %w", err)
 	}
 
-	cfg.zone, err = resolver.GetConfigVarStringValue(cpSpec.Zone)
+	cfg.zone, err = resolver.GetStringValue(cpSpec.Zone)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve zone: %w", err)
 	}
 
-	cfg.machineType, err = resolver.GetConfigVarStringValue(cpSpec.MachineType)
+	cfg.machineType, err = resolver.GetStringValue(cpSpec.MachineType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve machine type: %w", err)
 	}
 
-	cfg.diskType, err = resolver.GetConfigVarStringValue(cpSpec.DiskType)
+	cfg.diskType, err = resolver.GetStringValue(cpSpec.DiskType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve disk type: %w", err)
 	}
 
-	cfg.network, err = resolver.GetConfigVarStringValue(cpSpec.Network)
+	cfg.network, err = resolver.GetStringValue(cpSpec.Network)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve network: %w", err)
 	}
 
-	cfg.subnetwork, err = resolver.GetConfigVarStringValue(cpSpec.Subnetwork)
+	cfg.subnetwork, err = resolver.GetStringValue(cpSpec.Subnetwork)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve subnetwork: %w", err)
 	}
 
-	cfg.preemptible, _, err = resolver.GetConfigVarBoolValue(cpSpec.Preemptible)
+	cfg.preemptible, _, err = resolver.GetBoolValue(cpSpec.Preemptible)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve preemptible: %w", err)
 	}
 
 	if cpSpec.AutomaticRestart != nil {
-		automaticRestart, _, err := resolver.GetConfigVarBoolValue(*cpSpec.AutomaticRestart)
+		automaticRestart, _, err := resolver.GetBoolValue(*cpSpec.AutomaticRestart)
 		if err != nil {
 			return nil, fmt.Errorf("cannot retrieve automaticRestart: %w", err)
 		}
@@ -196,7 +196,7 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec clusterv1alpha1.
 	}
 
 	if cpSpec.ProvisioningModel != nil {
-		provisioningModel, err := resolver.GetConfigVarStringValue(*cpSpec.ProvisioningModel)
+		provisioningModel, err := resolver.GetStringValue(*cpSpec.ProvisioningModel)
 		if err != nil {
 			return nil, fmt.Errorf("cannot retrieve provisioningModel: %w", err)
 		}
@@ -207,38 +207,38 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec clusterv1alpha1.
 	cfg.assignPublicIPAddress = true
 
 	if cpSpec.AssignPublicIPAddress != nil {
-		cfg.assignPublicIPAddress, _, err = resolver.GetConfigVarBoolValue(*cpSpec.AssignPublicIPAddress)
+		cfg.assignPublicIPAddress, _, err = resolver.GetBoolValue(*cpSpec.AssignPublicIPAddress)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %w", err)
 		}
 	}
 
-	cfg.multizone, _, err = resolver.GetConfigVarBoolValue(cpSpec.MultiZone)
+	cfg.multizone, _, err = resolver.GetBoolValue(cpSpec.MultiZone)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve multizone: %w", err)
 	}
 
-	cfg.regional, _, err = resolver.GetConfigVarBoolValue(cpSpec.Regional)
+	cfg.regional, _, err = resolver.GetBoolValue(cpSpec.Regional)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve regional: %w", err)
 	}
 
-	cfg.customImage, err = resolver.GetConfigVarStringValue(cpSpec.CustomImage)
+	cfg.customImage, err = resolver.GetStringValue(cpSpec.CustomImage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve gce custom image: %w", err)
 	}
 
-	cfg.disableMachineServiceAccount, _, err = resolver.GetConfigVarBoolValue(cpSpec.DisableMachineServiceAccount)
+	cfg.disableMachineServiceAccount, _, err = resolver.GetBoolValue(cpSpec.DisableMachineServiceAccount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve disable machine service account: %w", err)
 	}
 
-	cfg.enableNestedVirtualization, _, err = resolver.GetConfigVarBoolValue(cpSpec.EnableNestedVirtualization)
+	cfg.enableNestedVirtualization, _, err = resolver.GetBoolValue(cpSpec.EnableNestedVirtualization)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve enable nested virtualization: %w", err)
 	}
 
-	cfg.minCPUPlatform, err = resolver.GetConfigVarStringValue(cpSpec.MinCPUPlatform)
+	cfg.minCPUPlatform, err = resolver.GetStringValue(cpSpec.MinCPUPlatform)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve min cpu platform: %w", err)
 	}

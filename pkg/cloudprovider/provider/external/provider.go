@@ -58,7 +58,7 @@ func (f CloudProviderInstance) Status() instance.Status {
 }
 
 // New returns an external cloud provider.
-func New(_ *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(_ providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{}
 }
 

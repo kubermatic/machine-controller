@@ -60,12 +60,12 @@ type resolvedConfig struct {
 }
 
 func (p *provider) resolveTemplateID(ctx context.Context, a api.API, config anxtypes.RawConfig, locationID string) (string, error) {
-	templateName, err := p.configVarResolver.GetConfigVarStringValue(config.Template)
+	templateName, err := p.configVarResolver.GetStringValue(config.Template)
 	if err != nil {
 		return "", fmt.Errorf("failed to get 'template': %w", err)
 	}
 
-	templateBuild, err := p.configVarResolver.GetConfigVarStringValue(config.TemplateBuild)
+	templateBuild, err := p.configVarResolver.GetStringValue(config.TemplateBuild)
 	if err != nil {
 		return "", fmt.Errorf("failed to get 'templateBuild': %w", err)
 	}
@@ -87,7 +87,7 @@ func (p *provider) resolveNetworkConfig(log *zap.SugaredLogger, config anxtypes.
 
 		log.Info("Configuration uses the deprecated VlanID attribute, please migrate to the Networks array instead.")
 
-		vlanID, err := p.configVarResolver.GetConfigVarStringValue(config.VlanID)
+		vlanID, err := p.configVarResolver.GetStringValue(config.VlanID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get 'vlanID': %w", err)
 		}
@@ -102,14 +102,14 @@ func (p *provider) resolveNetworkConfig(log *zap.SugaredLogger, config anxtypes.
 
 	ret := make([]resolvedNetwork, len(config.Networks))
 	for netIndex, net := range config.Networks {
-		vlanID, err := p.configVarResolver.GetConfigVarStringValue(net.VlanID)
+		vlanID, err := p.configVarResolver.GetStringValue(net.VlanID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get 'vlanID' for network %v: %w", netIndex, err)
 		}
 
 		prefixes := make([]string, len(net.PrefixIDs))
 		for prefixIndex, prefix := range net.PrefixIDs {
-			prefixID, err := p.configVarResolver.GetConfigVarStringValue(prefix)
+			prefixID, err := p.configVarResolver.GetStringValue(prefix)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get 'prefixID' for network %v, prefix %v: %w", netIndex, prefixIndex, err)
 			}
@@ -145,7 +145,7 @@ func (p *provider) resolveDiskConfig(log *zap.SugaredLogger, config anxtypes.Raw
 	ret := make([]resolvedDisk, len(config.Disks))
 
 	for idx, disk := range config.Disks {
-		performanceType, err := p.configVarResolver.GetConfigVarStringValue(disk.PerformanceType)
+		performanceType, err := p.configVarResolver.GetStringValue(disk.PerformanceType)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get 'performanceType' of disk %v: %w", idx, err)
 		}
@@ -165,17 +165,17 @@ func (p *provider) resolveConfig(ctx context.Context, log *zap.SugaredLogger, co
 		RawConfig: config,
 	}
 
-	ret.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(config.Token, anxtypes.AnxTokenEnv)
+	ret.Token, err = p.configVarResolver.GetStringValueOrEnv(config.Token, anxtypes.AnxTokenEnv)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get 'token': %w", err)
 	}
 
-	ret.LocationID, err = p.configVarResolver.GetConfigVarStringValue(config.LocationID)
+	ret.LocationID, err = p.configVarResolver.GetStringValue(config.LocationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get 'locationID': %w", err)
 	}
 
-	ret.TemplateID, err = p.configVarResolver.GetConfigVarStringValue(config.TemplateID)
+	ret.TemplateID, err = p.configVarResolver.GetStringValue(config.TemplateID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get 'templateID': %w", err)
 	}

@@ -42,11 +42,11 @@ import (
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver providerconfig.ConfigVarResolver
 }
 
 // New returns a Scaleway provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -100,27 +100,27 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	c := Config{}
-	c.AccessKey, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKey, scw.ScwAccessKeyEnv)
+	c.AccessKey, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.AccessKey, scw.ScwAccessKeyEnv)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"access_key\" field, error = %w", err)
 	}
-	c.SecretKey, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.SecretKey, scw.ScwSecretKeyEnv)
+	c.SecretKey, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.SecretKey, scw.ScwSecretKeyEnv)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"secret_key\" field, error = %w", err)
 	}
-	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ProjectID)
+	c.ProjectID, err = p.configVarResolver.GetStringValue(rawConfig.ProjectID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"project_id\" field, error = %w", err)
 	}
-	c.Zone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Zone)
+	c.Zone, err = p.configVarResolver.GetStringValue(rawConfig.Zone)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"zone\" field, error = %w", err)
 	}
-	c.CommercialType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.CommercialType)
+	c.CommercialType, err = p.configVarResolver.GetStringValue(rawConfig.CommercialType)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.IPv6, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.IPv6)
+	c.IPv6, _, err = p.configVarResolver.GetBoolValue(rawConfig.IPv6)
 	if err != nil {
 		return nil, nil, err
 	}

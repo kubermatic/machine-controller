@@ -28,7 +28,7 @@ import (
 	"go.uber.org/zap"
 
 	cloudprovidertesting "k8c.io/machine-controller/pkg/cloudprovider/testing"
-	"k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig/configvar"
 
 	"k8s.io/utils/ptr"
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -174,7 +174,7 @@ func TestValidate(t *testing.T) {
 			password, _ := simulator.DefaultLogin.Password()
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakectrlruntimeclient.
+				configVarResolver: configvar.NewResolver(context.Background(), fakectrlruntimeclient.
 					NewClientBuilder().
 					Build()),
 			}

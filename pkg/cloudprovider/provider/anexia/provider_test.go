@@ -39,12 +39,14 @@ import (
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/progress"
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
 	"go.uber.org/zap"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig/configvar"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -239,7 +241,7 @@ func TestAnexiaProvider(t *testing.T) {
 			},
 		}
 
-		provider := New(nil).(*provider)
+		provider := New(configvar.NewResolver(context.Background(), fake.NewClientBuilder().Build())).(*provider)
 		for _, testCase := range testCases {
 			templateID, err := provider.resolveTemplateID(context.Background(), a, testCase.config, "foo")
 			if testCase.expectedError != "" {
@@ -368,7 +370,7 @@ func TestValidate(t *testing.T) {
 		},
 	)
 
-	provider := New(nil)
+	provider := New(configvar.NewResolver(context.Background(), fake.NewClientBuilder().Build()))
 	for _, testCase := range getSpecsForValidationTest(t, configCases) {
 		err := provider.Validate(context.Background(), zap.NewNop().Sugar(), testCase.Spec)
 		if testCase.ExpectedError != nil {

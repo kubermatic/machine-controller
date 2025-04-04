@@ -57,7 +57,7 @@ func (f CloudProviderInstance) Status() instance.Status {
 }
 
 // New returns a edge cloud provider.
-func New(_ *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+func New(_ providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{}
 }
 
