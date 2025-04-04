@@ -351,7 +351,7 @@ func ensureClusterV1Alpha1NodeOwnership(ctx context.Context, machineLog *zap.Sug
 				machineLog.Info("No node for machines found")
 				continue
 			}
-			return fmt.Errorf("Failed to get node %s for machine %s: %w",
+			return fmt.Errorf("failed to get node %s for machine %s: %w",
 				machine.Spec.Name, machine.Name, err)
 		}
 

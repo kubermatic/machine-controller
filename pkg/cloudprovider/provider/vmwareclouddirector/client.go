@@ -120,7 +120,7 @@ func (c *Client) GetOrganization() (*govcd.Org, error) {
 
 func (c *Client) GetVDCForOrg(org govcd.Org) (*govcd.Vdc, error) {
 	if c.Auth.VDC == "" {
-		return nil, errors.New("Organization VDC must be configured")
+		return nil, errors.New("organization VDC must be configured")
 	}
 	vcd, err := org.GetVDCByNameOrId(c.Auth.VDC, false)
 	if err != nil {

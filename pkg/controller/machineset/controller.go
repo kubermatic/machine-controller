@@ -149,7 +149,7 @@ func (r *ReconcileMachineSet) reconcile(ctx context.Context, log *zap.SugaredLog
 	log.Debug("Reconcile MachineSet")
 	allMachines := &clusterv1alpha1.MachineList{}
 
-	if err := r.Client.List(ctx, allMachines, ctrlruntimeclient.InNamespace(machineSet.Namespace)); err != nil {
+	if err := r.List(ctx, allMachines, ctrlruntimeclient.InNamespace(machineSet.Namespace)); err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "failed to list machines")
 	}
 
@@ -166,9 +166,9 @@ func (r *ReconcileMachineSet) reconcile(ctx context.Context, log *zap.SugaredLog
 
 	// Add foregroundDeletion finalizer
 	if !contains(machineSet.Finalizers, metav1.FinalizerDeleteDependents) {
-		machineSet.Finalizers = append(machineSet.ObjectMeta.Finalizers, metav1.FinalizerDeleteDependents)
+		machineSet.Finalizers = append(machineSet.Finalizers, metav1.FinalizerDeleteDependents)
 
-		if err := r.Client.Update(ctx, machineSet); err != nil {
+		if err := r.Update(ctx, machineSet); err != nil {
 			return reconcile.Result{}, err
 		}
 
@@ -177,7 +177,7 @@ func (r *ReconcileMachineSet) reconcile(ctx context.Context, log *zap.SugaredLog
 	}
 
 	// Return early if the MachineSet is deleted.
-	if !machineSet.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !machineSet.DeletionTimestamp.IsZero() {
 		return reconcile.Result{}, nil
 	}
 
@@ -259,7 +259,7 @@ func (r *ReconcileMachineSet) syncReplicas(ctx context.Context, log *zap.Sugared
 			replicasLog.Infow("Creating new machine", "index", i+1)
 
 			machine := r.createMachine(ms)
-			if err := r.Client.Create(ctx, machine); err != nil {
+			if err := r.Create(ctx, machine); err != nil {
 				log.Errorw("Failed to create Machine", "machine", ctrlruntimeclient.ObjectKeyFromObject(machine), zap.Error(err))
 				errstrings = append(errstrings, err.Error())
 				continue
@@ -291,7 +291,7 @@ func (r *ReconcileMachineSet) syncReplicas(ctx context.Context, log *zap.Sugared
 		for _, machine := range machinesToDelete {
 			go func(targetMachine *clusterv1alpha1.Machine) {
 				defer wg.Done()
-				err := r.Client.Delete(ctx, targetMachine)
+				err := r.Delete(ctx, targetMachine)
 				if err != nil {
 					log.Errorw("Failed to delete Machine", "machine", ctrlruntimeclient.ObjectKeyFromObject(targetMachine), zap.Error(err))
 					errCh <- err
@@ -327,8 +327,8 @@ func (r *ReconcileMachineSet) createMachine(machineSet *clusterv1alpha1.MachineS
 		ObjectMeta: machineSet.Spec.Template.ObjectMeta,
 		Spec:       machineSet.Spec.Template.Spec,
 	}
-	machine.ObjectMeta.GenerateName = fmt.Sprintf("%s-", machineSet.Name)
-	machine.ObjectMeta.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(machineSet, controllerKind)}
+	machine.GenerateName = fmt.Sprintf("%s-", machineSet.Name)
+	machine.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(machineSet, controllerKind)}
 	machine.Namespace = machineSet.Namespace
 	return machine
 }
@@ -341,7 +341,7 @@ func shouldExcludeMachine(machineLog *zap.SugaredLogger, machineSet *clusterv1al
 		return true
 	}
 
-	if machine.ObjectMeta.DeletionTimestamp != nil {
+	if machine.DeletionTimestamp != nil {
 		return true
 	}
 
@@ -356,7 +356,7 @@ func shouldExcludeMachine(machineLog *zap.SugaredLogger, machineSet *clusterv1al
 func (r *ReconcileMachineSet) adoptOrphan(ctx context.Context, machineSet *clusterv1alpha1.MachineSet, machine *clusterv1alpha1.Machine) error {
 	newRef := *metav1.NewControllerRef(machineSet, controllerKind)
 	machine.OwnerReferences = append(machine.OwnerReferences, newRef)
-	return r.Client.Update(ctx, machine)
+	return r.Update(ctx, machine)
 }
 
 func (r *ReconcileMachineSet) waitForMachineCreation(ctx context.Context, log *zap.SugaredLogger, machineList []*clusterv1alpha1.Machine) error {
@@ -364,7 +364,7 @@ func (r *ReconcileMachineSet) waitForMachineCreation(ctx context.Context, log *z
 		pollErr := wait.PollUntilContextTimeout(ctx, stateConfirmationInterval, stateConfirmationTimeout, false, func(ctx context.Context) (bool, error) {
 			key := ctrlruntimeclient.ObjectKey{Namespace: machine.Namespace, Name: machine.Name}
 
-			if err := r.Client.Get(ctx, key, &clusterv1alpha1.Machine{}); err != nil {
+			if err := r.Get(ctx, key, &clusterv1alpha1.Machine{}); err != nil {
 				if apierrors.IsNotFound(err) {
 					return false, nil
 				}
@@ -389,7 +389,7 @@ func (r *ReconcileMachineSet) waitForMachineDeletion(ctx context.Context, machin
 			m := &clusterv1alpha1.Machine{}
 			key := ctrlruntimeclient.ObjectKey{Namespace: machine.Namespace, Name: machine.Name}
 
-			err := r.Client.Get(ctx, key, m)
+			err := r.Get(ctx, key, m)
 			if apierrors.IsNotFound(err) || !m.DeletionTimestamp.IsZero() {
 				return true, nil
 			}
@@ -414,7 +414,7 @@ func (r *ReconcileMachineSet) MachineToMachineSets() handler.MapFunc {
 		key := ctrlruntimeclient.ObjectKey{Namespace: o.GetNamespace(), Name: o.GetName()}
 		machineLog := r.log.With("machine", key)
 
-		if err := r.Client.Get(ctx, key, m); err != nil {
+		if err := r.Get(ctx, key, m); err != nil {
 			if !apierrors.IsNotFound(err) {
 				machineLog.Errorw("Failed to retrieve Machine for possible MachineSet adoption", zap.Error(err))
 			}
@@ -423,7 +423,7 @@ func (r *ReconcileMachineSet) MachineToMachineSets() handler.MapFunc {
 
 		// Check if the controller reference is already set and
 		// return an empty result when one is found.
-		for _, ref := range m.ObjectMeta.OwnerReferences {
+		for _, ref := range m.OwnerReferences {
 			if ref.Controller != nil && *ref.Controller {
 				return result
 			}

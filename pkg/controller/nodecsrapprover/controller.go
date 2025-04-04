@@ -254,7 +254,7 @@ func (r *reconciler) validateX509CSR(csr *certificatesv1.CertificateSigningReque
 func (r *reconciler) getMachineForNode(ctx context.Context, nodeName string) (clusterv1alpha1.Machine, bool, error) {
 	// List all Machines in all namespaces.
 	machines := &clusterv1alpha1.MachineList{}
-	if err := r.Client.List(ctx, machines); err != nil {
+	if err := r.List(ctx, machines); err != nil {
 		return clusterv1alpha1.Machine{}, false, fmt.Errorf("failed to list all machine objects: %w", err)
 	}
 

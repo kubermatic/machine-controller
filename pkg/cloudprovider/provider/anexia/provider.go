@@ -412,7 +412,7 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 			var respErr *anxclient.ResponseError
 
 			// Only error if the error was not "not found"
-			if !(errors.As(err, &respErr) && respErr.ErrorData.Code == http.StatusNotFound) {
+			if !errors.As(err, &respErr) || respErr.ErrorData.Code != http.StatusNotFound {
 				return false, newError(common.DeleteMachineError, "failed to delete machine: %v", err)
 			}
 

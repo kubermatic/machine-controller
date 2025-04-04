@@ -405,7 +405,7 @@ func (r *ReconcileMachineDeployment) cleanupDeployment(ctx context.Context, log 
 
 	// Avoid deleting machine set with deletion timestamp set
 	aliveFilter := func(ms *clusterv1alpha1.MachineSet) bool {
-		return ms != nil && ms.ObjectMeta.DeletionTimestamp == nil
+		return ms != nil && ms.DeletionTimestamp == nil
 	}
 
 	cleanableMSes := dutil.FilterMachineSets(oldMSs, aliveFilter)

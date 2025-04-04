@@ -48,7 +48,7 @@ func (p *provider) addToVMGroup(ctx context.Context, log *zap.SugaredLogger, ses
 	var vmRefs []types.ManagedObjectReference
 	for _, vm := range vmsInFolder {
 		// Only add VMs with the same machineSetName to the rule and exclude the machine itself if it is being deleted
-		if strings.HasPrefix(vm.Name(), machineSetName) && !(vm.Name() == machine.Name && machine.DeletionTimestamp != nil) {
+		if strings.HasPrefix(vm.Name(), machineSetName) && (vm.Name() != machine.Name || machine.DeletionTimestamp == nil) {
 			vmRefs = append(vmRefs, vm.Reference())
 		}
 	}

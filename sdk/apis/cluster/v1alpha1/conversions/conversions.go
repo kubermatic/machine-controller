@@ -34,7 +34,7 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	out.ResourceVersion = ""
 	out.Generation = 0
 	out.CreationTimestamp = metav1.Time{}
-	out.ObjectMeta.Namespace = metav1.NamespaceSystem
+	out.Namespace = metav1.NamespaceSystem
 
 	// k8c.io/machine-controller/sdk/apis/cluster/v1alpha1.MachineStatus and
 	// sdk/apis/machines/v1alpha1.MachineStatus are semantically identical, the former

@@ -628,15 +628,15 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 	// Values will come from instancetype.
 	if c.Instancetype == nil {
 		if c.Resources == nil {
-			return fmt.Errorf("no resource requests set for the virtual machine")
+			return errors.New("no resource requests set for the virtual machine")
 		}
 
 		if c.VCPUs == nil && c.Resources.Cpu().IsZero() {
-			return fmt.Errorf("no CPUs configured. Either vCPUs or CPUs have to be set.")
+			return errors.New("no CPUs configured. Either vCPUs or CPUs have to be set")
 		}
 
 		if c.VCPUs != nil && !c.Resources.Cpu().IsZero() {
-			return fmt.Errorf("vCPUs and CPUs cannot be configured at the same time.")
+			return errors.New("vCPUs and CPUs cannot be configured at the same time")
 		}
 	}
 
@@ -649,7 +649,7 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 	}
 	if c.DNSPolicy == corev1.DNSNone {
 		if c.DNSConfig == nil || len(c.DNSConfig.Nameservers) == 0 {
-			return fmt.Errorf("dns config must be specified when dns policy is None")
+			return errors.New("dns config must be specified when dns policy is None")
 		}
 	}
 	// Check if we can reach the API of the target cluster.

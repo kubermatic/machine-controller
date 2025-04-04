@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	ErrIPv6OnlyUnsupported  = "IPv6 only network family not supported yet"
-	ErrUnknownNetworkFamily = "Unknown IP family %q only IPv4,IPv6,IPv4+IPv6 are valid values"
+	ErrIPv6OnlyUnsupported  = "IPv6-only network family not supported yet"
+	ErrUnknownNetworkFamily = "unknown IP family %q, only IPv4,IPv6,IPv4+IPv6 are valid values"
 )
 
 // IPFamily IPv4 | IPv6 | IPv4+IPv6.

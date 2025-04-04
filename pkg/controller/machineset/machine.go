@@ -39,7 +39,7 @@ func (c *ReconcileMachineSet) getMachineSetsForMachine(ctx context.Context, mach
 		Namespace: m.Namespace,
 	}
 
-	err := c.Client.List(ctx, msList, listOptions)
+	err := c.List(ctx, msList, listOptions)
 	if err != nil {
 		machineLog.Errorw("Failed to list MachineSets", zap.Error(err))
 		return nil

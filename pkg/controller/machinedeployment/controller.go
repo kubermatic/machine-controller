@@ -160,8 +160,8 @@ func (r *ReconcileMachineDeployment) reconcile(ctx context.Context, log *zap.Sug
 	}
 
 	if !contains(d.Finalizers, metav1.FinalizerDeleteDependents) {
-		d.Finalizers = append(d.ObjectMeta.Finalizers, metav1.FinalizerDeleteDependents)
-		if err := r.Client.Update(ctx, d); err != nil {
+		d.Finalizers = append(d.Finalizers, metav1.FinalizerDeleteDependents)
+		if err := r.Update(ctx, d); err != nil {
 			return reconcile.Result{}, err
 		}
 
@@ -195,7 +195,7 @@ func (r *ReconcileMachineDeployment) getMachineSetsForDeployment(ctx context.Con
 	// List all MachineSets to find those we own but that no longer match our selector.
 	machineSets := &clusterv1alpha1.MachineSetList{}
 	listOptions := &ctrlruntimeclient.ListOptions{Namespace: d.Namespace}
-	if err := r.Client.List(ctx, machineSets, listOptions); err != nil {
+	if err := r.List(ctx, machineSets, listOptions); err != nil {
 		return nil, err
 	}
 
@@ -243,7 +243,7 @@ func (r *ReconcileMachineDeployment) getMachineSetsForDeployment(ctx context.Con
 func (r *ReconcileMachineDeployment) adoptOrphan(ctx context.Context, deployment *clusterv1alpha1.MachineDeployment, machineSet *clusterv1alpha1.MachineSet) error {
 	newRef := *metav1.NewControllerRef(deployment, controllerKind)
 	machineSet.OwnerReferences = append(machineSet.OwnerReferences, newRef)
-	return r.Client.Update(ctx, machineSet)
+	return r.Update(ctx, machineSet)
 }
 
 // getMachineDeploymentsForMachineSet returns a list of MachineDeployments that could potentially match a MachineSet.
@@ -255,7 +255,7 @@ func (r *ReconcileMachineDeployment) getMachineDeploymentsForMachineSet(ctx cont
 
 	dList := &clusterv1alpha1.MachineDeploymentList{}
 	listOptions := &ctrlruntimeclient.ListOptions{Namespace: ms.Namespace}
-	if err := r.Client.List(ctx, dList, listOptions); err != nil {
+	if err := r.List(ctx, dList, listOptions); err != nil {
 		log.Errorw("Failed to list MachineDeployments", zap.Error(err))
 		return nil
 	}
@@ -286,7 +286,7 @@ func (r *ReconcileMachineDeployment) MachineSetToDeployments() handler.MapFunc {
 
 		ms := &clusterv1alpha1.MachineSet{}
 		key := ctrlruntimeclient.ObjectKey{Namespace: o.GetNamespace(), Name: o.GetName()}
-		if err := r.Client.Get(ctx, key, ms); err != nil {
+		if err := r.Get(ctx, key, ms); err != nil {
 			if !apierrors.IsNotFound(err) {
 				r.log.Errorw("Failed to retrieve MachineSet for possible MachineDeployment adoption", "machineset", key, zap.Error(err))
 			}
@@ -295,7 +295,7 @@ func (r *ReconcileMachineDeployment) MachineSetToDeployments() handler.MapFunc {
 
 		// Check if the controller reference is already set and
 		// return an empty result when one is found.
-		for _, ref := range ms.ObjectMeta.OwnerReferences {
+		for _, ref := range ms.OwnerReferences {
 			if ref.Controller != nil && *ref.Controller {
 				return result
 			}

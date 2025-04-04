@@ -59,7 +59,7 @@ func (p *provider) createOrUpdateVMAntiAffinityRule(ctx context.Context, log *za
 	var ruleVMRef []types.ManagedObjectReference
 	for _, vm := range vmsInFolder {
 		// Only add VMs with the same machineSetName to the rule and exclude the machine itself if it is being deleted
-		if strings.HasPrefix(vm.Name(), machineSetName) && !(vm.Name() == machine.Name && machine.DeletionTimestamp != nil) {
+		if strings.HasPrefix(vm.Name(), machineSetName) && (vm.Name() != machine.Name || machine.DeletionTimestamp == nil) {
 			ruleVMRef = append(ruleVMRef, vm.Reference())
 		}
 	}

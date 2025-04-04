@@ -22,7 +22,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"math"
 	"os"
 	"os/exec"
 	"text/template"
@@ -41,6 +40,8 @@ const (
 	localTempDir     = "/tmp"
 	metaDataTemplate = `instance-id: {{ .InstanceID}}
 local-hostname: {{ .Hostname }}`
+
+	gigaByte = (1024 * 1024 * 1024)
 )
 
 func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, config *Config, session *Session, containerLinuxUserdata string) (*object.VirtualMachine, error) {
@@ -181,7 +182,7 @@ func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, 
 
 		log.Debugw("Increasing disk size", "targetgb", *config.DiskSizeGB)
 		disk := disks[0]
-		disk.CapacityInBytes = *config.DiskSizeGB * int64(math.Pow(1024, 3))
+		disk.CapacityInBytes = *config.DiskSizeGB * gigaByte
 		diskspec := &types.VirtualDeviceConfigSpec{Operation: types.VirtualDeviceConfigSpecOperationEdit, Device: disk}
 		deviceSpecs = append(deviceSpecs, diskspec)
 	}
@@ -418,9 +419,9 @@ func validateDiskResizing(disks []*types.VirtualDisk, requestedSize int64) error
 	if diskLen := len(disks); diskLen != 1 {
 		return fmt.Errorf("expected vm to have exactly one disk, got %d", diskLen)
 	}
-	requestedCapacityInBytes := requestedSize * int64(math.Pow(1024, 3))
+	requestedCapacityInBytes := requestedSize * gigaByte
 	if requestedCapacityInBytes < disks[0].CapacityInBytes {
-		attachedDiskSizeInGiB := disks[0].CapacityInBytes / int64(math.Pow(1024, 3))
+		attachedDiskSizeInGiB := disks[0].CapacityInBytes / gigaByte
 		return fmt.Errorf("requested diskSizeGB %d is smaller than size of attached disk(%dGiB)", requestedSize, attachedDiskSizeInGiB)
 	}
 	return nil
@@ -431,12 +432,12 @@ func getDatastoreFromVM(ctx context.Context, session *Session, vmRef *object.Vir
 	var props mo.VirtualMachine
 	// Obtain VM properties
 	if err := vmRef.Properties(ctx, vmRef.Reference(), nil, &props); err != nil {
-		return nil, fmt.Errorf("error getting VM properties: %w", err)
+		return nil, fmt.Errorf("failed to get VM properties: %w", err)
 	}
 	datastorePathObj := new(object.DatastorePath)
 	isSuccess := datastorePathObj.FromString(props.Summary.Config.VmPathName)
 	if !isSuccess {
-		return nil, fmt.Errorf("Failed to parse volPath: %s", props.Summary.Config.VmPathName)
+		return nil, fmt.Errorf("failed to parse volPath: %s", props.Summary.Config.VmPathName)
 	}
 	return session.Finder.Datastore(ctx, datastorePathObj.Datastore)
 }

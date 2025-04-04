@@ -108,7 +108,7 @@ func (ne *NodeEviction) getFilteredPods(ctx context.Context) ([]corev1.Pod, erro
 		if controllerRef := metav1.GetControllerOf(&candidatePod); controllerRef != nil && controllerRef.Kind == "DaemonSet" {
 			continue
 		}
-		if _, found := candidatePod.ObjectMeta.Annotations[corev1.MirrorPodAnnotationKey]; found {
+		if _, found := candidatePod.Annotations[corev1.MirrorPodAnnotationKey]; found {
 			continue
 		}
 		filteredPods = append(filteredPods, candidatePod)
