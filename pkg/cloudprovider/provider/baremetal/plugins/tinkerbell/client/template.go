@@ -197,17 +197,17 @@ func createGrowPartitionAction(destDisk string) Action {
 		Image:   "quay.io/tinkerbell/actions/cexec:c5bde803d9f6c90f1a9d5e06930d856d1481854c",
 		Timeout: 90,
 		Environment: map[string]string{
-			"BLOCK_DEVICE":        fmt.Sprintf("{{ index .Hardware.Disks 0 }}%s", PartitionNumber),
+			"BLOCK_DEVICE":        "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
 			"FS_TYPE":             fsType,
 			"CHROOT":              "y",
 			"DEFAULT_INTERPRETER": defaultInterpreter,
-			"CMD_LINE":            fmt.Sprintf("growpart %s %s && resize2fs %s%s", destDisk, PartitionNumber, destDisk, PartitionNumber),
+			"CMD_LINE":            fmt.Sprintf("growpart %s %s && resize2fs '{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}'", destDisk, PartitionNumber),
 		},
 	}
 }
 
 func createNetworkConfigAction() Action {
-	netplaneConfig := `
+	netplanConfig := `
 network:
   version: 2
   renderer: networkd
@@ -227,10 +227,10 @@ network:
 		Image:   "quay.io/tinkerbell-actions/writefile:v1.0.0",
 		Timeout: 90,
 		Environment: map[string]string{
-			"DEST_DISK": fmt.Sprintf("{{ index .Hardware.Disks 0 }}%s", PartitionNumber),
+			"DEST_DISK": "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
 			"FS_TYPE":   fsType,
 			"DEST_PATH": "/etc/netplan/config.yaml",
-			"CONTENTS":  netplaneConfig,
+			"CONTENTS":  netplanConfig,
 			"UID":       "0",
 			"GID":       "0",
 			"MODE":      "0644",
@@ -252,7 +252,7 @@ echo 'local-hostname: {{.hardware_name}}' >> /var/lib/cloud/seed/nocloud/meta-da
 		Image:   "quay.io/tinkerbell-actions/cexec:v1.0.0",
 		Timeout: 90,
 		Environment: map[string]string{
-			"BLOCK_DEVICE":        fmt.Sprintf("{{ index .Hardware.Disks 0 }}%s", PartitionNumber),
+			"BLOCK_DEVICE":        "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
 			"FS_TYPE":             fsType,
 			"CHROOT":              "y",
 			"DEFAULT_INTERPRETER": defaultInterpreter,
@@ -267,7 +267,7 @@ func decodeCloudInitFile(hardwareName string) Action {
 		Image:   "quay.io/tinkerbell/actions/cexec:latest",
 		Timeout: 90,
 		Environment: map[string]string{
-			"BLOCK_DEVICE":        fmt.Sprintf("{{ index .Hardware.Disks 0 }}%s", PartitionNumber),
+			"BLOCK_DEVICE":        "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
 			"FS_TYPE":             fsType,
 			"CHROOT":              "y",
 			"DEFAULT_INTERPRETER": "/bin/sh -c",
