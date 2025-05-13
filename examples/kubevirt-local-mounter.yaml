@@ -15,7 +15,7 @@ spec:
       hostPID: true
       containers:
         - name: startup-script
-          image: quay.io/kubermatic/startup-script:v0.1.0
+          image: quay.io/kubermatic/startup-script:v0.2.1
           securityContext:
             privileged: true
           env:
