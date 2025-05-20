@@ -131,6 +131,13 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 		}
 	}
 
+	// For KubeVirt we need to initialize the annotations for MachineDeployment, to enable setting of the needed annotations.
+	if providerConfig.CloudProvider == providerconfig.CloudProviderKubeVirt {
+		if spec.Annotations == nil {
+			spec.Annotations = make(map[string]string)
+		}
+	}
+
 	configResolver := configvar.NewResolver(ctx, ad.workerClient)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, configResolver)
 	if err != nil {

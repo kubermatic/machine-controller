@@ -80,6 +80,8 @@ const (
 	// node affinity constraints on a PersistentVolume.
 	topologyRegionKey = "topology.kubernetes.io/region"
 	topologyZoneKey   = "topology.kubernetes.io/zone"
+	// clusterNamespace represents the infra cluster namespace, where KubeVirt resources are created.
+	clusterNamespace = "cluster.x-k8s.io/cluster-namespace"
 )
 
 type provider struct {
@@ -674,6 +676,13 @@ func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.Machin
 		return spec, err
 	}
 
+	annotations := spec.Annotations
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+
+	annotations[clusterNamespace] = c.Namespace
+	spec.Annotations = annotations
 	if err := appendTopologiesLabels(context.TODO(), c, spec.Labels); err != nil {
 		return spec, err
 	}
