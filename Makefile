@@ -20,7 +20,7 @@ GOOS ?= $(shell go env GOOS)
 
 export CGO_ENABLED := 0
 
-export GIT_TAG ?= $(shell git tag --points-at HEAD)
+export GIT_TAG ?= $(shell git tag --points-at HEAD 'v*')
 
 export GOFLAGS?=-mod=readonly -trimpath
 
