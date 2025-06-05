@@ -130,7 +130,7 @@ var (
 		providerconfig.OperatingSystemUbuntu: {
 			awstypes.CPUArchitectureX86_64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
-				description: "Canonical, Ubuntu, 24.04 LTS, amd64 noble image build on ????-??-??",
+				description: "Canonical, Ubuntu, 24.04, amd64 noble image",
 				// The AWS marketplace ID from Canonical
 				owner: "099720109477",
 			},
