@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Machine Controller Authors.
+Copyright 2025 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,21 +20,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
-	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	machinecontrollerlog "k8c.io/machine-controller/pkg/log"
-	"k8c.io/machine-controller/pkg/providerconfig"
-	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
-	userdatahelper "k8c.io/machine-controller/pkg/userdata/helper"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	"k8c.io/machine-controller/sdk/providerconfig"
+	"k8c.io/machine-controller/sdk/providerconfig/configvar"
 )
 
 const (
@@ -53,14 +51,21 @@ ssh_authorized_keys:
 `
 )
 
-func getUserData(pconfig *providerconfigtypes.Config) (string, error) {
+func cleanupTemplateOutput(output string) (string, error) {
+	// Valid YAML files are not allowed to have empty lines containing spaces or tabs.
+	// So far only cleanup.
+	woBlankLines := regexp.MustCompile(`(?m)^[ \t]+$`).ReplaceAllString(output, "")
+	return woBlankLines, nil
+}
+
+func getUserData(pconfig *providerconfig.Config) (string, error) {
 	data := struct {
-		ProviderSpec *providerconfigtypes.Config
+		ProviderSpec *providerconfig.Config
 	}{
 		ProviderSpec: pconfig,
 	}
 
-	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
+	tmpl, err := template.New("user-data").Parse(userDataTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %w", err)
 	}
@@ -70,7 +75,7 @@ func getUserData(pconfig *providerconfigtypes.Config) (string, error) {
 		return "", fmt.Errorf("failed to execute user-data template: %w", err)
 	}
 
-	return userdatahelper.CleanupTemplateOutput(buf.String())
+	return cleanupTemplateOutput(buf.String())
 }
 
 type MachineInstance struct {
@@ -78,7 +83,7 @@ type MachineInstance struct {
 	sshUser string
 }
 
-func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*output, error) {
+func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) ([]Machine, error) {
 	providerData := &cloudprovidertypes.ProviderData{
 		Ctx:             ctx,
 		ProvisionerMode: true,
@@ -102,17 +107,17 @@ func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*o
 			// case 1: instance was not found and we are going to create one
 			if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 				// Get userdata (needed to inject SSH keys to instances)
-				// pconfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
-				// if err != nil {
-				// 	return nil, fmt.Errorf("failed to get providerSpec: %w", err)
-				// }
-				// userdata, err := getUserData(pconfig)
-				// if err != nil {
-				// 	return nil, err
-				// }
+				pconfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
+				if err != nil {
+					return nil, fmt.Errorf("failed to get providerSpec: %w", err)
+				}
+				userdata, err := getUserData(pconfig)
+				if err != nil {
+					return nil, err
+				}
 
 				// Create the instance
-				_, err = prov.Create(ctx, log, &machine, providerData, "")
+				_, err = prov.Create(ctx, log, &machine, providerData, userdata)
 				if err != nil {
 					return nil, err
 				}
@@ -127,7 +132,7 @@ func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*o
 		}
 
 		if machineCreated {
-			for i := 0; i < maxRetrieForMachines; i++ {
+			for range maxRetrieForMachines {
 				providerInstance, err = prov.Get(ctx, log, &machine, providerData)
 				if err != nil {
 					return nil, err
@@ -137,7 +142,8 @@ func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*o
 				if len(addresses) > 0 && publicAndPrivateIPExist(addresses) {
 					break
 				}
-				logrus.Info("Waiting 5 seconds for machine address assignment.")
+
+				log.Info("Waiting 5 seconds for machine address assignment.")
 				time.Sleep(5 * time.Second)
 			}
 		}
@@ -149,9 +155,9 @@ func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*o
 		}
 
 		if machineCreated {
-			logrus.Infof("Machine %q was successfully created.", providerInstance.Name())
+			log.Infof("Machine %q was successfully created.", providerInstance.Name())
 		} else {
-			logrus.Infof("Machine %q already exists.", providerInstance.Name())
+			log.Infof("Machine %q already exists.", providerInstance.Name())
 		}
 
 		sshUser := "root"
@@ -169,16 +175,16 @@ func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*o
 		instances = append(instances, machineInstance)
 	}
 
-	output := getMachineProvisionerOutput(instances)
-	return &output, nil
+	return getMachineProvisionerOutput(instances), nil
 }
 
 func getProvider(ctx context.Context, machine clusterv1alpha1.Machine) (cloudprovidertypes.Provider, error) {
-	providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
+	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider config: %w", err)
 	}
-	skg := providerconfig.NewConfigVarResolver(ctx, nil)
+
+	skg := configvar.NewResolver(ctx, nil)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cloud provider %q: %w", providerConfig.CloudProvider, err)

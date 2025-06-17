@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"k8c.io/machine-controller/sdk/providerconfig"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"

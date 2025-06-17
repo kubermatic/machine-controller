@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Machine Controller Authors.
+Copyright 2025 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,16 +17,10 @@ limitations under the License.
 package provisioner
 
 import (
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
-const OutputFileName = "machines.json"
-
-type output struct {
-	Machines []machine `json:"machines"`
-}
-
-type machine struct {
+type Machine struct {
 	PublicAddress  string `json:"public_address,omitempty"`
 	PrivateAddress string `json:"private_address,omitempty"`
 	Hostname       string `json:"hostname,omitempty"`
@@ -34,31 +28,33 @@ type machine struct {
 	Bastion        bool   `json:"bastion,omitempty"`
 }
 
-func getMachineProvisionerOutput(instances []MachineInstance) output {
-	var out output
+func getMachineProvisionerOutput(instances []MachineInstance) []Machine {
+	var out []Machine
 
 	for _, instance := range instances {
 		machine := getMachineInfo(instance)
-		out.Machines = append(out.Machines, machine)
+		out = append(out, machine)
 	}
+
 	return out
 }
 
-func getMachineInfo(instance MachineInstance) machine {
+func getMachineInfo(instance MachineInstance) Machine {
 	var publicAddress, privateAddress, hostname string
 	for address, addressType := range instance.inst.Addresses() {
-		if addressType == v1.NodeExternalIP {
+		switch addressType {
+		case corev1.NodeExternalIP:
 			publicAddress = address
-		} else if addressType == v1.NodeInternalIP {
+		case corev1.NodeInternalIP:
 			privateAddress = address
-		} else if addressType == v1.NodeHostName {
+		case corev1.NodeHostName:
 			hostname = address
-		} else if addressType == v1.NodeInternalDNS {
+		case corev1.NodeInternalDNS:
 			hostname = address
 		}
 	}
 
-	return machine{
+	return Machine{
 		PublicAddress:  publicAddress,
 		PrivateAddress: privateAddress,
 		Hostname:       hostname,
@@ -66,12 +62,13 @@ func getMachineInfo(instance MachineInstance) machine {
 	}
 }
 
-func publicAndPrivateIPExist(addresses map[string]v1.NodeAddressType) bool {
+func publicAndPrivateIPExist(addresses map[string]corev1.NodeAddressType) bool {
 	var publicIPExists, privateIPExists bool
 	for _, addressType := range addresses {
-		if addressType == v1.NodeExternalIP {
+		switch addressType {
+		case corev1.NodeExternalIP:
 			publicIPExists = true
-		} else if addressType == v1.NodeInternalIP {
+		case corev1.NodeInternalIP:
 			privateIPExists = true
 		}
 	}
