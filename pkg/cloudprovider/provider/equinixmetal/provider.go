@@ -527,7 +527,7 @@ func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
 	case providerconfig.OperatingSystemFlatcar:
 		return "flatcar_stable", nil
 	case providerconfig.OperatingSystemRockyLinux:
-		return "rocky_8", nil
+		return "rocky_9", nil
 	}
 	return "", providerconfig.ErrOSNotSupported
 }
