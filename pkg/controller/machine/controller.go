@@ -81,7 +81,7 @@ const (
 
 	// AnnotationMachineUninitialized indicates that a machine is not yet
 	// ready to be worked on by the machine-controller. The machine-controller
-	// will ignore all machines that have this anotation with any value
+	// will ignore all machines that have this annotation with any value
 	// Its value should consist of one or more initializers, separated by a comma.
 	AnnotationMachineUninitialized = "machine-controller.kubermatic.io/initializers"
 
@@ -261,7 +261,7 @@ func enqueueRequestsForNodes(ctx context.Context, log *zap.SugaredLogger, mgr ma
 			ownerUIDString, exists = nodeLabels[NodeOwnerLabelName]
 		}
 		if !exists {
-			// We get triggered by node{Add,Update}, so enqeue machines if they
+			// We get triggered by node{Add,Update}, so enqueue machines if they
 			// have no nodeRef yet to make matching happen ASAP
 			for _, machine := range machinesList.Items {
 				if machine.Status.NodeRef == nil {

@@ -71,7 +71,7 @@ OSM_TMP_DIR=/tmp/osm
 (
   # Clone OSM repo
   mkdir -p $OSM_TMP_DIR
-  echodate "Cloning OSM respository"
+  echodate "Cloning OSM repository"
   git clone --depth 1 --branch "${OSM_REPO_TAG}" "${OSM_REPO_URL}" $OSM_TMP_DIR
 )
 
