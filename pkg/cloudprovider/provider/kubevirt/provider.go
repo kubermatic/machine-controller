@@ -1144,14 +1144,14 @@ func appendTopologiesLabels(ctx context.Context, c *Config, labels map[string]st
 	return nil
 }
 
-func getStorageTopologies(ctx context.Context, storageClasName string, c *Config, labels map[string]string) error {
+func getStorageTopologies(ctx context.Context, storageClassName string, c *Config, labels map[string]string) error {
 	kubeClient, err := ctrlruntimeclient.New(c.RestConfig, ctrlruntimeclient.Options{})
 	if err != nil {
 		return fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
 
 	sc := &storagev1.StorageClass{}
-	if err := kubeClient.Get(ctx, types.NamespacedName{Name: storageClasName}, sc); err != nil {
+	if err := kubeClient.Get(ctx, types.NamespacedName{Name: storageClassName}, sc); err != nil {
 		return err
 	}
 

@@ -374,7 +374,7 @@ func ExpectServerCreated(t *testing.T, expectedServer string) {
 	// expectedServer copied into the response (e.g. name).
 	err := json.Unmarshal([]byte(expectedServer), &res)
 	if err != nil {
-		t.Fatalf("Error occurred while unmarshaling the expected server manifest.")
+		t.Fatalf("Error occurred while unmarshalling the expected server manifest.")
 	}
 	res.Server.ID = "1bea47ed-f6a9-463b-b423-14b9cca9ad27"
 	srvRes, err := json.Marshal(res)

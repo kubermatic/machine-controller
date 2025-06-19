@@ -27,7 +27,7 @@ To see where to locate the OVAs go to the OS specific section.
 3. Click through the dialog until "Select storage"
 4. Select the same storage you want to use for your machines
 5. Select the same network you want to use for your machines
-6. Leave everyhting in the "Customize Template" and "Ready to complete" dialog as it is
+6. Leave everything in the "Customize Template" and "Ready to complete" dialog as it is
 7. Wait until the VM got fully imported and the "Snapshots" => "Create Snapshot" button is not grayed out anymore
 
 #### Command-line procedure
@@ -168,7 +168,7 @@ Procedure:
 3. Upload to vSphere using WebUI or GOVC:
 
     Make sure to replace the parameters on the command below with the correct
-    values specific to yout vSphere environment.
+    values specific to your vSphere environment.
 
     ```
     govc import.vmdk -dc=dc-1 -pool=/dc-1/host/cl-1/Resources -ds=ds-1 "./${image_name}.vmdk"
