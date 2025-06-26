@@ -77,7 +77,7 @@ func networkInterfacesForProvisioning(ctx context.Context, log *zap.SugaredLogge
 			IPs:  addresses,
 
 			// the one NIC type supported by the ADC API
-			NICType: anxtypes.VmxNet3NIC,
+			NICType: anxtypes.VirtioNIC,
 		}
 	}
 
