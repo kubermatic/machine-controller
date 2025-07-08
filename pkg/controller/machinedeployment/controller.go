@@ -278,7 +278,7 @@ func (r *ReconcileMachineDeployment) getMachineDeploymentsForMachineSet(ctx cont
 	return deployments
 }
 
-// MachineSetTodeployments is a handler.MapFunc to be used to enqeue requests for reconciliation
+// MachineSetTodeployments is a handler.MapFunc to be used to enqueue requests for reconciliation
 // for MachineDeployments that might adopt an orphaned MachineSet.
 func (r *ReconcileMachineDeployment) MachineSetToDeployments() handler.MapFunc {
 	return func(ctx context.Context, o ctrlruntimeclient.Object) []ctrlruntime.Request {
