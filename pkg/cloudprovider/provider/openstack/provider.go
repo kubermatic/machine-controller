@@ -98,6 +98,7 @@ type Config struct {
 	Flavor                string
 	SecurityGroups        []string
 	Network               string
+	Networks              []string
 	Subnet                string
 	FloatingIPPool        string
 	AvailabilityZone      string
@@ -177,6 +178,31 @@ func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig)
 	return nil
 }
 
+func (p *provider) resolveNetworks(cfg *Config) ([]string, error) {
+	var networks []string
+
+	// Validation: ensure both network and networks are not set simultaneously
+	if cfg.Network != "" && len(cfg.Networks) > 0 {
+		return nil, fmt.Errorf("cannot specify both 'network' and 'networks' fields simultaneously, use only one")
+	}
+
+	// Use Networks field if provided
+	if len(cfg.Networks) > 0 {
+		networks = cfg.Networks
+	} else if cfg.Network != "" {
+		// Fallback to single Network for backwards compatibility
+		networks = []string{cfg.Network}
+	} else {
+		return nil, fmt.Errorf("either 'network' or 'networks' must be specified")
+	}
+
+	if len(networks) == 0 {
+		return nil, fmt.Errorf("at least one network must be specified")
+	}
+
+	return networks, nil
+}
+
 func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, *openstacktypes.RawConfig, error) {
 	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
@@ -245,6 +271,16 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	cfg.Network, err = p.configVarResolver.GetStringValue(rawConfig.Network)
 	if err != nil {
 		return nil, nil, nil, err
+	}
+
+	for _, network := range rawConfig.Networks {
+		networkValue, err := p.configVarResolver.GetStringValue(network)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if networkValue != "" {
+			cfg.Networks = append(cfg.Networks, networkValue)
+		}
 	}
 
 	cfg.Subnet, err = p.configVarResolver.GetStringValue(rawConfig.Subnet)
@@ -398,7 +434,7 @@ func (p *provider) AddDefaults(log *zap.SugaredLogger, spec clusterv1alpha1.Mach
 		return spec, err
 	}
 
-	if c.Network == "" {
+	if c.Network == "" && len(c.Networks) == 0 {
 		log.Debug("Trying to default network for machine...")
 		net, err := getDefaultNetwork(netClient)
 		if err != nil {
@@ -406,7 +442,7 @@ func (p *provider) AddDefaults(log *zap.SugaredLogger, spec clusterv1alpha1.Mach
 		}
 		if net != nil {
 			log.Debugw("Defaulted network for machine ", "network", net.Name)
-			// Use the id as the name may not be unique
+			// Use the single network field for backward compatibility when defaulting
 			rawConfig.Network.Value = net.ID
 		}
 	}
@@ -414,22 +450,28 @@ func (p *provider) AddDefaults(log *zap.SugaredLogger, spec clusterv1alpha1.Mach
 	if c.Subnet == "" {
 		log.Debug("Trying to default subnet for machine...")
 
-		networkID := c.Network
-		if rawConfig.Network.Value != "" {
-			networkID = rawConfig.Network.Value
+		var primaryNetworkID string
+		if len(c.Networks) > 0 {
+			primaryNetworkID = c.Networks[0]
+		} else if c.Network != "" {
+			primaryNetworkID = c.Network
+		} else if rawConfig.Network.Value != "" {
+			primaryNetworkID = rawConfig.Network.Value
 		}
 
-		net, err := getNetwork(netClient, networkID)
-		if err != nil {
-			return spec, osErrorToTerminalError(log, err, fmt.Sprintf("failed to get network for subnet defaulting '%s", networkID))
-		}
-		subnet, err := getDefaultSubnet(netClient, net)
-		if err != nil {
-			return spec, osErrorToTerminalError(log, err, "error defaulting subnet")
-		}
-		if subnet != nil {
-			log.Debugw("Defaulted subnet for machine", "subnet", *subnet)
-			rawConfig.Subnet.Value = *subnet
+		if primaryNetworkID != "" {
+			net, err := getNetwork(netClient, primaryNetworkID)
+			if err != nil {
+				return spec, osErrorToTerminalError(log, err, fmt.Sprintf("failed to get network for subnet defaulting '%s", primaryNetworkID))
+			}
+			subnet, err := getDefaultSubnet(netClient, net)
+			if err != nil {
+				return spec, osErrorToTerminalError(log, err, "error defaulting subnet")
+			}
+			if subnet != nil {
+				log.Debugw("Defaulted subnet for machine", "subnet", *subnet)
+				rawConfig.Subnet.Value = *subnet
+			}
 		}
 	}
 
@@ -536,6 +578,20 @@ func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec cluste
 	if _, err := getAvailabilityZone(computeClient, c); err != nil {
 		return fmt.Errorf("failed to get availability zone %q: %w", c.AvailabilityZone, err)
 	}
+
+	// Resolve and validate networks
+	networks, err := p.resolveNetworks(c)
+	if err != nil {
+		return err
+	}
+
+	// Validate each network exists
+	for _, networkName := range networks {
+		if _, err := getNetwork(netClient, networkName); err != nil {
+			return fmt.Errorf("failed to get network %q: %w", networkName, err)
+		}
+	}
+
 	// Optional fields.
 	if len(c.SecurityGroups) != 0 {
 		for _, s := range c.SecurityGroups {
@@ -593,9 +649,36 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		return nil, err
 	}
 
-	network, err := getNetwork(netClient, cfg.Network)
+	// network, err := getNetwork(netClient, cfg.Network)
+	// if err != nil {
+	// 	return nil, osErrorToTerminalError(log, err, fmt.Sprintf("failed to get network %s", cfg.Network))
+	// }
+
+	// Resolve networks
+	networkNames, err := p.resolveNetworks(cfg)
 	if err != nil {
-		return nil, osErrorToTerminalError(log, err, fmt.Sprintf("failed to get network %s", cfg.Network))
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to resolve networks: %v", err),
+		}
+	}
+
+	// Get network objects for all specified networks
+	var networks []osservers.Network
+	var primaryNetwork *osnetworks.Network // Keep track of first network for floating IP assignment
+
+	for i, networkName := range networkNames {
+		network, err := getNetwork(netClient, networkName)
+		if err != nil {
+			return nil, osErrorToTerminalError(log, err, fmt.Sprintf("failed to get network %s", networkName))
+		}
+
+		networks = append(networks, osservers.Network{UUID: network.ID})
+
+		// Use first network as primary for floating IP assignment (backwards compatibility)
+		if i == 0 {
+			primaryNetwork = network
+		}
 	}
 
 	securityGroups := cfg.SecurityGroups
@@ -619,7 +702,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		ConfigDrive:      &cfg.ConfigDrive,
 		SecurityGroups:   securityGroups,
 		AvailabilityZone: cfg.AvailabilityZone,
-		Networks:         []osservers.Network{{UUID: network.ID}},
+		Networks:         networks,
 		Metadata:         allTags,
 	}
 
@@ -670,12 +753,12 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	if cfg.FloatingIPPool != "" {
 		instanceLog := log.With("instance", server.ID)
 
-		if err := p.portReadinessWaiter(ctx, instanceLog, netClient, server.ID, network.ID, cfg.InstanceReadyCheckPeriod, cfg.InstanceReadyCheckTimeout); err != nil {
+		if err := p.portReadinessWaiter(ctx, instanceLog, netClient, server.ID, primaryNetwork.ID, cfg.InstanceReadyCheckPeriod, cfg.InstanceReadyCheckTimeout); err != nil {
 			instanceLog.Infow("Port for instance did not became active", zap.Error(err))
 		}
 
 		// Find a free FloatingIP or allocate a new one.
-		if err := assignFloatingIPToInstance(instanceLog, data.Update, machine, netClient, server.ID, cfg.FloatingIPPool, cfg.Region, network); err != nil {
+		if err := assignFloatingIPToInstance(instanceLog, data.Update, machine, netClient, server.ID, cfg.FloatingIPPool, cfg.Region, primaryNetwork); err != nil {
 			defer deleteInstanceDueToFatalLogged(instanceLog, computeClient, server.ID)
 			return nil, fmt.Errorf("failed to assign a floating ip to instance %s: %w", server.ID, err)
 		}

@@ -74,6 +74,7 @@ const (
 	OSManifest                        = "./testdata/machinedeployment-openstack.yaml"
 	OSManifestProjectAuth             = "./testdata/machinedeployment-openstack-project-auth.yaml"
 	OSUpgradeManifest                 = "./testdata/machinedeployment-openstack-upgrade.yml"
+	OSMultipleNetwork                 = "./testdata/machinedeployment-openstack-multiple-networks.yaml"
 	invalidMachineManifest            = "./testdata/machine-invalid.yaml"
 	kubevirtManifest                  = "./testdata/machinedeployment-kubevirt.yaml"
 	alibabaManifest                   = "./testdata/machinedeployment-alibaba.yaml"

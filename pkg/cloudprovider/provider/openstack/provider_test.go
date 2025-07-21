@@ -145,6 +145,36 @@ const expectedBlockDeviceBootVolumeTypeRequest = `{
 	}
   }`
 
+const expectedMultipleNetworksRequest = `{
+	"server": {
+		"availability_zone": "eu-de-01",
+		"config_drive": false,
+		"flavorRef": "1",
+		"imageRef": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+		"metadata": {
+			"kubernetes-cluster": "xyz",
+			"machine-uid": "",
+			"system-cluster": "zyx",
+			"system-project": "xxx"
+		},
+		"name": "test",
+		"networks": [
+			{
+				"uuid": "d32019d3-bc6e-4319-9c1d-6722fc136a22"
+			},
+			{
+				"uuid": "1df1458e-bd0c-423d-b201-2e5f56c94714"
+			}
+		],
+		"security_groups": [
+			{
+				"name": "kubernetes-xyz"
+			}
+		],
+		"user_data": "ZmFrZS11c2VyZGF0YQ=="
+	}
+}`
+
 type openstackProviderSpecConf struct {
 	IdentityEndpointURL         string
 	RootDiskSizeGB              *int32
@@ -157,6 +187,9 @@ type openstackProviderSpecConf struct {
 	TenantName                  string
 	ConfigDrive                 bool
 	ComputeAPIVersion           string
+	Networks                    []string
+	Network                     string
+	Subnet                      string
 }
 
 func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -169,7 +202,19 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"flavor": "m1.tiny",
 		"identityEndpoint": "{{ .IdentityEndpointURL }}",
 		"image": "Standard_Ubuntu_18.04_latest",
-		"network": "public",
+		{{- if .Networks }}
+		"networks": [
+			{{- range $i, $e := .Networks }}
+			{{- if $i }},{{- end }}
+			{
+				"uuid": "{{ $e }}"
+			}
+			{{- end }}
+		],
+		{{- else }}
+		"network": "{{ .Network }}",
+		"subnet": "{{ .Subnet }}",
+		{{- end }}
 		"nodeVolumeAttachLimit": null,
 		"region": "eu-de",
 		"instanceReadyCheckPeriod": "2m",
@@ -186,7 +231,6 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"securityGroups": [
 			"kubernetes-xyz"
 		],
-		"subnet": "subnetid",
 		"tags": {
 			"kubernetes-cluster": "xyz",
 			"system-cluster": "zyx",
@@ -220,6 +264,16 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 	if err != nil {
 		t.Fatalf("Error occurred while parsing openstack provider spec template: %v", err)
 	}
+	// Set default network/subnet for backward compatibility if Networks is not set
+	if o.Networks == nil {
+		if o.Network == "" {
+			o.Network = "public"
+		}
+		if o.Subnet == "" {
+			o.Subnet = "subnetid"
+		}
+	}
+
 	err = tmpl.Execute(&out, o)
 	if err != nil {
 		t.Fatalf("Error occurred while executing openstack provider spec template: %v", err)
@@ -264,6 +318,18 @@ func TestCreateServer(t *testing.T) {
 		{
 			name:          "Compute API Version",
 			specConf:      openstackProviderSpecConf{ComputeAPIVersion: "2.67"},
+			userdata:      "fake-userdata",
+			wantServerReq: expectedServerRequest,
+		},
+		{
+			name:          "Multiple networks provided",
+			specConf:      openstackProviderSpecConf{Networks: []string{"d32019d3-bc6e-4319-9c1d-6722fc136a22", "1df1458e-bd0c-423d-b201-2e5f56c94714"}},
+			userdata:      "fake-userdata",
+			wantServerReq: expectedMultipleNetworksRequest,
+		},
+		{
+			name:          "Backward compatibility with single network",
+			specConf:      openstackProviderSpecConf{Network: "public", Subnet: "subnetid"},
 			userdata:      "fake-userdata",
 			wantServerReq: expectedServerRequest,
 		},
@@ -537,6 +603,24 @@ func ExpectServerCreated(t *testing.T, expectedServer string) {
 						"provider:physical_network": null,
 						"provider:network_type": "local",
 						"router:external": true,
+						"port_security_enabled": true,
+						"dns_domain": "local.",
+						"mtu": 1500
+					},
+					{
+						"status": "ACTIVE",
+						"subnets": [
+							"55b45ada-e384-4130-a70b-17df1c3e1d3d"
+						],
+						"name": "private",
+						"admin_state_up": true,
+						"tenant_id": "4fd44f30292945e481c7b8a0c8908869",
+						"shared": false,
+						"id": "1df1458e-bd0c-423d-b201-2e5f56c94714",
+						"provider:segmentation_id": 9876543211,
+						"provider:physical_network": null,
+						"provider:network_type": "local",
+						"router:external": false,
 						"port_security_enabled": true,
 						"dns_domain": "local.",
 						"mtu": 1500
