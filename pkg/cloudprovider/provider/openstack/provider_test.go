@@ -326,6 +326,7 @@ func TestCreateServer(t *testing.T) {
 			specConf:      openstackProviderSpecConf{Networks: []string{"d32019d3-bc6e-4319-9c1d-6722fc136a22", "1df1458e-bd0c-423d-b201-2e5f56c94714"}},
 			userdata:      "fake-userdata",
 			wantServerReq: expectedMultipleNetworksRequest,
+			wantErr:       true, // This test is expected to fail because network + networks cannot be configured at the same time.
 		},
 		{
 			name:          "Backward compatibility with single network",
