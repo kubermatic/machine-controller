@@ -561,8 +561,16 @@ func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec cluste
 		return err
 	}
 
-	if _, err := getNetwork(netClient, c.Network); err != nil {
-		return fmt.Errorf("failed to get network %q: %w", c.Network, err)
+	networks, err := p.resolveNetworks(c)
+	if err != nil {
+		return err
+	}
+
+	// Validate each network exists
+	for _, networkName := range networks {
+		if _, err := getNetwork(netClient, networkName); err != nil {
+			return fmt.Errorf("failed to get network %q: %w", networkName, err)
+		}
 	}
 
 	if _, err := getSubnet(netClient, c.Subnet); err != nil {
@@ -577,19 +585,6 @@ func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec cluste
 
 	if _, err := getAvailabilityZone(computeClient, c); err != nil {
 		return fmt.Errorf("failed to get availability zone %q: %w", c.AvailabilityZone, err)
-	}
-
-	// Resolve and validate networks
-	networks, err := p.resolveNetworks(c)
-	if err != nil {
-		return err
-	}
-
-	// Validate each network exists
-	for _, networkName := range networks {
-		if _, err := getNetwork(netClient, networkName); err != nil {
-			return fmt.Errorf("failed to get network %q: %w", networkName, err)
-		}
 	}
 
 	// Optional fields.
