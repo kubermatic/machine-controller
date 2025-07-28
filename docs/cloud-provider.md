@@ -54,7 +54,7 @@ accessKeyId: "<< YOUR_ACCESS_KEY_ID >>"
 secretAccessKey: "<< YOUR_SECRET_ACCESS_KEY_ID >>"
 # region for the instance
 region: "eu-central-1"
-# avaiability zone for the instance
+# availability zone for the instance
 availabilityZone: "eu-central-1a"
 # vpc id for the instance
 vpcId: "vpc-079f7648481a11e77"

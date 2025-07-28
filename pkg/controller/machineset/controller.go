@@ -404,7 +404,7 @@ func (r *ReconcileMachineSet) waitForMachineDeletion(ctx context.Context, machin
 	return nil
 }
 
-// MachineToMachineSets is a handler.ToRequestsFunc to be used to enqeue requests for reconciliation
+// MachineToMachineSets is a handler.ToRequestsFunc to be used to enqueue requests for reconciliation
 // for MachineSets that might adopt an orphaned Machine.
 func (r *ReconcileMachineSet) MachineToMachineSets() handler.MapFunc {
 	return func(ctx context.Context, o ctrlruntimeclient.Object) []ctrlruntime.Request {
