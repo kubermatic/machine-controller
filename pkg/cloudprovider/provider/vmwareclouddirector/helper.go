@@ -123,6 +123,20 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 		}
 	}
 
+	var networkConnections []*vcdapitypes.NetworkConnection
+	for i, network := range c.Networks {
+		networkConnections = append(networkConnections, &vcdapitypes.NetworkConnection{
+			Network:                 network,
+			NeedsCustomization:      false,
+			IsConnected:             true,
+			IPAddressAllocationMode: string(c.IPAllocationMode),
+			NetworkAdapterType:      "VMXNET3",
+			NetworkConnectionIndex:  i,
+		})
+	}
+
+	fmt.Printf("network connections: %+v\n", networkConnections)
+
 	// 4. At this point we are ready to create our initial VMs.
 	//
 	// Multiple API calls to re-compose the vApp are handled in a synchronous manner, where each request has to wait
@@ -145,15 +159,7 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 			},
 			InstantiationParams: &vcdapitypes.InstantiationParams{
 				NetworkConnectionSection: &vcdapitypes.NetworkConnectionSection{
-					NetworkConnection: []*vcdapitypes.NetworkConnection{
-						{
-							Network:                 c.Network,
-							NeedsCustomization:      false,
-							IsConnected:             true,
-							IPAddressAllocationMode: string(c.IPAllocationMode),
-							NetworkAdapterType:      "VMXNET3",
-						},
-					},
+					NetworkConnection: networkConnections,
 				},
 			},
 			StorageProfile: storageProfile,
