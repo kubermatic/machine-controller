@@ -179,28 +179,28 @@ func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig)
 }
 
 func (p *provider) resolveNetworks(cfg *Config) ([]string, error) {
-	var networks []string
-
-	// Validation: ensure both network and networks are not set simultaneously
-	if cfg.Network != "" && len(cfg.Networks) > 0 {
-		return nil, fmt.Errorf("cannot specify both 'network' and 'networks' fields simultaneously, use only one")
-	}
-
-	// Use Networks field if provided
 	if len(cfg.Networks) > 0 {
-		networks = cfg.Networks
-	} else if cfg.Network != "" {
-		// Fallback to single Network for backwards compatibility
-		networks = []string{cfg.Network}
-	} else {
-		return nil, fmt.Errorf("either 'network' or 'networks' must be specified")
+		networks := make([]string, 0, len(cfg.Networks)+1)
+		seen := make(map[string]struct{})
+		if cfg.Network != "" {
+			networks = append(networks, cfg.Network)
+			seen[cfg.Network] = struct{}{}
+		}
+		for _, n := range cfg.Networks {
+			if _, exists := seen[n]; !exists {
+				networks = append(networks, n)
+				seen[n] = struct{}{}
+			}
+		}
+		if len(networks) == 0 {
+			return nil, fmt.Errorf("no networks specified")
+		}
+		return networks, nil
 	}
-
-	if len(networks) == 0 {
-		return nil, fmt.Errorf("at least one network must be specified")
+	if cfg.Network != "" {
+		return []string{cfg.Network}, nil
 	}
-
-	return networks, nil
+	return nil, fmt.Errorf("no networks specified")
 }
 
 func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, *openstacktypes.RawConfig, error) {
@@ -644,12 +644,6 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		return nil, err
 	}
 
-	// network, err := getNetwork(netClient, cfg.Network)
-	// if err != nil {
-	// 	return nil, osErrorToTerminalError(log, err, fmt.Sprintf("failed to get network %s", cfg.Network))
-	// }
-
-	// Resolve networks
 	networkNames, err := p.resolveNetworks(cfg)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
