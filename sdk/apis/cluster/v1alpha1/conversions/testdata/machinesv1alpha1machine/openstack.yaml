@@ -56,6 +56,10 @@ spec:
       region: ""
       # Only required if there is more than one network available
       network: ""
+      # If you want to use multiple networks, you can specify them here. The first network in the list will be used as the primary network (e.g. for floating IP's).
+      # networks:
+      #   - "private-network"
+      #   - "public-network"
       # Only required if the network has more than one subnet
       subnet: ""
       # Can be increased for slower OpenStack setups. No values below 1m (60s) possible as this makes no sense.
