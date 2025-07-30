@@ -73,7 +73,7 @@ func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
 	case providerconfig.OperatingSystemUbuntu:
 		return "ubuntu-24.04", nil
 	case providerconfig.OperatingSystemRockyLinux:
-		return "rocky-8", nil
+		return "rocky-9", nil
 	}
 	return "", providerconfig.ErrOSNotSupported
 }

@@ -159,10 +159,10 @@ var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 		Version:   to.StringPtr("3374.2.0"),
 	},
 	providerconfig.OperatingSystemRockyLinux: {
-		Publisher: to.StringPtr("procomputers"),
-		Offer:     to.StringPtr("rocky-linux-8-5"),
-		Sku:       to.StringPtr("rocky-linux-8-5"),
-		Version:   to.StringPtr("8.5.20211118"),
+		Publisher: to.StringPtr("resf"),
+		Offer:     to.StringPtr("rockylinux-x86_64"),
+		Sku:       to.StringPtr("9-base"),
+		Version:   to.StringPtr("9.6.20250531"),
 	},
 }
 
@@ -178,9 +178,9 @@ var osPlans = map[providerconfig.OperatingSystem]*compute.Plan{
 		Product:   ptr.To("rhel-byos"),
 	},
 	providerconfig.OperatingSystemRockyLinux: {
-		Name:      ptr.To("rocky-linux-8-5"),
-		Publisher: ptr.To("procomputers"),
-		Product:   ptr.To("rocky-linux-8-5"),
+		Name:      ptr.To("9-base"),
+		Publisher: ptr.To("resf"),
+		Product:   ptr.To("rockylinux-x86_64"),
 	},
 }
 

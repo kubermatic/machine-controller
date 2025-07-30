@@ -105,12 +105,12 @@ var (
 	amiFilters = map[providerconfig.OperatingSystem]map[awstypes.CPUArchitecture]amiFilter{
 		providerconfig.OperatingSystemRockyLinux: {
 			awstypes.CPUArchitectureX86_64: {
-				description: "*Rocky-8-EC2-*.x86_64",
+				description: "*Rocky-9-EC2-*.x86_64",
 				// The AWS marketplace ID from Rocky Linux Community Platform Engineering (CPE)
 				owner: "792107900819",
 			},
 			awstypes.CPUArchitectureARM64: {
-				description: "*Rocky-8-EC2-*.aarch64",
+				description: "*Rocky-9-EC2-*.aarch64",
 				// The AWS marketplace ID from Rocky Linux Community Platform Engineering (CPE)
 				owner: "792107900819",
 			},

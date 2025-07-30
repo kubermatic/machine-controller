@@ -39,7 +39,6 @@ import (
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/progress"
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
 	"go.uber.org/zap"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
@@ -51,6 +50,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
