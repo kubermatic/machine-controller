@@ -402,13 +402,13 @@ func waitForCompletion(ctx context.Context, client *ClientSet, taskID string, in
 
 		switch *task.Status {
 		case "INVALID_UUID", "FAILED":
-			return false, fmt.Errorf("bad status: %s", *task.Status)
+			return false, fmt.Errorf("bad status: %s, error detail: %s, progress message: %s", *task.Status, *task.ErrorDetail, *task.ProgressMessage)
 		case "QUEUED", "RUNNING":
 			return false, nil
 		case "SUCCEEDED":
 			return true, nil
 		default:
-			return false, fmt.Errorf("unknown status: %s", *task.Status)
+			return false, fmt.Errorf("unknown status: %s, error detail: %s, progress message: %s", *task.Status, *task.ErrorDetail, *task.ProgressMessage)
 		}
 	})
 }
