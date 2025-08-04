@@ -22,10 +22,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
-	nutanixclient "github.com/nutanix-cloud-native/prism-go-client"
+	"github.com/nutanix-cloud-native/prism-go-client/environment/types"
 	nutanixv3 "github.com/nutanix-cloud-native/prism-go-client/v3"
 
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
@@ -38,12 +42,31 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+// Shared client cache to persist between calls.
+var clientCache = nutanixv3.NewClientCache(nutanixv3.WithSessionAuth(true))
+
 const (
 	invalidCredentials = "invalid Nutanix Credentials"
 )
 
 type ClientSet struct {
 	Prism *nutanixv3.Client
+}
+
+// cachedClientParams implements the nutanixv3.CachedClientParams interface.
+type cachedClientParams struct {
+	managementEndpoint types.ManagementEndpoint
+	clusterName        string
+}
+
+// ManagementEndpoint returns the management endpoint.
+func (c *cachedClientParams) ManagementEndpoint() types.ManagementEndpoint {
+	return c.managementEndpoint
+}
+
+// Key returns a unique key for the client.
+func (c *cachedClientParams) Key() string {
+	return c.clusterName
 }
 
 func GetClientSet(config *Config) (*ClientSet, error) {
@@ -63,26 +86,67 @@ func GetClientSet(config *Config) (*ClientSet, error) {
 		return nil, errors.New("no endpoint specified")
 	}
 
+	if config.ClusterName == "" {
+		return nil, errors.New("no clusterName specified")
+	}
+
 	// set up 9440 as default port if none is passed via config
 	port := 9440
 	if config.Port != nil {
 		port = *config.Port
 	}
 
-	credentials := nutanixclient.Credentials{
-		URL:      fmt.Sprintf("%s:%d", config.Endpoint, port),
-		Endpoint: config.Endpoint,
-		Port:     fmt.Sprint(port),
-		Username: config.Username,
-		Password: config.Password,
+	// Create the management endpoint URL
+	endpointURL, err := url.Parse(fmt.Sprintf("https://%s", net.JoinHostPort(config.Endpoint, strconv.Itoa(port))))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse endpoint URL: %w", err)
+	}
+
+	// Create the management endpoint
+	managementEndpoint := types.ManagementEndpoint{
+		ApiCredentials: types.ApiCredentials{
+			Username: config.Username,
+			Password: config.Password,
+		},
+		Address:  endpointURL,
 		Insecure: config.AllowInsecure,
 	}
 
-	if config.ProxyURL != "" {
-		credentials.ProxyURL = config.ProxyURL
+	// Create cached client parameters
+	cachedParams := &cachedClientParams{
+		managementEndpoint: managementEndpoint,
+		clusterName:        config.ClusterName,
 	}
 
-	clientV3, err := nutanixv3.NewV3Client(credentials)
+	// Prepare client options
+	var clientOptions []nutanixv3.ClientOption
+
+	// Add proxy configuration if provided
+	if config.ProxyURL != "" {
+		proxyURL, err := url.Parse(config.ProxyURL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse proxy URL: %w", err)
+		}
+
+		// Create a custom transport with proxy
+		transport := &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+
+		clientOptions = append(clientOptions, nutanixv3.WithRoundTripper(transport))
+	}
+
+	// Get or create the cached client
+	clientV3, err := clientCache.GetOrCreate(cachedParams, clientOptions...)
 	if err != nil {
 		return nil, err
 	}
