@@ -33,7 +33,7 @@ spec:
             location: "westeurope"
             resourceGroup: "machine-controller-e2e"
             vnetResourceGroup: ""
-            vmSize: "Standard_F2"
+            vmSize: "Standard_F2s_v2"
             # optional disk size values in GB. If not set, the defaults for the vmSize will be used.
             osDiskSize: << OS_DISK_SIZE >>
             osDiskSKU: << AZURE_OS_DISK_SKU >>
