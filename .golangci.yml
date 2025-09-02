@@ -100,6 +100,10 @@ linters:
         text: 'SA1019: corev1.Endpoints is deprecated: This API is deprecated in v1.33+.'
       - path: (.+)\.go$
         text: 'SA1019: corev1.EndpointSubset is deprecated: This API is deprecated in v1.33+.'
+      - path: (.+)\.go$
+        text: os/exec\.Command must not be called\. use os/exec\.CommandContext
+      - path: (.+)\.go$
+        text: net/http\.NewRequest must not be called\. use net/http\.NewRequestWithContext
     paths:
       - apis/machines
       - third_party$
