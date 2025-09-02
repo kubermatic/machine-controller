@@ -82,11 +82,15 @@ func TestKubeconfigProvider_GetKubeconfig(t *testing.T) {
 		},
 		{
 			name: "successful from in-cluster via endpoints - clusterIP",
+			//nolint:staticcheck
+			//lint:ignore SA1019: corev1.Endpoints is deprecated: This API is deprecated in v1.33+. Use discoveryv1.EndpointSlice. (staticcheck)
 			objects: []runtime.Object{&corev1.Endpoints{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "kubernetes",
 					Namespace: "default",
 				},
+				//nolint:staticcheck
+				//lint:ignore SA1019: corev1.EndpointSubset is deprecated: This API is deprecated in v1.33+. (staticcheck)
 				Subsets: []corev1.EndpointSubset{
 					{
 						Addresses: []corev1.EndpointAddress{
