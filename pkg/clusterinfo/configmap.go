@@ -120,8 +120,6 @@ func (p *KubeconfigProvider) buildKubeconfigFromEndpoint(ctx context.Context) (*
 	}, nil
 }
 
-//nolint:staticcheck
-//lint:ignore SA1019: corev1.EndpointSubset is deprecated: This API is deprecated in v1.33+. (staticcheck)
 func getSecurePort(endpointSubset corev1.EndpointSubset) *corev1.EndpointPort {
 	for _, p := range endpointSubset.Ports {
 		if p.Name == securePortName {
