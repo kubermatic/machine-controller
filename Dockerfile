@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG GO_VERSION=1.24.4
+ARG GO_VERSION=1.25.0
 FROM docker.io/golang:${GO_VERSION} AS builder
 WORKDIR /go/src/k8c.io/machine-controller
 COPY . .
