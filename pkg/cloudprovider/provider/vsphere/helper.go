@@ -313,7 +313,7 @@ func uploadAndAttachISO(ctx context.Context, log *zap.SugaredLogger, session *Se
 	return vmRef.EditDevice(ctx, devices.InsertIso(cdrom, iso))
 }
 
-func generateLocalUserdataISO(userdata, name string) (string, error) {
+func generateLocalUserdataISO(ctx context.Context, userdata, name string) (string, error) {
 	// We must create a directory, because the iso-generation commands
 	// take a directory as input
 	userdataDir, err := os.MkdirTemp(localTempDir, name)
@@ -367,7 +367,7 @@ func generateLocalUserdataISO(userdata, name string) (string, error) {
 		return "", errors.New("system is missing genisoimage or mkisofs, can't generate userdata iso without it")
 	}
 
-	cmd := exec.Command(command, args...)
+	cmd := exec.CommandContext(ctx, command, args...)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("error executing command `%s %s`: output: `%s`, error: `%w`", command, args, string(output), err)
 	}
