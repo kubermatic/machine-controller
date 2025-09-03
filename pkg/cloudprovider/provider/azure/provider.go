@@ -155,9 +155,10 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 	},
 	providerconfigtypes.OperatingSystemFlatcar: {
 		Publisher: to.StringPtr("kinvolk"),
-		Offer:     to.StringPtr("flatcar-container-linux"),
-		Sku:       to.StringPtr("stable"),
-		Version:   to.StringPtr("3374.2.0"),
+		// flatcar-container-linux-corevm-amd64 doesn't require a plan. For more info: https://www.flatcar.org/docs/latest/installing/cloud/azure/#corevm
+		Offer:   to.StringPtr("flatcar-container-linux-corevm-amd64"),
+		Sku:     to.StringPtr("stable"),
+		Version: to.StringPtr("4230.2.2"),
 	},
 	providerconfigtypes.OperatingSystemRockyLinux: {
 		Publisher: to.StringPtr("procomputers"),
@@ -168,11 +169,6 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 }
 
 var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
-	providerconfigtypes.OperatingSystemFlatcar: {
-		Name:      ptr.To("stable"),
-		Publisher: ptr.To("kinvolk"),
-		Product:   ptr.To("flatcar-container-linux"),
-	},
 	providerconfigtypes.OperatingSystemRHEL: {
 		Name:      ptr.To("rhel-lvm85"),
 		Publisher: ptr.To("redhat"),
