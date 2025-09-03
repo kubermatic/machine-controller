@@ -83,4 +83,4 @@ spec:
             distUpgradeOnBoot: false
             disableAutoUpdate: true
       versions:
-        kubelet: 1.34.0
+        kubelet: 1.33.4
