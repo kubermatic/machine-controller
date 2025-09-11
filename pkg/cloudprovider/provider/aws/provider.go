@@ -1176,13 +1176,13 @@ func getInstanceCountForMachine(machine clusterv1alpha1.Machine, reservations []
 func filterSupportedRHELImages(images []ec2types.Image) ([]ec2types.Image, error) {
 	var filteredImages []ec2types.Image
 	for _, image := range images {
-		if strings.HasPrefix(*image.Name, "RHEL-8") {
+		if strings.HasPrefix(*image.Name, "RHEL-9") {
 			filteredImages = append(filteredImages, image)
 		}
 	}
 
 	if filteredImages == nil {
-		return nil, errors.New("rhel 8 images are not found")
+		return nil, errors.New("rhel 9 images are not found")
 	}
 
 	return filteredImages, nil
