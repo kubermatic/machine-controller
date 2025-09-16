@@ -149,8 +149,8 @@ var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 	providerconfig.OperatingSystemRHEL: {
 		Publisher: to.StringPtr("RedHat"),
 		Offer:     to.StringPtr("rhel-byos"),
-		Sku:       to.StringPtr("rhel-lvm85"),
-		Version:   to.StringPtr("8.5.20220316"),
+		Sku:       to.StringPtr("rhel-lvm95"),
+		Version:   to.StringPtr("9.5.2024112215"),
 	},
 	providerconfig.OperatingSystemFlatcar: {
 		Publisher: to.StringPtr("kinvolk"),
@@ -169,7 +169,7 @@ var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 
 var osPlans = map[providerconfig.OperatingSystem]*compute.Plan{
 	providerconfig.OperatingSystemRHEL: {
-		Name:      ptr.To("rhel-lvm85"),
+		Name:      ptr.To("rhel-lvm95"),
 		Publisher: ptr.To("redhat"),
 		Product:   ptr.To("rhel-byos"),
 	},
