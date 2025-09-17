@@ -61,8 +61,8 @@ var (
 
 	vSphereOSImageTemplates = map[string]string{
 		string(providerconfigtypes.OperatingSystemFlatcar):    "kkp-flatcar-3139.2.0",
-		string(providerconfigtypes.OperatingSystemRHEL):       "rhel-9.6",
-		string(providerconfigtypes.OperatingSystemRockyLinux): "rockylinux-9.6",
+		string(providerconfigtypes.OperatingSystemRHEL):       "kkp-rhel-9.6",
+		string(providerconfigtypes.OperatingSystemRockyLinux): "kkp-rockylinux-9.6",
 		string(providerconfigtypes.OperatingSystemUbuntu):     "kkp-ubuntu-24.04",
 	}
 
