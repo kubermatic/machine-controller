@@ -49,9 +49,9 @@ var (
 
 	openStackImages = map[string]string{
 		string(providerconfigtypes.OperatingSystemUbuntu):     "kubermatic-ubuntu",
-		string(providerconfigtypes.OperatingSystemRHEL):       "machine-controller-e2e-rhel-8-5",
+		string(providerconfigtypes.OperatingSystemRHEL):       "machine-controller-e2e-rhel-9-6",
 		string(providerconfigtypes.OperatingSystemFlatcar):    "kubermatic-e2e-flatcar",
-		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux",
+		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux-9-6",
 	}
 
 	openNebulaImages = map[string]string{
@@ -61,8 +61,8 @@ var (
 
 	vSphereOSImageTemplates = map[string]string{
 		string(providerconfigtypes.OperatingSystemFlatcar):    "kkp-flatcar-3139.2.0",
-		string(providerconfigtypes.OperatingSystemRHEL):       "kkp-rhel-8.6",
-		string(providerconfigtypes.OperatingSystemRockyLinux): "kkp-rockylinux-8",
+		string(providerconfigtypes.OperatingSystemRHEL):       "rhel-9.6",
+		string(providerconfigtypes.OperatingSystemRockyLinux): "rockylinux-9.6",
 		string(providerconfigtypes.OperatingSystemUbuntu):     "kkp-ubuntu-24.04",
 	}
 
