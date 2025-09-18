@@ -380,7 +380,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, nil, err
 	}
 
-	if singleNetwork != "" && len(rawConfig.Networks) == 0 {
+	if singleNetwork != "" {
 		c.Networks = append(c.Networks, singleNetwork)
 	}
 

@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	vcdtypes "k8c.io/machine-controller/sdk/cloudprovider/vmwareclouddirector"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 )
 
@@ -47,5 +48,28 @@ func migrateToEquinixMetal(providerConfig *providerconfigtypes.Config) (err erro
 	if err != nil {
 		return fmt.Errorf("failed to json marshal providerConfig.CloudProviderSpec.Raw: %w", err)
 	}
+	return nil
+}
+
+func migrateVMwareCloudDirector(providerConfig *providerconfigtypes.Config) (err error) {
+	config, err := vcdtypes.GetConfig(*providerConfig)
+	if err != nil {
+		return fmt.Errorf("failed to get vcd config: %w", err)
+
+	}
+
+	if config.Network.Value != "" {
+		config.Networks = append(config.Networks, config.Network)
+		config.Network.Value = ""
+		p := &providerconfigtypes.ConfigVarString{Value: ""}
+		config.Network = *p
+	}
+
+	cloudProviderSpecRaw, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal cloudProviderConfig: %w", err)
+	}
+
+	providerConfig.CloudProviderSpec.Raw = cloudProviderSpecRaw
 	return nil
 }
