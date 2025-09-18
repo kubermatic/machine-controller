@@ -59,7 +59,7 @@ func migrateVMwareCloudDirector(providerConfig *providerconfigtypes.Config) (err
 	}
 
 	if config.Network.Value != "" {
-		config.Networks = append(config.Networks, config.Network)
+		config.Networks = append([]providerconfigtypes.ConfigVarString{config.Network}, config.Networks...)
 		config.Network.Value = ""
 		p := &providerconfigtypes.ConfigVarString{Value: ""}
 		config.Network = *p

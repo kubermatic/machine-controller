@@ -381,7 +381,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	if singleNetwork != "" {
-		c.Networks = append(c.Networks, singleNetwork)
+		c.Networks = append([]string{singleNetwork}, c.Networks...)
 	}
 
 	for _, network := range rawConfig.Networks {
