@@ -150,7 +150,7 @@ func (d *defaultRedHatSubscriptionManager) findSystemsProfile(ctx context.Contex
 
 func (d *defaultRedHatSubscriptionManager) deleteSubscription(ctx context.Context, uuid, offlineToken string) error {
 	client := newOAuthClientWithRefreshToken(ctx, offlineToken, d.authURL)
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/%s", d.apiURL, uuid), nil)
+	req, err := http.NewRequestWithContext(ctx, "DELETE", fmt.Sprintf("%s/%s", d.apiURL, uuid), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create delete system request: %w", err)
 	}
@@ -179,7 +179,7 @@ func (d *defaultRedHatSubscriptionManager) deleteSubscription(ctx context.Contex
 
 func (d *defaultRedHatSubscriptionManager) executeFindSystemsRequest(ctx context.Context, offlineToken string, offset int) (*systemsResponse, error) {
 	client := newOAuthClientWithRefreshToken(ctx, offlineToken, d.authURL)
-	req, err := http.NewRequest("GET", fmt.Sprintf(d.apiURL+"?limit=%v&offset=%v", d.requestsLimiter, offset), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf(d.apiURL+"?limit=%v&offset=%v", d.requestsLimiter, offset), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fetch systems request: %w", err)
 	}

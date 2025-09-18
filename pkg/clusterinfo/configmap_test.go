@@ -42,7 +42,6 @@ clusters:
 contexts: null
 current-context: ""
 kind: Config
-preferences: {}
 users: null
 `
 	clusterInfoKubeconfig2 = `apiVersion: v1
@@ -54,7 +53,6 @@ clusters:
 contexts: null
 current-context: ""
 kind: Config
-preferences: {}
 users: null
 `
 )
