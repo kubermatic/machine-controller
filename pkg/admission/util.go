@@ -65,6 +65,8 @@ func migrateVMwareCloudDirector(providerConfig *providerconfigtypes.Config) (err
 		config.Network = *p
 	}
 
+	config.Networks = Deduplicate(config.Networks)
+
 	cloudProviderSpecRaw, err := json.Marshal(config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal cloudProviderConfig: %w", err)
@@ -72,4 +74,18 @@ func migrateVMwareCloudDirector(providerConfig *providerconfigtypes.Config) (err
 
 	providerConfig.CloudProviderSpec.Raw = cloudProviderSpecRaw
 	return nil
+}
+
+func Deduplicate[T comparable](slice []T) []T {
+	seen := make(map[T]struct{})
+	result := []T{}
+
+	for _, val := range slice {
+		if _, exists := seen[val]; !exists {
+			seen[val] = struct{}{}
+			result = append(result, val)
+		}
+	}
+
+	return result
 }
