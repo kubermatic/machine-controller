@@ -46,8 +46,10 @@ type RawConfig struct {
 	PlacementPolicy *string                        `json:"placementPolicy,omitempty"`
 
 	// Network configuration.
-	Network          providerconfig.ConfigVarString `json:"network"`
-	IPAllocationMode IPAllocationMode               `json:"ipAllocationMode,omitempty"`
+	// Deprecated: Use networks instead.
+	Network          providerconfig.ConfigVarString   `json:"network,omitempty"`
+	Networks         []providerconfig.ConfigVarString `json:"networks"`
+	IPAllocationMode IPAllocationMode                 `json:"ipAllocationMode,omitempty"`
 
 	// Compute configuration.
 	CPUs         int64   `json:"cpus"`

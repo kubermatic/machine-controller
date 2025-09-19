@@ -79,7 +79,7 @@ type Config struct {
 	SizingPolicy    *string
 
 	// Network configuration.
-	Network          string
+	Networks         []string
 	IPAllocationMode vcdtypes.IPAllocationMode
 
 	// Compute configuration.
@@ -375,9 +375,21 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, nil, err
 	}
 
-	c.Network, err = p.configVarResolver.GetStringValue(rawConfig.Network)
+	singleNetwork, err := p.configVarResolver.GetStringValue(rawConfig.Network)
 	if err != nil {
 		return nil, nil, nil, err
+	}
+
+	if singleNetwork != "" {
+		c.Networks = append([]string{singleNetwork}, c.Networks...)
+	}
+
+	for _, network := range rawConfig.Networks {
+		networkValue, err := p.configVarResolver.GetStringValue(network)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		c.Networks = append(c.Networks, networkValue)
 	}
 
 	c.IPAllocationMode = rawConfig.IPAllocationMode
@@ -509,11 +521,18 @@ func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec cluste
 		return fmt.Errorf("diskSizeGB '%v' cannot be less than the template size '%v': %w", *c.DiskSizeGB, catalogItem.CatalogItem.Size, err)
 	}
 
-	// Ensure that the network exists
+	// Ensure that the networks exists
 	// It can either be a vApp network or a vApp Org network.
-	_, err = GetVappNetworkType(c.Network, *vapp)
-	if err != nil {
-		return fmt.Errorf("failed to get network '%s' for vapp '%s': %w", c.Network, c.VApp, err)
+
+	if len(c.Networks) == 0 {
+		return fmt.Errorf("at least one network must be specified")
+	}
+
+	for _, network := range c.Networks {
+		_, err = GetVappNetworkType(network, *vapp)
+		if err != nil {
+			return fmt.Errorf("failed to get network '%s' for vapp '%s': %w", network, c.VApp, err)
+		}
 	}
 
 	if c.SizingPolicy != nil || c.PlacementPolicy != nil {
