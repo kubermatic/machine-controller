@@ -55,7 +55,6 @@ func migrateVMwareCloudDirector(providerConfig *providerconfigtypes.Config) (err
 	config, err := vcdtypes.GetConfig(*providerConfig)
 	if err != nil {
 		return fmt.Errorf("failed to get vcd config: %w", err)
-
 	}
 
 	if config.Network.Value != "" {
