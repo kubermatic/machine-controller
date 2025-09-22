@@ -128,6 +128,14 @@ func mutationsForMachineDeployment(md *clusterv1alpha1.MachineDeployment) error 
 		}
 	}
 
+	// Migrate
+	if providerConfig.CloudProvider == providerconfigtypes.CloudProviderVMwareCloudDirector {
+		err := migrateVMwareCloudDirector(providerConfig)
+		if err != nil {
+			return fmt.Errorf("failed to migrate VMware Cloud Director Network Settings: %w", err)
+		}
+	}
+
 	// Update value in original object
 	md.Spec.Template.Spec.ProviderSpec.Value.Raw, err = json.Marshal(providerConfig)
 	if err != nil {
