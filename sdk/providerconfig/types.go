@@ -35,11 +35,10 @@ import (
 type OperatingSystem string
 
 const (
-	OperatingSystemUbuntu       OperatingSystem = "ubuntu"
-	OperatingSystemAmazonLinux2 OperatingSystem = "amzn2"
-	OperatingSystemRHEL         OperatingSystem = "rhel"
-	OperatingSystemFlatcar      OperatingSystem = "flatcar"
-	OperatingSystemRockyLinux   OperatingSystem = "rockylinux"
+	OperatingSystemUbuntu     OperatingSystem = "ubuntu"
+	OperatingSystemRHEL       OperatingSystem = "rhel"
+	OperatingSystemFlatcar    OperatingSystem = "flatcar"
+	OperatingSystemRockyLinux OperatingSystem = "rockylinux"
 )
 
 func (os OperatingSystem) Validate() error {
@@ -84,7 +83,6 @@ var (
 	// AllOperatingSystems is a slice containing all supported operating system identifiers.
 	AllOperatingSystems = []OperatingSystem{
 		OperatingSystemUbuntu,
-		OperatingSystemAmazonLinux2,
 		OperatingSystemRHEL,
 		OperatingSystemFlatcar,
 		OperatingSystemRockyLinux,
@@ -177,8 +175,10 @@ type GlobalObjectKeySelector struct {
 	Key                    string `json:"key,omitempty"`
 }
 
-type GlobalSecretKeySelector GlobalObjectKeySelector
-type GlobalConfigMapKeySelector GlobalObjectKeySelector
+type (
+	GlobalSecretKeySelector    GlobalObjectKeySelector
+	GlobalConfigMapKeySelector GlobalObjectKeySelector
+)
 
 type ConfigVarString struct {
 	Value           string                     `json:"value,omitempty"`

@@ -20,7 +20,6 @@ import (
 	"errors"
 
 	"k8c.io/machine-controller/sdk/providerconfig"
-	"k8c.io/machine-controller/sdk/userdata/amzn2"
 	"k8c.io/machine-controller/sdk/userdata/flatcar"
 	"k8c.io/machine-controller/sdk/userdata/rhel"
 	"k8c.io/machine-controller/sdk/userdata/rockylinux"
@@ -31,8 +30,6 @@ import (
 
 func DefaultOperatingSystemSpec(os providerconfig.OperatingSystem, operatingSystemSpec runtime.RawExtension) (runtime.RawExtension, error) {
 	switch os {
-	case providerconfig.OperatingSystemAmazonLinux2:
-		return amzn2.DefaultConfig(operatingSystemSpec), nil
 	case providerconfig.OperatingSystemFlatcar:
 		return flatcar.DefaultConfig(operatingSystemSpec), nil
 	case providerconfig.OperatingSystemRHEL:
