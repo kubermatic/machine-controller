@@ -139,6 +139,10 @@ const (
 	ContainerLogMaxSizeKubeletConfig  = "ContainerLogMaxSize"
 	ContainerLogMaxFilesKubeletConfig = "ContainerLogMaxFiles"
 	MaxPodsKubeletConfig              = "MaxPods"
+	ImageGCHighThresholdPercent       = "ImageGCHighThresholdPercent"
+	ImageGCLowThresholdPercent        = "ImageGCLowThresholdPercent"
+	ImageMinimumGCAge                 = "ImageMinimumGCAge"
+	ImageMaximumGCAge                 = "ImageMaximumGCAge"
 )
 
 const (
