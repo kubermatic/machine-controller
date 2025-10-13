@@ -27,7 +27,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"go.uber.org/zap"
 
-	"k8c.io/machine-controller/sdk/apis/cluster/common"
+	sdkclustercommon "k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -41,34 +41,16 @@ import (
 )
 
 const (
-	DefaultMachineDeploymentUniqueLabelKey = "machine-template-hash"
-
-	// RevisionAnnotation is the revision annotation of a machine deployment's machine sets which records its rollout sequence.
-	RevisionAnnotation = "machinedeployment.clusters.k8s.io/revision"
-	// RevisionHistoryAnnotation maintains the history of all old revisions that a machine set has served for a machine deployment.
-	RevisionHistoryAnnotation = "machinedeployment.clusters.k8s.io/revision-history"
-	// DesiredReplicasAnnotation is the desired replicas for a machine deployment recorded as an annotation
-	// in its machine sets. Helps in separating scaling events from the rollout process and for
-	// determining if the new machine set for a deployment is really saturated.
-	DesiredReplicasAnnotation = "machinedeployment.clusters.k8s.io/desired-replicas"
-	// MaxReplicasAnnotation is the maximum replicas a deployment can have at a given point, which
-	// is machinedeployment.spec.replicas + maxSurge. Used by the underlying machine sets to estimate their
-	// proportions in case the deployment has surge replicas.
-	MaxReplicasAnnotation = "machinedeployment.clusters.k8s.io/max-replicas"
-
-	// FailedMSCreateReason is added in a machine deployment when it cannot create a new machine set.
-	FailedMSCreateReason = "MachineSetCreateError"
-	// FoundNewMSReason is added in a machine deployment when it adopts an existing machine set.
-	FoundNewMSReason = "FoundNewMachineSet"
-	// PausedDeployReason is added in a deployment when it is paused. Lack of progress shouldn't be
-	// estimated once a deployment is paused.
-	PausedDeployReason = "DeploymentPaused"
-
-	// MinimumReplicasAvailable is added in a deployment when it has its minimum replicas required available.
-	MinimumReplicasAvailable = "MinimumReplicasAvailable"
-	// MinimumReplicasUnavailable is added in a deployment when it doesn't have the minimum required replicas
-	// available.
-	MinimumReplicasUnavailable = "MinimumReplicasUnavailable"
+	DefaultMachineDeploymentUniqueLabelKey = sdkclustercommon.DefaultMachineDeploymentUniqueLabelKey
+	RevisionAnnotation                     = sdkclustercommon.RevisionAnnotation
+	RevisionHistoryAnnotation              = sdkclustercommon.RevisionHistoryAnnotation
+	DesiredReplicasAnnotation              = sdkclustercommon.DesiredReplicasAnnotation
+	MaxReplicasAnnotation                  = sdkclustercommon.MaxReplicasAnnotation
+	FailedMSCreateReason                   = sdkclustercommon.FailedMSCreateReason
+	FoundNewMSReason                       = sdkclustercommon.FoundNewMSReason
+	PausedDeployReason                     = sdkclustercommon.PausedDeployReason
+	MinimumReplicasAvailable               = sdkclustercommon.MinimumReplicasAvailable
+	MinimumReplicasUnavailable             = sdkclustercommon.MinimumReplicasUnavailable
 )
 
 // MachineSetsByCreationTimestamp sorts a list of MachineSet by creation timestamp, using their names as a tie breaker.
@@ -241,7 +223,7 @@ func SetNewMachineSetAnnotations(mdLog *zap.SugaredLogger, deployment *clusterv1
 			msLog.Infow("MachineSet revision annotation is not a valid integer", "value", oldRevision, zap.Error(err))
 			return false
 		}
-		//If the MS annotation is empty then initialise it to 0
+		// If the MS annotation is empty then initialise it to 0
 		oldRevisionInt = 0
 	}
 
@@ -505,7 +487,7 @@ func GetAvailableReplicaCountForMachineSets(machineSets []*clusterv1alpha1.Machi
 
 // IsRollingUpdate returns true if the strategy type is a rolling update.
 func IsRollingUpdate(deployment *clusterv1alpha1.MachineDeployment) bool {
-	return deployment.Spec.Strategy.Type == common.RollingUpdateMachineDeploymentStrategyType
+	return deployment.Spec.Strategy.Type == sdkclustercommon.RollingUpdateMachineDeploymentStrategyType
 }
 
 // DeploymentComplete considers a deployment to be complete once all of its desired replicas
@@ -523,7 +505,7 @@ func DeploymentComplete(deployment *clusterv1alpha1.MachineDeployment, newStatus
 // 2) Max number of machines allowed is reached: deployment's replicas + maxSurge == all MSs' replicas.
 func NewMSNewReplicas(deployment *clusterv1alpha1.MachineDeployment, allMSs []*clusterv1alpha1.MachineSet, newMS *clusterv1alpha1.MachineSet) (int32, error) {
 	switch deployment.Spec.Strategy.Type {
-	case common.RollingUpdateMachineDeploymentStrategyType:
+	case sdkclustercommon.RollingUpdateMachineDeploymentStrategyType:
 		// Check if we can scale up.
 		maxSurge, err := intstrutil.GetValueFromIntOrPercent(deployment.Spec.Strategy.RollingUpdate.MaxSurge, int(*(deployment.Spec.Replicas)), true)
 		if err != nil {
