@@ -26,7 +26,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-
 	kubevirtcorev1 "kubevirt.io/api/core/v1"
 	cdicorev1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
