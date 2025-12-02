@@ -19,6 +19,7 @@ package azure
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -139,6 +140,8 @@ func (vm *azureVM) Status() instance.Status {
 	return vm.status
 }
 
+const SKUGen2Ubuntu = "server"
+
 var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 	providerconfig.OperatingSystemUbuntu: {
 		Publisher: to.StringPtr("Canonical"),
@@ -230,18 +233,9 @@ func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.
 }
 
 func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *providerconfig.Config, error) {
-	pconfig, err := providerconfig.GetConfig(provSpec)
+	rawCfg, pConfig, err := newCloudProviderSpec(provSpec)
 	if err != nil {
-		return nil, nil, err
-	}
-
-	if pconfig.OperatingSystemSpec.Raw == nil {
-		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
-	}
-
-	rawCfg, err := azuretypes.GetConfig(*pconfig)
-	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to parse provider spec: %w", err)
 	}
 
 	c := config{}
@@ -370,7 +364,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 		c.EnableBootDiagnostics = *rawCfg.EnableBootDiagnostics
 	}
 
-	return &c, pconfig, nil
+	return &c, pConfig, nil
 }
 
 func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm *compute.VirtualMachine, ipFamily net.IPFamily) (map[string]corev1.NodeAddressType, error) {
@@ -509,11 +503,82 @@ func getInternalIPAddresses(ctx context.Context, c *config, inetface, ipconfigNa
 	if internalIP.PrivateIPAddress != nil {
 		ipAddresses = append(ipAddresses, *internalIP.PrivateIPAddress)
 	}
-
 	return ipAddresses, nil
 }
 
-func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(log *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+	rawConfig, pconfig, err := newCloudProviderSpec(spec.ProviderSpec)
+	if err != nil {
+		return spec, fmt.Errorf("failed to parse provider spec: %w", err)
+	}
+
+	if rawConfig.ImageID.Value != "" {
+		return spec, nil
+	}
+
+	// Skip if imageReference is already fully specified
+	if rawConfig.ImageReference != nil && rawConfig.ImageReference.Sku != "" {
+		return spec, nil
+	}
+
+	vmSize := rawConfig.VMSize.Value
+	if vmSize == "" {
+		return spec, nil
+	}
+	if pconfig.OperatingSystem == providerconfig.OperatingSystemUbuntu {
+		if rawConfig.ImageReference == nil {
+			rawConfig.ImageReference = &azuretypes.ImageReference{}
+		}
+
+		if rawConfig.ImageReference.Sku == "" {
+			config, _, err := p.getConfig(spec.ProviderSpec)
+			sku := *imageReferences[providerconfig.OperatingSystemUbuntu].Sku
+
+			if err != nil {
+				log.Warnw("Failed to get Azure config for SKU lookup, defaulting sku heuristically", "error", err)
+				if vmSizeSupportsGen2(vmSize) {
+					sku = SKUGen2Ubuntu
+				}
+			} else {
+				vmSKU, err := getSKU(context.Background(), log, config)
+				if err != nil {
+					log.Warnw("Failed to get Azure config for SKU lookup, defaulting sku heuristic", "error", err)
+					if vmSizeSupportsGen2(vmSize) {
+						sku = SKUGen2Ubuntu
+					}
+				} else {
+					if skuSupportsGen2(vmSKU) {
+						sku = SKUGen2Ubuntu
+						log.Debugw("Using Gen2 image SKU based on Azure API", "vmSize", vmSize)
+					}
+				}
+			}
+
+			rawConfig.ImageReference.Sku = sku
+		}
+
+		if rawConfig.ImageReference.Publisher == "" {
+			rawConfig.ImageReference.Publisher = *imageReferences[providerconfig.OperatingSystemUbuntu].Publisher
+		}
+		if rawConfig.ImageReference.Offer == "" {
+			rawConfig.ImageReference.Offer = *imageReferences[providerconfig.OperatingSystemUbuntu].Offer
+		}
+		if rawConfig.ImageReference.Version == "" {
+			rawConfig.ImageReference.Version = *imageReferences[providerconfig.OperatingSystemUbuntu].Version
+		}
+	}
+
+	updatedCloudProviderSpec, err := json.Marshal(rawConfig)
+	if err != nil {
+		return spec, fmt.Errorf("failed to marshal updated Azure config: %w", err)
+	}
+	pconfig.CloudProviderSpec.Raw = updatedCloudProviderSpec
+
+	spec.ProviderSpec.Value.Raw, err = json.Marshal(pconfig)
+	if err != nil {
+		return spec, fmt.Errorf("failed to marshal provider config: %w", err)
+	}
+
 	return spec, nil
 }
 
@@ -1275,5 +1340,65 @@ func SKUHasCapability(sku compute.ResourceSku, name string) bool {
 			}
 		}
 	}
+	return false
+}
+
+// getHyperVGenerations returns the supported Hyper-V generations for a VM SKU.
+// Returns a string like "V1,V2" or "V2" or "V1" from the Azure API.
+func getHyperVGenerations(sku compute.ResourceSku) string {
+	if sku.Capabilities != nil {
+		for _, capability := range *sku.Capabilities {
+			if capability.Name != nil && *capability.Name == "HyperVGenerations" && capability.Value != nil {
+				return *capability.Value
+			}
+		}
+	}
+	return ""
+}
+
+// skuSupportsGen2 checks if a VM SKU supports Generation 2 VMs using Azure API.
+func skuSupportsGen2(sku compute.ResourceSku) bool {
+	generations := getHyperVGenerations(sku)
+	return strings.Contains(generations, "V2")
+}
+
+// vmSizeSupportsGen2 checks if a VM size is known to support Generation 2 VMs using heuristics.
+func vmSizeSupportsGen2(vmSize string) bool {
+	size := strings.ToLower(vmSize)
+
+	if !strings.HasPrefix(size, "standard_") {
+		return false
+	}
+
+	// A-family explicitly does NOT support Gen2 per Azure docs.
+	if strings.HasPrefix(size, "standard_a") {
+		return false
+	}
+
+	// Families that have Gen2 support according to:
+	// https://learn.microsoft.com/azure/virtual-machines/generation-2
+	//
+	// Actual availability still depends on the specific SKU and region.
+	gen2Families := []string{
+		"standard_b",
+		"standard_d",
+		"standard_f",
+		"standard_e",
+		"standard_m",
+		"standard_l",
+		"standard_nc",
+		"standard_nd",
+		"standard_nv",
+		"standard_hb",
+		"standard_hc",
+		"standard_hx",
+	}
+
+	for _, family := range gen2Families {
+		if strings.HasPrefix(size, family) {
+			return true
+		}
+	}
+
 	return false
 }
