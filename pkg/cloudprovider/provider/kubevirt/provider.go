@@ -81,7 +81,9 @@ const (
 	topologyRegionKey = "topology.kubernetes.io/region"
 	topologyZoneKey   = "topology.kubernetes.io/zone"
 	// clusterNamespace represents the infra cluster namespace, where KubeVirt resources are created.
-	clusterNamespace = "cluster.x-k8s.io/cluster-namespace"
+	clusterNamespace   = "cluster.x-k8s.io/cluster-namespace"
+	projectIDLabelName = "kubermatic.k8c.io/project-id"
+	clusterIDLabelName = "kubermatic.k8c.io/cluster-id"
 )
 
 type provider struct {
@@ -96,6 +98,7 @@ func New(configVarResolver providerconfig.ConfigVarResolver) cloudprovidertypes.
 type Config struct {
 	Kubeconfig                string
 	ClusterName               string
+	ProjectID                 string
 	RestConfig                *rest.Config
 	DNSConfig                 *corev1.PodDNSConfig
 	DNSPolicy                 corev1.DNSPolicy
@@ -267,9 +270,24 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		config.EnableNetworkMultiQueue = true
 	}
 
-	config.ClusterName, err = p.configVarResolver.GetStringValue(rawConfig.ClusterName)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "clusterName" field: %w`, err)
+	clusterID, exists := os.LookupEnv("CLUSTER_ID")
+	if clusterID == "" || !exists {
+		config.ClusterName, err = p.configVarResolver.GetStringValue(rawConfig.ClusterName)
+		if err != nil {
+			return nil, nil, fmt.Errorf(`failed to get value of "clusterName" field: %w`, err)
+		}
+	} else {
+		config.ClusterName = clusterID
+	}
+
+	projectID, exists := os.LookupEnv("PROJECT_ID")
+	if projectID == "" || !exists {
+		config.ProjectID, err = p.configVarResolver.GetStringValue(rawConfig.ProjectID)
+		if err != nil {
+			return nil, nil, fmt.Errorf(`failed to get value of "projectID" field: %w`, err)
+		}
+	} else {
+		config.ProjectID = projectID
 	}
 
 	config.RestConfig, err = clientcmd.RESTConfigFromKubeConfig([]byte(config.Kubeconfig))
@@ -788,6 +806,8 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfig.Config, machi
 	// Add cluster labels
 	labels["cluster.x-k8s.io/cluster-name"] = c.ClusterName
 	labels["cluster.x-k8s.io/role"] = "worker"
+	labels[projectIDLabelName] = c.ProjectID
+	labels[clusterIDLabelName] = c.ClusterName
 
 	var (
 		dataVolumeName = machine.Name
