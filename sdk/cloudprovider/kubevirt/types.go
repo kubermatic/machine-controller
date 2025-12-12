@@ -34,6 +34,7 @@ var SupportedOS = map[providerconfig.OperatingSystem]*struct{}{
 
 type RawConfig struct {
 	ClusterName               providerconfig.ConfigVarString `json:"clusterName"`
+	ProjectID                 providerconfig.ConfigVarString `json:"projectID,omitempty"`
 	Auth                      Auth                           `json:"auth,omitempty"`
 	VirtualMachine            VirtualMachine                 `json:"virtualMachine,omitempty"`
 	Affinity                  Affinity                       `json:"affinity,omitempty"`
