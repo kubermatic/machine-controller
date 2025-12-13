@@ -4,6 +4,8 @@ metadata:
   annotations:
   labels:
     cluster.x-k8s.io/cluster-name: cluster-name
+    kubermatic.k8c.io/cluster-id: "cluster-name"
+    kubermatic.k8c.io/project-id: ""
     cluster.x-k8s.io/role: worker
     kubevirt.io/vm: affinity-no-values
     md: md-name
@@ -34,6 +36,8 @@ spec:
       labels:
         cluster.x-k8s.io/cluster-name: cluster-name
         cluster.x-k8s.io/role: worker
+        kubermatic.k8c.io/cluster-id: "cluster-name"
+        kubermatic.k8c.io/project-id: ""
         kubevirt.io/vm: affinity-no-values
         md: md-name
     spec:

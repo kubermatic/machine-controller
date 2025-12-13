@@ -5,6 +5,8 @@ metadata:
   labels:
     cluster.x-k8s.io/cluster-name: cluster-name
     cluster.x-k8s.io/role: worker
+    kubermatic.k8c.io/cluster-id: "cluster-name"
+    kubermatic.k8c.io/project-id: ""
     kubevirt.io/vm: custom-local-disk
     md: md-name
   name: custom-local-disk
@@ -34,6 +36,8 @@ spec:
         "ovn.kubernetes.io/allow_live_migration": "true"
       labels:
         cluster.x-k8s.io/cluster-name: cluster-name
+        kubermatic.k8c.io/cluster-id: "cluster-name"
+        kubermatic.k8c.io/project-id: ""
         cluster.x-k8s.io/role: worker
         kubevirt.io/vm: custom-local-disk
         md: md-name
