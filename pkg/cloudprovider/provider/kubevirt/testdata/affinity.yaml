@@ -5,6 +5,8 @@ metadata:
   labels:
     cluster.x-k8s.io/cluster-name: cluster-name
     cluster.x-k8s.io/role: worker
+    kubermatic.k8c.io/cluster-id: "cluster-name"
+    kubermatic.k8c.io/project-id: ""
     kubevirt.io/vm: affinity
     md: md-name
   name: affinity
@@ -34,6 +36,8 @@ spec:
       labels:
         cluster.x-k8s.io/cluster-name: cluster-name
         cluster.x-k8s.io/role: worker
+        kubermatic.k8c.io/cluster-id: "cluster-name"
+        kubermatic.k8c.io/project-id: ""
         kubevirt.io/vm: affinity
         md: md-name
     spec:

@@ -4,6 +4,8 @@ metadata:
   annotations:
   labels:
     cluster.x-k8s.io/cluster-name: cluster-name
+    kubermatic.k8c.io/cluster-id: "cluster-name"
+    kubermatic.k8c.io/project-id: ""
     cluster.x-k8s.io/role: worker
     kubevirt.io/vm: kubeovn-provider-network
     md: md-name
@@ -34,6 +36,8 @@ spec:
         "kubevirt.io/allow-pod-bridge-network-live-migration": "true"
       labels:
         cluster.x-k8s.io/cluster-name: cluster-name
+        kubermatic.k8c.io/cluster-id: "cluster-name"
+        kubermatic.k8c.io/project-id: ""
         cluster.x-k8s.io/role: worker
         kubevirt.io/vm: kubeovn-provider-network
         md: md-name

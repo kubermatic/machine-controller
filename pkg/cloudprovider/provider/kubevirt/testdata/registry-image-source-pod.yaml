@@ -5,6 +5,8 @@ metadata:
   labels:
     kubevirt.io/vm: registry-image-source-pod
     cluster.x-k8s.io/cluster-name: cluster-name
+    kubermatic.k8c.io/cluster-id: "cluster-name"
+    kubermatic.k8c.io/project-id: ""
     cluster.x-k8s.io/role: worker
     md: md-name
   name: registry-image-source-pod
@@ -35,6 +37,8 @@ spec:
       labels:
         kubevirt.io/vm: registry-image-source-pod
         cluster.x-k8s.io/cluster-name: cluster-name
+        kubermatic.k8c.io/cluster-id: "cluster-name"
+        kubermatic.k8c.io/project-id: ""
         cluster.x-k8s.io/role: worker
         md: md-name
     spec:
