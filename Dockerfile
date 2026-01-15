@@ -18,7 +18,7 @@ WORKDIR /go/src/k8c.io/machine-controller
 COPY . .
 RUN make all
 
-FROM alpine:3.19
+FROM alpine:3.23
 
 RUN apk add --no-cache ca-certificates cdrkit
 

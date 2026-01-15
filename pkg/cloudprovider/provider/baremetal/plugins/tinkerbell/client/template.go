@@ -172,7 +172,7 @@ echo "All partitions on ${disks} have been wiped."
 `
 	return Action{
 		Name:    "wipe-disk",
-		Image:   "alpine:3.18",
+		Image:   "alpine:3.23",
 		Timeout: 600,
 		Command: []string{"/bin/sh", "-c", wipeScript},
 	}
