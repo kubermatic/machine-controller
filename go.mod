@@ -2,7 +2,7 @@ module k8c.io/machine-controller
 
 go 1.24.0
 
-toolchain go1.24.11
+toolchain go1.24.12
 
 replace k8c.io/machine-controller/sdk => ./sdk
 
