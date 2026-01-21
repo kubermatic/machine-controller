@@ -96,11 +96,6 @@ linters:
         text: cyclomatic complexity [0-9]+ of func `\(\*provider\)\.getConfig` is high
       - path: (.+)\.go$
         text: 'SA1019: s.server.IPv6 is deprecated'
-      # TODO: Should be fixed via https://github.com/kubermatic/machine-controller/issues/1960
-      - path: (.+)\.go$
-        text: 'SA1019: corev1.Endpoints is deprecated: This API is deprecated in v1.33+.'
-      - path: (.+)\.go$
-        text: 'SA1019: corev1.EndpointSubset is deprecated: This API is deprecated in v1.33+.'
     paths:
       - apis/machines
       - third_party$

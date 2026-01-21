@@ -26,7 +26,7 @@ import (
 
 	"go.uber.org/zap"
 
-	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -35,9 +35,9 @@ import (
 )
 
 const (
-	configMapName           = "cluster-info"
-	kubernetesEndpointsName = "kubernetes"
-	securePortName          = "https"
+	configMapName     = "cluster-info"
+	kubernetesService = "kubernetes"
+	securePortName    = "https"
 )
 
 func New(clientConfig *rest.Config, kubeClient kubernetes.Interface) *KubeconfigProvider {
@@ -50,7 +50,7 @@ func New(clientConfig *rest.Config, kubeClient kubernetes.Interface) *Kubeconfig
 type KubeconfigProvider struct {
 	clientConfig *rest.Config
 	// We use a kubeClient to not accidentally create listers in the ctrlruntimeclient for
-	// secrets, configmaps and endpoints, as that would result in a lot of traffic we don't
+	// secrets, configmaps and endpointslices, as that would result in a lot of traffic we don't
 	// care about
 	kubeClient kubernetes.Interface
 }
@@ -58,8 +58,8 @@ type KubeconfigProvider struct {
 func (p *KubeconfigProvider) GetKubeconfig(ctx context.Context, log *zap.SugaredLogger) (*clientcmdapi.Config, error) {
 	cm, err := p.getKubeconfigFromConfigMap(ctx)
 	if err != nil {
-		log.Debugw("Failed to get cluster-info kubeconfig from configmap; falling back to retrieval via endpoint", zap.Error(err))
-		return p.buildKubeconfigFromEndpoint(ctx)
+		log.Debugw("Failed to get cluster-info kubeconfig from configmap; falling back to retrieval via endpointslice", zap.Error(err))
+		return p.buildKubeconfigFromEndpointSlice(ctx)
 	}
 	return cm, nil
 }
@@ -76,53 +76,64 @@ func (p *KubeconfigProvider) getKubeconfigFromConfigMap(ctx context.Context) (*c
 	return clientcmd.Load([]byte(data))
 }
 
-func (p *KubeconfigProvider) buildKubeconfigFromEndpoint(ctx context.Context) (*clientcmdapi.Config, error) {
-	e, err := p.kubeClient.CoreV1().Endpoints(metav1.NamespaceDefault).Get(ctx, kubernetesEndpointsName, metav1.GetOptions{})
+func (p *KubeconfigProvider) buildKubeconfigFromEndpointSlice(ctx context.Context) (*clientcmdapi.Config, error) {
+	slices, err := p.kubeClient.DiscoveryV1().EndpointSlices(metav1.NamespaceDefault).List(ctx,
+		metav1.ListOptions{LabelSelector: discoveryv1.LabelServiceName + "=" + kubernetesService})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get endpoint from lister: %w", err)
+		return nil, fmt.Errorf("failed to list endpointslices: %w", err)
 	}
 
-	if len(e.Subsets) == 0 {
-		return nil, errors.New("no subsets in the kubernetes endpoints resource")
+	if len(slices.Items) == 0 {
+		return nil, errors.New("no endpointslices found for kubernetes service")
 	}
-	subset := e.Subsets[0]
-
-	if len(subset.Addresses) == 0 {
-		return nil, errors.New("no addresses in the first subset of the kubernetes endpoints resource")
-	}
-	address := subset.Addresses[0]
-
-	ip := net.ParseIP(address.IP)
-	if ip == nil {
-		return nil, errors.New("could not parse ip from ")
-	}
-
-	port := getSecurePort(subset)
-	if port == nil {
-		return nil, errors.New("no secure port in the subset")
-	}
-	url := fmt.Sprintf("https://%s", net.JoinHostPort(ip.String(), strconv.Itoa(int(port.Port))))
 
 	caData, err := getCAData(p.clientConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ca data from config: %w", err)
 	}
 
-	return &clientcmdapi.Config{
-		Kind:       "Config",
-		APIVersion: "v1",
-		Clusters: map[string]*clientcmdapi.Cluster{
-			"": {
-				Server:                   url,
-				CertificateAuthorityData: caData,
-			},
-		},
-	}, nil
+	for _, slice := range slices.Items {
+		port := getSecurePortFromSlice(slice.Ports)
+		if port == nil {
+			continue
+		}
+
+		// Find a ready endpoint with a valid address
+		for _, endpoint := range slice.Endpoints {
+			if endpoint.Conditions.Ready == nil || !*endpoint.Conditions.Ready {
+				continue
+			}
+
+			if len(endpoint.Addresses) == 0 {
+				continue
+			}
+
+			ip := net.ParseIP(endpoint.Addresses[0])
+			if ip == nil {
+				continue
+			}
+
+			url := fmt.Sprintf("https://%s", net.JoinHostPort(ip.String(), strconv.Itoa(int(*port.Port))))
+
+			return &clientcmdapi.Config{
+				Kind:       "Config",
+				APIVersion: "v1",
+				Clusters: map[string]*clientcmdapi.Cluster{
+					"": {
+						Server:                   url,
+						CertificateAuthorityData: caData,
+					},
+				},
+			}, nil
+		}
+	}
+
+	return nil, errors.New("no ready endpoint found in kubernetes endpointslices")
 }
 
-func getSecurePort(endpointSubset corev1.EndpointSubset) *corev1.EndpointPort {
-	for _, p := range endpointSubset.Ports {
-		if p.Name == securePortName {
+func getSecurePortFromSlice(ports []discoveryv1.EndpointPort) *discoveryv1.EndpointPort {
+	for _, p := range ports {
+		if p.Name != nil && *p.Name == securePortName && p.Port != nil {
 			return &p
 		}
 	}
