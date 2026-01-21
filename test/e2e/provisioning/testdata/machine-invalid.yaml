@@ -12,7 +12,7 @@ spec:
         cloudProvider: "hetzner"
         cloudProviderSpec:
           token: << HETZNER_TOKEN >>
-          serverType: "cx22"
+          serverType: "cx23"
           datacenter: ""
           location: "fsn1"
         operatingSystem: "<< OS_NAME >>"

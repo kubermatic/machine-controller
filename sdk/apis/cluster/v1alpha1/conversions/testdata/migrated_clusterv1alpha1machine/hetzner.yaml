@@ -11,7 +11,7 @@ spec:
       cloudProviderSpec:
         datacenter: ""
         location: fsn1
-        serverType: cx22
+        serverType: cx23
         token:
           secretKeyRef:
             key: token

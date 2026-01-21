@@ -31,6 +31,7 @@ import (
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
+	"k8c.io/machine-controller/pkg/version"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	hetznertypes "k8c.io/machine-controller/sdk/cloudprovider/hetzner"
@@ -79,7 +80,10 @@ func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
 }
 
 func getClient(token string) *hcloud.Client {
-	return hcloud.NewClient(hcloud.WithToken(token))
+	return hcloud.NewClient(
+		hcloud.WithToken(token),
+		hcloud.WithApplication("kubermatic-machine-controller", version.Get().String()),
+	)
 }
 
 func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
