@@ -96,7 +96,7 @@ func (s *DefaultSatelliteSubscriptionManager) executeDeleteRequest(ctx context.C
 	requestURL.Host = serverURL
 	requestURL.Path = path.Join("api", "v2", "hosts", machineName)
 
-	deleteHostRequest, err := http.NewRequest(http.MethodDelete, requestURL.String(), nil)
+	deleteHostRequest, err := http.NewRequestWithContext(ctx, http.MethodDelete, requestURL.String(), nil)
 	deleteHostRequest = deleteHostRequest.WithContext(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create a delete host request: %w", err)

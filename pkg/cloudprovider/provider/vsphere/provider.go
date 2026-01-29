@@ -397,7 +397,7 @@ func (p *provider) create(ctx context.Context, log *zap.SugaredLogger, machine *
 	}
 
 	if pc.OperatingSystem != providerconfig.OperatingSystemFlatcar {
-		localUserdataIsoFilePath, err := generateLocalUserdataISO(userdata, machine.Spec.Name)
+		localUserdataIsoFilePath, err := generateLocalUserdataISO(ctx, userdata, machine.Spec.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate local userdadata iso: %w", err)
 		}
