@@ -56,7 +56,7 @@ func TestEvictPods(t *testing.T) {
 		for _, pod := range test.Pods {
 			literalPods = append(literalPods, *(pod.(*corev1.Pod)))
 		}
-		client := kubefake.NewSimpleClientset(test.Pods...)
+		client := kubefake.NewClientset(test.Pods...)
 		t.Run(test.Name, func(t *testing.T) {
 			ne := &NodeEviction{kubeClient: client, nodeName: "node1"}
 			if errs := ne.evictPods(context.Background(), zap.NewNop().Sugar(), literalPods); len(errs) > 0 {
