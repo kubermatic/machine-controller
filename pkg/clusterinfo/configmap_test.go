@@ -167,7 +167,7 @@ func TestKubeconfigProvider_GetKubeconfig(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
-			client := fake.NewSimpleClientset(test.objects...)
+			client := fake.NewClientset(test.objects...)
 
 			provider := KubeconfigProvider{
 				clientConfig: test.clientConfig,
