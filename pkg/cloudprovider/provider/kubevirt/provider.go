@@ -754,6 +754,10 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 		return nil, fmt.Errorf("failed to append labels: %w", err)
 	}
 
+	for key, val := range machine.Labels {
+		labels[key] = val
+	}
+
 	virtualMachine, err := p.newVirtualMachine(c, pc, machine, labels, userDataSecretName, userdata,
 		machineDeploymentNameAndRevisionForMachineGetter(ctx, machine, data.Client))
 	if err != nil {
