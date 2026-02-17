@@ -96,6 +96,8 @@ linters:
         text: cyclomatic complexity [0-9]+ of func `\(\*provider\)\.getConfig` is high
       - path: (.+)\.go$
         text: 'SA1019: s.server.IPv6 is deprecated'
+      - path: (.+)\.go$
+        text: 'SA1019: mgr.GetEventRecorderFor is deprecated'
     paths:
       - apis/machines
       - third_party$
