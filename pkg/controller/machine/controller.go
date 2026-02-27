@@ -268,7 +268,9 @@ func enqueueRequestsForNodes(ctx context.Context, log *zap.SugaredLogger, mgr ma
 					result = append(result, reconcile.Request{
 						NamespacedName: types.NamespacedName{
 							Namespace: machine.Namespace,
-							Name:      machine.Name}})
+							Name:      machine.Name,
+						},
+					})
 				}
 			}
 			return result
@@ -483,7 +485,8 @@ func (r *Reconciler) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1
 	r.metrics.Provisioning.Observe(time.Until(machine.CreationTimestamp.Time).Abs().Seconds())
 
 	return r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-		m.Status.Conditions = append(m.Status.Conditions, corev1.NodeCondition{Type: corev1.NodeReady,
+		m.Status.Conditions = append(m.Status.Conditions, corev1.NodeCondition{
+			Type:   corev1.NodeReady,
 			Status: corev1.ConditionTrue,
 		})
 	})
@@ -540,6 +543,22 @@ func (r *Reconciler) shouldEvict(ctx context.Context, log *zap.SugaredLogger, ma
 
 	if !hasMachine {
 		log.Debug("Skipping eviction since it does not have a node")
+		return false, nil
+	}
+
+	// Get the node object to check its readiness status
+	node := &corev1.Node{}
+	if err := r.client.Get(ctx, types.NamespacedName{Name: machine.Status.NodeRef.Name}, node); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return false, fmt.Errorf("failed to get node %q: %w", machine.Status.NodeRef.Name, err)
+		}
+		log.Debug("Skipping eviction since node was not found")
+		return false, nil
+	}
+
+	// Skip eviction if the node is not ready (NotReady or Unknown status)
+	if !nodeIsReady(node) {
+		log.Infow("Skipping eviction since node is not ready", "node", node.Name)
 		return false, nil
 	}
 
@@ -602,7 +621,7 @@ func (r *Reconciler) deleteMachine(
 	}
 
 	var evictedSomething, deletedSomething bool
-	var volumesFree = true
+	volumesFree := true
 	if shouldEvict {
 		evictedSomething, err = eviction.New(machine.Status.NodeRef.Name, r.client, r.kubeClient).Run(ctx, log)
 		if err != nil {
@@ -793,7 +812,6 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	log.Debug("Requesting instance for machine from cloudprovider because no associated node with status ready found...")
 
 	providerInstance, err := prov.Get(ctx, log, machine, r.providerData)
-
 	// case 2: retrieving instance from provider was not successful
 	if err != nil {
 		// case 2.1: instance was not found and we are going to create one
