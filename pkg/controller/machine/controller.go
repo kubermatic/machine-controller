@@ -30,7 +30,6 @@ import (
 	"github.com/heptiolabs/healthcheck"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
-
 	"k8c.io/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
@@ -287,7 +286,7 @@ func enqueueRequestsForNodes(ctx context.Context, log *zap.SugaredLogger, mgr ma
 	})
 }
 
-// clearMachineError is a convenience function to remove a error on the machine if its set.
+// clearMachineError is a convenience function to remove an error on the machine if its set.
 // It does not return an error as it's used around the sync handler.
 func (r *Reconciler) clearMachineError(machine *clusterv1alpha1.Machine) {
 	if machine.Status.ErrorMessage != nil || machine.Status.ErrorReason != nil {
@@ -456,9 +455,8 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 		return r.ensureInstanceExistsForMachine(ctx, log, prov, machine, providerConfig)
 	}
 
-	// case 3.2: if the node exists and both external and internal CCM are not available. Then set the provider-id for the node.
-	inTree := providerconfig.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider)
-	if !inTree && !r.nodeSettings.ExternalCloudProvider && node.Spec.ProviderID == "" {
+	// case 3.2: if the node exists and external CCM is not available. Then set the provider-id for the node.
+	if !r.nodeSettings.ExternalCloudProvider && node.Spec.ProviderID == "" {
 		providerID := fmt.Sprintf(ProviderIDPattern, providerConfig.CloudProvider, machine.UID)
 		if err := r.updateNode(ctx, node, func(n *corev1.Node) {
 			n.Spec.ProviderID = providerID
@@ -899,9 +897,8 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 
 	var providerID string
 	if machine.Spec.ProviderID == nil {
-		inTree := providerconfig.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider)
-		// If both external and internal CCM are not available. We set provider-id for the machine explicitly.
-		if !inTree && !r.nodeSettings.ExternalCloudProvider {
+		// If both external CCM is not available. We set provider-id for the machine explicitly.
+		if !r.nodeSettings.ExternalCloudProvider {
 			providerID = fmt.Sprintf(ProviderIDPattern, providerConfig.CloudProvider, machine.UID)
 		}
 	}
