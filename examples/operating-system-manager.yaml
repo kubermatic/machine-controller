@@ -208,7 +208,6 @@ spec:
                         - linode
                         - nutanix
                         - openstack
-                        - equinixmetal
                         - vsphere
                         - fake
                         - alibaba
@@ -947,7 +946,6 @@ spec:
                           - linode
                           - nutanix
                           - openstack
-                          - equinixmetal
                           - vsphere
                           - fake
                           - alibaba

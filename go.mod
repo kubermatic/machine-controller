@@ -21,7 +21,6 @@ require (
 	github.com/aws/smithy-go v1.20.4
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/digitalocean/godo v1.124.0
-	github.com/equinix/equinix-sdk-go v0.46.0
 	github.com/go-logr/logr v1.4.3
 	github.com/go-logr/zapr v1.3.0
 	github.com/go-test/deep v1.1.0

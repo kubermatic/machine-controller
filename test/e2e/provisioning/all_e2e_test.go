@@ -59,7 +59,6 @@ const (
 	AzureManifest                     = "./testdata/machinedeployment-azure.yaml"
 	AzureRedhatSatelliteManifest      = "./testdata/machinedeployment-azure.yaml"
 	AzureCustomImageReferenceManifest = "./testdata/machinedeployment-azure-custom-image-reference.yaml"
-	EquinixMetalManifest              = "./testdata/machinedeployment-equinixmetal.yaml"
 	GCEManifest                       = "./testdata/machinedeployment-gce.yaml"
 	HZManifest                        = "./testdata/machinedeployment-hetzner.yaml"
 	LinodeManifest                    = "./testdata/machinedeployment-linode.yaml"
@@ -687,32 +686,6 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
 	runScenarios(context.Background(), t, selector, params, HZManifest, fmt.Sprintf("hz-%s", *testRunIdentifier))
-}
-
-// TestEquinixMetalProvisioningE2E - a test suite that exercises Equinix Metal provider
-// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
-func TestEquinixMetalProvisioningE2E(t *testing.T) {
-	t.Parallel()
-
-	// test data
-	token := os.Getenv("METAL_AUTH_TOKEN")
-	if len(token) == 0 {
-		t.Fatal("Unable to run the test suite, METAL_AUTH_TOKEN environment variable cannot be empty")
-	}
-
-	projectID := os.Getenv("METAL_PROJECT_ID")
-	if len(projectID) == 0 {
-		t.Fatal("Unable to run the test suite, METAL_PROJECT_ID environment variable cannot be empty")
-	}
-
-	selector := And(OsSelector("ubuntu", "rockylinux", "flatcar"), Not(NameSelector("migrateUID")))
-
-	// act
-	params := []string{
-		fmt.Sprintf("<< METAL_AUTH_TOKEN >>=%s", token),
-		fmt.Sprintf("<< METAL_PROJECT_ID >>=%s", projectID),
-	}
-	runScenarios(context.Background(), t, selector, params, EquinixMetalManifest, fmt.Sprintf("equinixmetal-%s", *testRunIdentifier))
 }
 
 func TestAlibabaProvisioningE2E(t *testing.T) {

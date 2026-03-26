@@ -9,7 +9,6 @@
 | AWS | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Azure | ✓ | ✓ | ✓ | x | ✓ |
 | Digitalocean  | ✓ | x | x | x | ✓ |
-| Equinix Metal | ✓ | ✓ | x | x | ✓ |
 | Google Cloud Platform | ✓ | ✓ | x | x | x |
 | Hetzner | ✓ | x | x | x | ✓ |
 | KubeVirt | ✓ | ✓ | ✓ | x | ✓ |
