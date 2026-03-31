@@ -55,6 +55,10 @@ func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admiss
 		if err := json.Unmarshal(ar.OldObject.Raw, &oldMachineDeployment); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal OldObject: %w", err)
 		}
+		if oldMachineDeployment.ResourceVersion != machineDeployment.ResourceVersion {
+			// resource version conflict. Return success to fall back to the API server's default handler, which will respond with a proper 409
+            return createAdmissionResponse(log, machineDeploymentOriginal, &machineDeployment)
+		}
 		if equal := apiequality.Semantic.DeepEqual(oldMachineDeployment.Spec.Template.Spec, machineDeployment.Spec.Template.Spec); equal {
 			machineSpecNeedsValidation = false
 		}
