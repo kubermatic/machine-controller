@@ -33,9 +33,20 @@ func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admiss
 	if err := json.Unmarshal(ar.Object.Raw, &machineDeployment); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
-	machineDeploymentOriginal := machineDeployment.DeepCopy()
 
 	log := ad.log.With("machinedeployment", ctrlruntimeclient.ObjectKeyFromObject(&machineDeployment))
+
+	// skip admission for objects under deletion. once DeletionTimestamp is set,
+	// only metadata mutations from controllers (e.g. OSM finalizer removal)
+	// legitimately arrive here. running full validation on a deleting MD blocks
+	// the deletion lifecycle when the cloud provider's Validate() rejects the
+	// current spec (e.g. an image that no longer resolves).
+	if machineDeployment.DeletionTimestamp != nil {
+		log.Debug("Skipping admission for machine deployment under deletion")
+		return &admissionv1.AdmissionResponse{Allowed: true}, nil
+	}
+
+	machineDeploymentOriginal := machineDeployment.DeepCopy()
 	log.Debug("Defaulting and validating machine deployment")
 
 	machineDeploymentDefaultingFunction(&machineDeployment)
