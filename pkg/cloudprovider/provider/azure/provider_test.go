@@ -17,7 +17,11 @@ limitations under the License.
 package azure
 
 import (
+	"context"
 	"testing"
+
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
+	"github.com/Azure/go-autorest/autorest/to"
 )
 
 func TestVMSizeSupportsGen2(t *testing.T) {
@@ -83,6 +87,160 @@ func TestVMSizeSupportsGen2(t *testing.T) {
 			result := vmSizeSupportsGen2(tt.vmSize)
 			if result != tt.expected {
 				t.Errorf("vmSizeSupportsGen2(%s) = %v, expected %v", tt.vmSize, result, tt.expected)
+			}
+		})
+	}
+}
+
+func gen2SKU() compute.ResourceSku {
+	return compute.ResourceSku{
+		Capabilities: &[]compute.ResourceSkuCapabilities{
+			{Name: to.StringPtr("HyperVGenerations"), Value: to.StringPtr("V1,V2")},
+		},
+	}
+}
+
+func gen1OnlySKU() compute.ResourceSku {
+	return compute.ResourceSku{
+		Capabilities: &[]compute.ResourceSkuCapabilities{
+			{Name: to.StringPtr("HyperVGenerations"), Value: to.StringPtr("V1")},
+		},
+	}
+}
+
+func TestValidateSecurityProfile(t *testing.T) {
+	boolTrue := true
+
+	tests := []struct {
+		name        string
+		config      *config
+		sku         compute.ResourceSku
+		expectError bool
+	}{
+		{
+			name:        "nil SecurityProfile passes",
+			config:      &config{VMSize: "Standard_D2s_v3"},
+			sku:         gen2SKU(),
+			expectError: false,
+		},
+		{
+			name: "UEFI settings without securityType fails",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					UefiSettings: &compute.UefiSettings{
+						SecureBootEnabled: &boolTrue,
+					},
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: true,
+		},
+		{
+			name: "invalid securityType ConfidentialVM fails",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypesConfidentialVM,
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: true,
+		},
+		{
+			name: "garbage securityType fails",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypes("Nonsense"),
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: true,
+		},
+		{
+			name: "TrustedLaunch on non-Gen2 SKU fails",
+			config: &config{
+				VMSize: "Standard_A2",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypesTrustedLaunch,
+				},
+			},
+			sku:         gen1OnlySKU(),
+			expectError: true,
+		},
+		{
+			name: "TrustedLaunch on Gen2 SKU passes",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypesTrustedLaunch,
+					UefiSettings: &compute.UefiSettings{
+						SecureBootEnabled: &boolTrue,
+						VTpmEnabled:       &boolTrue,
+					},
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: false,
+		},
+		{
+			name: "Standard on Gen2 SKU passes",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypes("Standard"),
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: false,
+		},
+		{
+			name: "Standard on Gen1 SKU passes",
+			config: &config{
+				VMSize: "Standard_A2",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypes("Standard"),
+				},
+			},
+			sku:         gen1OnlySKU(),
+			expectError: false,
+		},
+		{
+			name: "Standard with secureBootEnabled fails",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypes("Standard"),
+					UefiSettings: &compute.UefiSettings{
+						SecureBootEnabled: &boolTrue,
+					},
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: true,
+		},
+		{
+			name: "Standard with vTpmEnabled fails",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypes("Standard"),
+					UefiSettings: &compute.UefiSettings{
+						VTpmEnabled: &boolTrue,
+					},
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateSecurityProfile(context.Background(), tt.config, tt.sku)
+			if (err != nil) != tt.expectError {
+				t.Errorf("validateSecurityProfile() error = %v, expectError %v", err, tt.expectError)
 			}
 		})
 	}

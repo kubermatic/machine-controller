@@ -108,6 +108,7 @@ type config struct {
 	EnableAcceleratedNetworking *bool
 	EnableBootDiagnostics       bool
 	Tags                        map[string]string
+	SecurityProfile             *compute.SecurityProfile
 }
 
 type azureVM struct {
@@ -362,6 +363,23 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 
 	if rawCfg.EnableBootDiagnostics != nil {
 		c.EnableBootDiagnostics = *rawCfg.EnableBootDiagnostics
+	}
+
+	if rawCfg.SecurityProfile != nil &&
+		(rawCfg.SecurityProfile.SecurityType != "" ||
+			rawCfg.SecurityProfile.SecureBootEnabled != nil ||
+			rawCfg.SecurityProfile.VTpmEnabled != nil) {
+		sp := &compute.SecurityProfile{}
+		if rawCfg.SecurityProfile.SecurityType != "" {
+			sp.SecurityType = compute.SecurityTypes(rawCfg.SecurityProfile.SecurityType)
+		}
+		if rawCfg.SecurityProfile.SecureBootEnabled != nil || rawCfg.SecurityProfile.VTpmEnabled != nil {
+			sp.UefiSettings = &compute.UefiSettings{
+				SecureBootEnabled: rawCfg.SecurityProfile.SecureBootEnabled,
+				VTpmEnabled:       rawCfg.SecurityProfile.VTpmEnabled,
+			}
+		}
+		c.SecurityProfile = sp
 	}
 
 	return &c, pConfig, nil
@@ -761,6 +779,10 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		}
 	}
 
+	if config.SecurityProfile != nil {
+		vmSpec.SecurityProfile = config.SecurityProfile
+	}
+
 	log.Info("Creating machine")
 	if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 		if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerDisks) {
@@ -1023,6 +1045,35 @@ func validateSKUCapabilities(_ context.Context, c *config, sku compute.ResourceS
 	return nil
 }
 
+func validateSecurityProfile(_ context.Context, c *config, sku compute.ResourceSku) error {
+	if c.SecurityProfile == nil {
+		return nil
+	}
+
+	// the legacy Track-1 SDK only exports SecurityTypesTrustedLaunch and SecurityTypesConfidentialVM.
+	// compute.SecurityTypes is a string alias so casting the literal is safe.
+	const securityTypeStandard = compute.SecurityTypes("Standard")
+
+	st := c.SecurityProfile.SecurityType
+	switch st {
+	case compute.SecurityTypesTrustedLaunch:
+		if !skuSupportsGen2(sku) {
+			return fmt.Errorf("securityType %q requires a Gen2 VM size, but %q does not support Gen2", st, c.VMSize)
+		}
+	case securityTypeStandard:
+		if c.SecurityProfile.UefiSettings != nil &&
+			(c.SecurityProfile.UefiSettings.SecureBootEnabled != nil || c.SecurityProfile.UefiSettings.VTpmEnabled != nil) {
+			return fmt.Errorf("securityType %q cannot be combined with secureBootEnabled or vTpmEnabled", st)
+		}
+	case "":
+		return errors.New("securityProfile.securityType must be set when securityProfile is specified")
+	default:
+		return fmt.Errorf("unsupported securityType %q; supported values: TrustedLaunch, Standard", st)
+	}
+
+	return nil
+}
+
 func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	c, providerConfig, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
@@ -1118,6 +1169,10 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 
 	if err := validateSKUCapabilities(ctx, c, sku); err != nil {
 		return fmt.Errorf("failed to validate SKU capabilities: %w", err)
+	}
+
+	if err := validateSecurityProfile(ctx, c, sku); err != nil {
+		return fmt.Errorf("failed to validate security profile: %w", err)
 	}
 
 	_, err = getOSImageReference(c, providerConfig.OperatingSystem)
