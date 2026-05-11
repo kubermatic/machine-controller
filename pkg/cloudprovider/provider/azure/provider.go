@@ -56,6 +56,10 @@ const (
 	CapabilityValueTrue             = "True"
 	capabilityAcceleratedNetworking = "AcceleratedNetworkingEnabled"
 
+	// the legacy Track-1 SDK only exports SecurityTypesTrustedLaunch and SecurityTypesConfidentialVM.
+	// compute.SecurityTypes is a string alias so casting the literal is safe.
+	securityTypeStandard = compute.SecurityTypes("Standard")
+
 	machineUIDTag = "Machine-UID"
 
 	finalizerPublicIP   = "kubermatic.io/cleanup-azure-public-ip"
@@ -365,22 +369,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 		c.EnableBootDiagnostics = *rawCfg.EnableBootDiagnostics
 	}
 
-	if rawCfg.SecurityProfile != nil &&
-		(rawCfg.SecurityProfile.SecurityType != "" ||
-			rawCfg.SecurityProfile.SecureBootEnabled != nil ||
-			rawCfg.SecurityProfile.VTpmEnabled != nil) {
-		sp := &compute.SecurityProfile{}
-		if rawCfg.SecurityProfile.SecurityType != "" {
-			sp.SecurityType = compute.SecurityTypes(rawCfg.SecurityProfile.SecurityType)
-		}
-		if rawCfg.SecurityProfile.SecureBootEnabled != nil || rawCfg.SecurityProfile.VTpmEnabled != nil {
-			sp.UefiSettings = &compute.UefiSettings{
-				SecureBootEnabled: rawCfg.SecurityProfile.SecureBootEnabled,
-				VTpmEnabled:       rawCfg.SecurityProfile.VTpmEnabled,
-			}
-		}
-		c.SecurityProfile = sp
-	}
+	c.SecurityProfile = buildSecurityProfile(rawCfg.SecurityProfile)
 
 	return &c, pConfig, nil
 }
@@ -1045,30 +1034,49 @@ func validateSKUCapabilities(_ context.Context, c *config, sku compute.ResourceS
 	return nil
 }
 
+// buildSecurityProfile converts the raw provider-spec SecurityProfile into the
+// Azure SDK shape. Returns nil when no SecurityProfile is configured so the
+// VM CreateOrUpdate call lets Azure apply its subscription defaults.
+func buildSecurityProfile(raw *azuretypes.SecurityProfile) *compute.SecurityProfile {
+	if raw == nil {
+		return nil
+	}
+	sp := &compute.SecurityProfile{}
+	if raw.SecurityType != "" {
+		sp.SecurityType = compute.SecurityTypes(raw.SecurityType)
+	}
+	if raw.SecureBootEnabled != nil || raw.VTpmEnabled != nil {
+		sp.UefiSettings = &compute.UefiSettings{
+			SecureBootEnabled: raw.SecureBootEnabled,
+			VTpmEnabled:       raw.VTpmEnabled,
+		}
+	}
+	return sp
+}
+
 func validateSecurityProfile(_ context.Context, c *config, sku compute.ResourceSku) error {
 	if c.SecurityProfile == nil {
 		return nil
 	}
 
-	// the legacy Track-1 SDK only exports SecurityTypesTrustedLaunch and SecurityTypesConfidentialVM.
-	// compute.SecurityTypes is a string alias so casting the literal is safe.
-	const securityTypeStandard = compute.SecurityTypes("Standard")
+	secProfile := c.SecurityProfile
+	secType := secProfile.SecurityType
 
-	st := c.SecurityProfile.SecurityType
-	switch st {
+	switch secProfile.SecurityType {
 	case compute.SecurityTypesTrustedLaunch:
 		if !skuSupportsGen2(sku) {
-			return fmt.Errorf("securityType %q requires a Gen2 VM size, but %q does not support Gen2", st, c.VMSize)
+			return fmt.Errorf("securityType %q requires a Gen2 VM size, but %q does not support Gen2", secType, c.VMSize)
 		}
 	case securityTypeStandard:
-		if c.SecurityProfile.UefiSettings != nil &&
-			(c.SecurityProfile.UefiSettings.SecureBootEnabled != nil || c.SecurityProfile.UefiSettings.VTpmEnabled != nil) {
-			return fmt.Errorf("securityType %q cannot be combined with secureBootEnabled or vTpmEnabled", st)
+		uefiSettings := secProfile.UefiSettings
+		if uefiSettings != nil && (uefiSettings.SecureBootEnabled != nil || uefiSettings.VTpmEnabled != nil) {
+			// vTPM can't be used with "Standard" security type
+			return fmt.Errorf("securityType %q cannot be combined with secureBootEnabled or vTpmEnabled", secType)
 		}
 	case "":
 		return errors.New("securityProfile.securityType must be set when securityProfile is specified")
 	default:
-		return fmt.Errorf("unsupported securityType %q; supported values: TrustedLaunch, Standard", st)
+		return fmt.Errorf("unsupported securityType %q; supported values (case-sensitive): TrustedLaunch, Standard", secType)
 	}
 
 	return nil

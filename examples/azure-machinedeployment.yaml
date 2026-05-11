@@ -76,6 +76,7 @@ spec:
             assignPublicIP: false
             securityGroupName: my-security-group
             # securityProfile configures security features like TrustedLaunch for the VM.
+            # securityType is case-sensitive. Valid values: TrustedLaunch, Standard.
             # TrustedLaunch requires a Gen2 VM size. Use with Azure Compute Gallery images
             # that have SecurityType set to TrustedLaunch.
             # securityProfile:
@@ -86,6 +87,7 @@ spec:
             # To opt out of TrustedLaunch on subscriptions where Azure auto-enables it
             # (TrustedLaunchByDefaultPreview registered), set securityType to Standard.
             # Requires the UseStandardSecurityType feature flag on the subscription.
+            # See: https://learn.microsoft.com/en-us/azure/virtual-machines/trusted-launch#preview-trusted-launch-as-default
             # securityProfile:
             #   securityType: Standard
             # zones is an optional field and it represents Availability Zones is a high-availability offering
