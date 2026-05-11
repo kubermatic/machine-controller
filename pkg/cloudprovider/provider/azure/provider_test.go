@@ -29,6 +29,11 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+const (
+	testVMSizeGen2 = "Standard_D2s_v3"
+	testVMSizeGen1 = "Standard_A2"
+)
+
 func TestVMSizeSupportsGen2(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -42,7 +47,7 @@ func TestVMSizeSupportsGen2(t *testing.T) {
 		},
 		{
 			name:     "Standard_D2s_v3 should support Gen2",
-			vmSize:   "Standard_D2s_v3",
+			vmSize:   testVMSizeGen2,
 			expected: true,
 		},
 		{
@@ -62,7 +67,7 @@ func TestVMSizeSupportsGen2(t *testing.T) {
 		},
 		{
 			name:     "Standard_A2 should not support Gen2",
-			vmSize:   "Standard_A2",
+			vmSize:   testVMSizeGen1,
 			expected: false,
 		},
 		{
@@ -125,14 +130,14 @@ func TestValidateSecurityProfile(t *testing.T) {
 	}{
 		{
 			name:        "nil SecurityProfile passes",
-			config:      &config{VMSize: "Standard_D2s_v3"},
+			config:      &config{VMSize: testVMSizeGen2},
 			sku:         gen2SKU(),
 			expectError: false,
 		},
 		{
 			name: "empty SecurityProfile (zero value) fails with empty securityType error",
 			config: &config{
-				VMSize:          "Standard_D2s_v3",
+				VMSize:          testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{},
 			},
 			sku:         gen2SKU(),
@@ -141,7 +146,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "UEFI settings without securityType fails",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					UefiSettings: &compute.UefiSettings{
 						SecureBootEnabled: ptr.To(true),
@@ -154,7 +159,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "invalid securityType ConfidentialVM fails",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypesConfidentialVM,
 				},
@@ -165,7 +170,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "garbage securityType fails",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypes("Nonsense"),
 				},
@@ -176,7 +181,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "lowercase trustedlaunch fails (case-sensitive)",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypes("trustedlaunch"),
 				},
@@ -187,7 +192,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "lowercase standard fails (case-sensitive)",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypes("standard"),
 				},
@@ -198,7 +203,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "TrustedLaunch on non-Gen2 SKU fails",
 			config: &config{
-				VMSize: "Standard_A2",
+				VMSize: testVMSizeGen1,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypesTrustedLaunch,
 				},
@@ -209,7 +214,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "TrustedLaunch on SKU without HyperVGenerations capability fails",
 			config: &config{
-				VMSize: "Standard_A2",
+				VMSize: testVMSizeGen1,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypesTrustedLaunch,
 				},
@@ -220,7 +225,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "TrustedLaunch on Gen2-only SKU passes",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypesTrustedLaunch,
 				},
@@ -231,7 +236,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "TrustedLaunch on Gen2 SKU with no UefiSettings passes (Azure applies defaults)",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypesTrustedLaunch,
 				},
@@ -242,7 +247,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "TrustedLaunch with only secureBootEnabled set passes",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypesTrustedLaunch,
 					UefiSettings: &compute.UefiSettings{
@@ -256,7 +261,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "TrustedLaunch with only vTpmEnabled set passes",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypesTrustedLaunch,
 					UefiSettings: &compute.UefiSettings{
@@ -270,7 +275,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "TrustedLaunch with secureBoot and vTpm both false passes",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypesTrustedLaunch,
 					UefiSettings: &compute.UefiSettings{
@@ -285,7 +290,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "TrustedLaunch with both UEFI settings true passes",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypesTrustedLaunch,
 					UefiSettings: &compute.UefiSettings{
@@ -300,7 +305,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "Standard on Gen2 SKU passes",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: securityTypeStandard,
 				},
@@ -311,7 +316,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "Standard on Gen1 SKU passes",
 			config: &config{
-				VMSize: "Standard_A2",
+				VMSize: testVMSizeGen1,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: securityTypeStandard,
 				},
@@ -322,7 +327,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "Standard with empty UefiSettings (both nil) passes",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: securityTypeStandard,
 					UefiSettings: &compute.UefiSettings{},
@@ -334,7 +339,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "Standard with secureBootEnabled fails",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: securityTypeStandard,
 					UefiSettings: &compute.UefiSettings{
@@ -348,7 +353,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "Standard with vTpmEnabled fails",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: securityTypeStandard,
 					UefiSettings: &compute.UefiSettings{
@@ -362,7 +367,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 		{
 			name: "Standard with secureBootEnabled false fails (any non-nil pointer)",
 			config: &config{
-				VMSize: "Standard_D2s_v3",
+				VMSize: testVMSizeGen2,
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: securityTypeStandard,
 					UefiSettings: &compute.UefiSettings{
