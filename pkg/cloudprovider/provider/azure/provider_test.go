@@ -22,6 +22,11 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/google/go-cmp/cmp"
+
+	"k8s.io/utils/ptr"
+
+	azuretypes "k8c.io/machine-controller/sdk/cloudprovider/azure"
 )
 
 func TestVMSizeSupportsGen2(t *testing.T) {
@@ -92,25 +97,26 @@ func TestVMSizeSupportsGen2(t *testing.T) {
 	}
 }
 
-func gen2SKU() compute.ResourceSku {
+func skuWithHyperVGenerations(generations string) compute.ResourceSku {
 	return compute.ResourceSku{
 		Capabilities: &[]compute.ResourceSkuCapabilities{
-			{Name: to.StringPtr("HyperVGenerations"), Value: to.StringPtr("V1,V2")},
+			{Name: to.StringPtr("HyperVGenerations"), Value: to.StringPtr(generations)},
 		},
 	}
 }
 
-func gen1OnlySKU() compute.ResourceSku {
+func gen2SKU() compute.ResourceSku     { return skuWithHyperVGenerations("V1,V2") }
+func gen2OnlySKU() compute.ResourceSku { return skuWithHyperVGenerations("V2") }
+func gen1OnlySKU() compute.ResourceSku { return skuWithHyperVGenerations("V1") }
+func skuWithoutGenCap() compute.ResourceSku {
 	return compute.ResourceSku{
 		Capabilities: &[]compute.ResourceSkuCapabilities{
-			{Name: to.StringPtr("HyperVGenerations"), Value: to.StringPtr("V1")},
+			{Name: to.StringPtr("vCPUs"), Value: to.StringPtr("2")},
 		},
 	}
 }
 
 func TestValidateSecurityProfile(t *testing.T) {
-	boolTrue := true
-
 	tests := []struct {
 		name        string
 		config      *config
@@ -124,12 +130,21 @@ func TestValidateSecurityProfile(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name: "empty SecurityProfile (zero value) fails with empty securityType error",
+			config: &config{
+				VMSize:          "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{},
+			},
+			sku:         gen2SKU(),
+			expectError: true,
+		},
+		{
 			name: "UEFI settings without securityType fails",
 			config: &config{
 				VMSize: "Standard_D2s_v3",
 				SecurityProfile: &compute.SecurityProfile{
 					UefiSettings: &compute.UefiSettings{
-						SecureBootEnabled: &boolTrue,
+						SecureBootEnabled: ptr.To(true),
 					},
 				},
 			},
@@ -159,6 +174,28 @@ func TestValidateSecurityProfile(t *testing.T) {
 			expectError: true,
 		},
 		{
+			name: "lowercase trustedlaunch fails (case-sensitive)",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypes("trustedlaunch"),
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: true,
+		},
+		{
+			name: "lowercase standard fails (case-sensitive)",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypes("standard"),
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: true,
+		},
+		{
 			name: "TrustedLaunch on non-Gen2 SKU fails",
 			config: &config{
 				VMSize: "Standard_A2",
@@ -170,14 +207,90 @@ func TestValidateSecurityProfile(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "TrustedLaunch on Gen2 SKU passes",
+			name: "TrustedLaunch on SKU without HyperVGenerations capability fails",
+			config: &config{
+				VMSize: "Standard_A2",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypesTrustedLaunch,
+				},
+			},
+			sku:         skuWithoutGenCap(),
+			expectError: true,
+		},
+		{
+			name: "TrustedLaunch on Gen2-only SKU passes",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypesTrustedLaunch,
+				},
+			},
+			sku:         gen2OnlySKU(),
+			expectError: false,
+		},
+		{
+			name: "TrustedLaunch on Gen2 SKU with no UefiSettings passes (Azure applies defaults)",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypesTrustedLaunch,
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: false,
+		},
+		{
+			name: "TrustedLaunch with only secureBootEnabled set passes",
 			config: &config{
 				VMSize: "Standard_D2s_v3",
 				SecurityProfile: &compute.SecurityProfile{
 					SecurityType: compute.SecurityTypesTrustedLaunch,
 					UefiSettings: &compute.UefiSettings{
-						SecureBootEnabled: &boolTrue,
-						VTpmEnabled:       &boolTrue,
+						SecureBootEnabled: ptr.To(true),
+					},
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: false,
+		},
+		{
+			name: "TrustedLaunch with only vTpmEnabled set passes",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypesTrustedLaunch,
+					UefiSettings: &compute.UefiSettings{
+						VTpmEnabled: ptr.To(true),
+					},
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: false,
+		},
+		{
+			name: "TrustedLaunch with secureBoot and vTpm both false passes",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypesTrustedLaunch,
+					UefiSettings: &compute.UefiSettings{
+						SecureBootEnabled: ptr.To(false),
+						VTpmEnabled:       ptr.To(false),
+					},
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: false,
+		},
+		{
+			name: "TrustedLaunch with both UEFI settings true passes",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: compute.SecurityTypesTrustedLaunch,
+					UefiSettings: &compute.UefiSettings{
+						SecureBootEnabled: ptr.To(true),
+						VTpmEnabled:       ptr.To(true),
 					},
 				},
 			},
@@ -189,7 +302,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 			config: &config{
 				VMSize: "Standard_D2s_v3",
 				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypes("Standard"),
+					SecurityType: securityTypeStandard,
 				},
 			},
 			sku:         gen2SKU(),
@@ -200,10 +313,22 @@ func TestValidateSecurityProfile(t *testing.T) {
 			config: &config{
 				VMSize: "Standard_A2",
 				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypes("Standard"),
+					SecurityType: securityTypeStandard,
 				},
 			},
 			sku:         gen1OnlySKU(),
+			expectError: false,
+		},
+		{
+			name: "Standard with empty UefiSettings (both nil) passes",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: securityTypeStandard,
+					UefiSettings: &compute.UefiSettings{},
+				},
+			},
+			sku:         gen2SKU(),
 			expectError: false,
 		},
 		{
@@ -211,9 +336,9 @@ func TestValidateSecurityProfile(t *testing.T) {
 			config: &config{
 				VMSize: "Standard_D2s_v3",
 				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypes("Standard"),
+					SecurityType: securityTypeStandard,
 					UefiSettings: &compute.UefiSettings{
-						SecureBootEnabled: &boolTrue,
+						SecureBootEnabled: ptr.To(true),
 					},
 				},
 			},
@@ -225,9 +350,23 @@ func TestValidateSecurityProfile(t *testing.T) {
 			config: &config{
 				VMSize: "Standard_D2s_v3",
 				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypes("Standard"),
+					SecurityType: securityTypeStandard,
 					UefiSettings: &compute.UefiSettings{
-						VTpmEnabled: &boolTrue,
+						VTpmEnabled: ptr.To(true),
+					},
+				},
+			},
+			sku:         gen2SKU(),
+			expectError: true,
+		},
+		{
+			name: "Standard with secureBootEnabled false fails (any non-nil pointer)",
+			config: &config{
+				VMSize: "Standard_D2s_v3",
+				SecurityProfile: &compute.SecurityProfile{
+					SecurityType: securityTypeStandard,
+					UefiSettings: &compute.UefiSettings{
+						SecureBootEnabled: ptr.To(false),
 					},
 				},
 			},
@@ -241,6 +380,102 @@ func TestValidateSecurityProfile(t *testing.T) {
 			err := validateSecurityProfile(context.Background(), tt.config, tt.sku)
 			if (err != nil) != tt.expectError {
 				t.Errorf("validateSecurityProfile() error = %v, expectError %v", err, tt.expectError)
+			}
+		})
+	}
+}
+
+func TestBuildSecurityProfile(t *testing.T) {
+	tests := []struct {
+		name     string
+		raw      *azuretypes.SecurityProfile
+		expected *compute.SecurityProfile
+	}{
+		{
+			name:     "nil raw returns nil",
+			raw:      nil,
+			expected: nil,
+		},
+		{
+			name:     "empty raw returns empty SecurityProfile (caught by validator)",
+			raw:      &azuretypes.SecurityProfile{},
+			expected: &compute.SecurityProfile{},
+		},
+		{
+			name: "only securityType set",
+			raw:  &azuretypes.SecurityProfile{SecurityType: "TrustedLaunch"},
+			expected: &compute.SecurityProfile{
+				SecurityType: compute.SecurityTypes("TrustedLaunch"),
+			},
+		},
+		{
+			name: "only secureBootEnabled set (no securityType) constructs UefiSettings, validator rejects later",
+			raw:  &azuretypes.SecurityProfile{SecureBootEnabled: ptr.To(true)},
+			expected: &compute.SecurityProfile{
+				UefiSettings: &compute.UefiSettings{
+					SecureBootEnabled: ptr.To(true),
+				},
+			},
+		},
+		{
+			name: "only vTpmEnabled set constructs UefiSettings",
+			raw:  &azuretypes.SecurityProfile{VTpmEnabled: ptr.To(true)},
+			expected: &compute.SecurityProfile{
+				UefiSettings: &compute.UefiSettings{
+					VTpmEnabled: ptr.To(true),
+				},
+			},
+		},
+		{
+			name: "both UEFI flags set, no securityType",
+			raw: &azuretypes.SecurityProfile{
+				SecureBootEnabled: ptr.To(true),
+				VTpmEnabled:       ptr.To(false),
+			},
+			expected: &compute.SecurityProfile{
+				UefiSettings: &compute.UefiSettings{
+					SecureBootEnabled: ptr.To(true),
+					VTpmEnabled:       ptr.To(false),
+				},
+			},
+		},
+		{
+			name: "fully populated TrustedLaunch",
+			raw: &azuretypes.SecurityProfile{
+				SecurityType:      "TrustedLaunch",
+				SecureBootEnabled: ptr.To(true),
+				VTpmEnabled:       ptr.To(true),
+			},
+			expected: &compute.SecurityProfile{
+				SecurityType: compute.SecurityTypes("TrustedLaunch"),
+				UefiSettings: &compute.UefiSettings{
+					SecureBootEnabled: ptr.To(true),
+					VTpmEnabled:       ptr.To(true),
+				},
+			},
+		},
+		{
+			name: "Standard with both UEFI flags (validator will reject) is still constructed",
+			raw: &azuretypes.SecurityProfile{
+				SecurityType:      "Standard",
+				SecureBootEnabled: ptr.To(false),
+				VTpmEnabled:       ptr.To(false),
+			},
+			expected: &compute.SecurityProfile{
+				SecurityType: securityTypeStandard,
+				UefiSettings: &compute.UefiSettings{
+					SecureBootEnabled: ptr.To(false),
+					VTpmEnabled:       ptr.To(false),
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := buildSecurityProfile(tt.raw)
+			if diff := cmp.Diff(tt.expected, got); diff != "" {
+				t.Errorf("buildSecurityProfile() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
