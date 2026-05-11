@@ -1041,16 +1041,19 @@ func buildSecurityProfile(raw *azuretypes.SecurityProfile) *compute.SecurityProf
 	if raw == nil {
 		return nil
 	}
+
 	sp := &compute.SecurityProfile{}
 	if raw.SecurityType != "" {
 		sp.SecurityType = compute.SecurityTypes(raw.SecurityType)
 	}
+
 	if raw.SecureBootEnabled != nil || raw.VTpmEnabled != nil {
 		sp.UefiSettings = &compute.UefiSettings{
 			SecureBootEnabled: raw.SecureBootEnabled,
 			VTpmEnabled:       raw.VTpmEnabled,
 		}
 	}
+
 	return sp
 }
 
