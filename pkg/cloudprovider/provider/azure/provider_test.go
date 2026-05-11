@@ -24,9 +24,9 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/google/go-cmp/cmp"
 
-	"k8s.io/utils/ptr"
-
 	azuretypes "k8c.io/machine-controller/sdk/cloudprovider/azure"
+
+	"k8s.io/utils/ptr"
 )
 
 func TestVMSizeSupportsGen2(t *testing.T) {
