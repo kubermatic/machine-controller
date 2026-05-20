@@ -46,7 +46,7 @@ postsubmits:
               memory: 1Gi
 
   - name: post-machine-controller-mirror-images
-    run_if_changed: "^(pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client/mirror-images\\.yaml|hack/mirror-images\\.sh)$"
+    run_if_changed: "^(pkg/mirror/mirror-images\\.yaml|hack/mirror-images\\.sh)$"
     branches:
       - ^main$
     decorate: true

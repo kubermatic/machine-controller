@@ -19,7 +19,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 source hack/lib.sh
 
-MANIFEST_FILE="${MANIFEST_FILE:-pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client/mirror-images.yaml}"
+MANIFEST_FILE="${MANIFEST_FILE:-pkg/mirror/mirror-images.yaml}"
 SHA_RE='^sha256:[a-f0-9]{64}$'
 
 echodate "Validating ${MANIFEST_FILE}..."

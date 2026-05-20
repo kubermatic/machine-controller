@@ -19,7 +19,7 @@ set -eo pipefail
 # Defaults; environment may override.
 REGISTRY_HOST="${REGISTRY_HOST:-quay.io}"
 REPOSITORY_PREFIX="${REPOSITORY_PREFIX:-kubermatic-mirror/images}"
-MANIFEST_FILE="${MANIFEST_FILE:-pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client/mirror-images.yaml}"
+MANIFEST_FILE="${MANIFEST_FILE:-pkg/mirror/mirror-images.yaml}"
 
 set -u
 
