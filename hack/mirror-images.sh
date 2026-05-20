@@ -19,7 +19,7 @@ set -eo pipefail
 # Defaults; environment may override.
 REGISTRY_HOST="${REGISTRY_HOST:-quay.io}"
 REPOSITORY_PREFIX="${REPOSITORY_PREFIX:-kubermatic-mirror/images}"
-MANIFEST_FILE="${MANIFEST_FILE:-hack/mirror-images.yaml}"
+MANIFEST_FILE="${MANIFEST_FILE:-pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client/mirror-images.yaml}"
 
 set -u
 
@@ -30,7 +30,7 @@ usage() {
   echo "  With a key, mirrors only that one image."
   echo
   echo "Environment overrides: REGISTRY_HOST, REPOSITORY_PREFIX, MANIFEST_FILE,"
-  echo "                       REGISTRY_USER, REGISTRY_PASSWORD (skip Vault)."
+  echo "                       QUAY_IO_USERNAME, QUAY_IO_PASSWORD (skip Vault)."
   exit 1
 }
 
@@ -59,14 +59,14 @@ login_vault() {
 
 # --- Registry login ----------------------------------------------------------
 login_registry() {
-  # allow caller to pass credentials directly (e.g. tests)
-  if [ -z "${REGISTRY_USER:-}" ] || [ -z "${REGISTRY_PASSWORD:-}" ]; then
+  if [ -z "${QUAY_IO_USERNAME:-}" ] || [ -z "${QUAY_IO_PASSWORD:-}" ]; then
+    echo "WARNING: Using read-only ${REGISTRY_HOST} registry credentials from Vault -- for local testing only!"
     login_vault
-    REGISTRY_USER="${REGISTRY_USER:-$(vault kv get -field=username dev/kubermatic-mirror-quay.io)}"
-    REGISTRY_PASSWORD="${REGISTRY_PASSWORD:-$(vault kv get -field=password dev/kubermatic-mirror-quay.io)}"
+    : "${QUAY_IO_USERNAME:=$(vault kv get -field=username dev/kubermatic-mirror-quay.io)}"
+    : "${QUAY_IO_PASSWORD:=$(vault kv get -field=password dev/kubermatic-mirror-quay.io)}"
   fi
 
-  crane auth login "${REGISTRY_HOST}" --username "${REGISTRY_USER}" --password-stdin <<< "${REGISTRY_PASSWORD}"
+  crane auth login "${REGISTRY_HOST}" --username "${QUAY_IO_USERNAME}" --password-stdin <<< "${QUAY_IO_PASSWORD}"
 }
 
 # --- Existence check ---------------------------------------------------------

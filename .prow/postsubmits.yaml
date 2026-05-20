@@ -46,7 +46,7 @@ postsubmits:
               memory: 1Gi
 
   - name: post-machine-controller-mirror-images
-    run_if_changed: "^hack/mirror-images\\.(yaml|sh)$"
+    run_if_changed: "^(pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client/mirror-images\\.yaml|hack/mirror-images\\.sh)$"
     branches:
       - ^main$
     decorate: true
@@ -54,6 +54,8 @@ postsubmits:
     path_alias: k8c.io/machine-controller
     labels:
       preset-vault: "true"
+      preset-docker-mirror: "true"
+      preset-docker-push-kubermatic: "true"
     spec:
       containers:
         - image: quay.io/kubermatic/build:go-1.25-node-22-kind-0.30-8

@@ -62,18 +62,6 @@ const (
 	ProvisionWorkerNodeTemplate = "provision-worker-node"
 	PartitionNumber             = "{{.partition_number}}"
 	OSImageURL                  = "{{.os_image}}"
-
-	// Container images mirrored from upstream registries to quay.io/kubermatic-mirror.
-	// Digests are pinned in hack/mirror-images.yaml. Update these constants together
-	// with the YAML; the post-machine-controller-mirror-images postsubmit pushes the
-	// new digest on merge.
-	imageAlpine                  = "quay.io/kubermatic-mirror/images/alpine@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11"
-	imageTinkerbellImage2Disk    = "quay.io/kubermatic-mirror/images/tinkerbell-actions/image2disk@sha256:5584faf90ca13e30b35a34423364468b109807eccafaab5820d3f549e6c25240"
-	imageTinkerbellCexecPinned   = "quay.io/kubermatic-mirror/images/tinkerbell/actions/cexec-pinned@sha256:8ee8cae95c8762847ced09370fc5ecc9853fc83a26a3e4242f3f6efa813841fc"
-	imageTinkerbellWriteFile     = "quay.io/kubermatic-mirror/images/tinkerbell-actions/writefile@sha256:30899f69c1710eedeccede260fa2e840a5775335874d7fb72b7a260d4adac620"
-	imageTinkerbellActionsCexec  = "quay.io/kubermatic-mirror/images/tinkerbell-actions/cexec@sha256:57f775a8cbeda334221edd890e715310f367b3436280a52f15ac698de4784376"
-	imageTinkerbellCexecResolved = "quay.io/kubermatic-mirror/images/tinkerbell/actions/cexec-latest-resolved@sha256:86d490ea9d5a27d0d11c1df812fdec49877e58e5076c4d5c0417d1a6dac530a9"
-	imageWaitDaemon              = "quay.io/kubermatic-mirror/images/jacobweinstock/waitdaemon@sha256:907249ea6a9de0225f8aa583d9d8a92a5b77a89ab83d01b607a0051e0913dea5"
 )
 
 // TemplateClient handles interactions with the Tinkerbell Templates in the Tinkerbell cluster.
@@ -184,7 +172,7 @@ echo "All partitions on ${disks} have been wiped."
 `
 	return Action{
 		Name:    "wipe-disk",
-		Image:   imageAlpine,
+		Image:   mirrorImage("alpine"),
 		Timeout: 600,
 		Command: []string{"/bin/sh", "-c", wipeScript},
 	}
@@ -193,7 +181,7 @@ echo "All partitions on ${disks} have been wiped."
 func createStreamUbuntuImageAction(destDisk, osImageURL string) Action {
 	return Action{
 		Name:    "stream-ubuntu-image",
-		Image:   imageTinkerbellImage2Disk,
+		Image:   mirrorImage("tinkerbell-actions/image2disk"),
 		Timeout: 600,
 		Environment: map[string]string{
 			"DEST_DISK":  destDisk,
@@ -206,7 +194,7 @@ func createStreamUbuntuImageAction(destDisk, osImageURL string) Action {
 func createGrowPartitionAction(destDisk string) Action {
 	return Action{
 		Name:    "grow-partition",
-		Image:   imageTinkerbellCexecPinned,
+		Image:   mirrorImage("tinkerbell/actions/cexec-pinned"),
 		Timeout: 90,
 		Environment: map[string]string{
 			"BLOCK_DEVICE":        "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
@@ -236,7 +224,7 @@ network:
         via: {{.default_route}}`
 	return Action{
 		Name:    "add-netplan-config",
-		Image:   imageTinkerbellWriteFile,
+		Image:   mirrorImage("tinkerbell-actions/writefile"),
 		Timeout: 90,
 		Environment: map[string]string{
 			"DEST_DISK": "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
@@ -261,7 +249,7 @@ echo 'local-hostname: {{.hardware_name}}' >> /var/lib/cloud/seed/nocloud/meta-da
 
 	return Action{
 		Name:    "configure-cloud-init",
-		Image:   imageTinkerbellActionsCexec,
+		Image:   mirrorImage("tinkerbell-actions/cexec"),
 		Timeout: 90,
 		Environment: map[string]string{
 			"BLOCK_DEVICE":        "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
@@ -276,7 +264,7 @@ echo 'local-hostname: {{.hardware_name}}' >> /var/lib/cloud/seed/nocloud/meta-da
 func decodeCloudInitFile(hardwareName string) Action {
 	return Action{
 		Name:    "decode-cloud-init-file",
-		Image:   imageTinkerbellCexecResolved,
+		Image:   mirrorImage("tinkerbell/actions/cexec-latest-resolved"),
 		Timeout: 90,
 		Environment: map[string]string{
 			"BLOCK_DEVICE":        "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
@@ -291,12 +279,12 @@ func decodeCloudInitFile(hardwareName string) Action {
 func createRebootAction() Action {
 	return Action{
 		Name:    "reboot-action",
-		Image:   imageWaitDaemon,
+		Image:   mirrorImage("jacobweinstock/waitdaemon"),
 		Pid:     "host",
 		Timeout: 90,
 		Command: []string{"reboot"},
 		Environment: map[string]string{
-			"IMAGE":        imageAlpine,
+			"IMAGE":        mirrorImage("alpine"),
 			"WAIT_SECONDS": "10",
 		},
 		Volumes: []string{

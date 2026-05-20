@@ -15,7 +15,7 @@
 presubmits:
   - name: pull-machine-controller-validate-mirror-images
     always_run: false
-    run_if_changed: "^(hack/mirror-images\\.yaml|pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client/template\\.go)$"
+    run_if_changed: "^pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client/mirror-images\\.yaml$"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     path_alias: k8c.io/machine-controller
