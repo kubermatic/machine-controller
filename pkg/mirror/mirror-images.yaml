@@ -1,0 +1,48 @@
+# Copyright 2026 The Machine Controller Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Images mirrored to quay.io/kubermatic-mirror/images/<key>@<version>.
+#
+# - `source`: upstream registry path. Must NOT include a tag or digest (no ":", no "@").
+# - `version`: must be a sha256 digest (sha256:<64-hex>). Tags, semver, "latest" forbidden.
+# - The comment above each entry records the human-readable tag the digest was resolved from
+#   (use `crane digest <source>:<tag>` to resolve). The comment is informational only.
+# - The map key (e.g. "tinkerbell/actions/cexec") becomes the destination path segment
+#   under quay.io/kubermatic-mirror/images/.
+
+images:
+  alpine:
+    source: docker.io/library/alpine
+    # alpine:3.23
+    version: sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
+
+  tinkerbell/actions/image2disk:
+    source: quay.io/tinkerbell/actions/image2disk
+    # 2a7c298fe0292737371ca11913e3c0c3bf794981
+    version: sha256:4df1274b1a14757fca4b9648429d698336d14e58ff2142cd7f61270590d99db4
+
+  tinkerbell/actions/cexec:
+    source: quay.io/tinkerbell/actions/cexec
+    # 2a7c298fe0292737371ca11913e3c0c3bf794981
+    version: sha256:86d490ea9d5a27d0d11c1df812fdec49877e58e5076c4d5c0417d1a6dac530a9
+
+  tinkerbell/actions/writefile:
+    source: quay.io/tinkerbell/actions/writefile
+    # 2a7c298fe0292737371ca11913e3c0c3bf794981
+    version: sha256:bd3dcbf4c4a302025013bd552cc007658794d3953bdb870b952ff7a83eac3ca6
+
+  jacobweinstock/waitdaemon:
+    source: ghcr.io/jacobweinstock/waitdaemon
+    # 0.4.3
+    version: sha256:8535eca0df48bb46f523b6a3ec3d9fff925212777f1a2be56436a62495ee1e79
