@@ -45,6 +45,27 @@ postsubmits:
               cpu: 2
               memory: 1Gi
 
+  - name: post-machine-controller-mirror-images
+    run_if_changed: "^(pkg/mirror/mirror-images\\.yaml|hack/mirror-images\\.sh)$"
+    branches:
+      - ^main$
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    path_alias: k8c.io/machine-controller
+    labels:
+      preset-vault: "true"
+      preset-docker-mirror: "true"
+      preset-docker-push-kubermatic: "true"
+    spec:
+      containers:
+        - image: quay.io/kubermatic/build:go-1.25-node-22-kind-0.30-8
+          command:
+            - "./hack/mirror-images.sh"
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 200m
+
   - name: ci-push-machine-controller-upload-gocache
     always_run: true
     decorate: true
