@@ -13,6 +13,22 @@
 # limitations under the License.
 
 presubmits:
+  - name: pull-machine-controller-validate-mirror-images
+    always_run: false
+    run_if_changed: "^hack/mirror-images\\.yaml$"
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    path_alias: k8c.io/machine-controller
+    spec:
+      containers:
+        - image: quay.io/kubermatic/build:go-1.25-node-22-8
+          command:
+            - "./hack/ci/validate-mirror-images.sh"
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+
   - name: pull-machine-controller-build
     always_run: true
     decorate: true

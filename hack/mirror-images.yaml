@@ -1,0 +1,60 @@
+# Copyright 2026 The Machine Controller Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Images mirrored to quay.io/kubermatic-mirror/images/<key>@<version>.
+#
+# - `source`: upstream registry path. Must NOT include a tag or digest (no ":", no "@").
+# - `version`: must be a sha256 digest (sha256:<64-hex>). Tags, semver, "latest" forbidden.
+# - The comment above each entry records the human-readable tag the digest was resolved from
+#   (use `crane digest <source>:<tag>` to resolve). The comment is informational only.
+# - The map key (e.g. "tinkerbell-actions/image2disk") becomes the destination path segment
+#   under quay.io/kubermatic-mirror/images/.
+
+images:
+  alpine:
+    source: docker.io/library/alpine
+    # alpine:3.23
+    version: sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
+
+  tinkerbell-actions/image2disk:
+    source: quay.io/tinkerbell-actions/image2disk
+    # v1.0.0
+    version: sha256:5584faf90ca13e30b35a34423364468b109807eccafaab5820d3f549e6c25240
+
+  tinkerbell/actions/cexec-pinned:
+    source: quay.io/tinkerbell/actions/cexec
+    # c5bde803d9f6c90f1a9d5e06930d856d1481854c
+    version: sha256:8ee8cae95c8762847ced09370fc5ecc9853fc83a26a3e4242f3f6efa813841fc
+
+  tinkerbell-actions/writefile:
+    source: quay.io/tinkerbell-actions/writefile
+    # v1.0.0
+    version: sha256:30899f69c1710eedeccede260fa2e840a5775335874d7fb72b7a260d4adac620
+
+  tinkerbell-actions/cexec:
+    source: quay.io/tinkerbell-actions/cexec
+    # v1.0.0
+    version: sha256:57f775a8cbeda334221edd890e715310f367b3436280a52f15ac698de4784376
+
+  tinkerbell/actions/cexec-latest-resolved:
+    source: quay.io/tinkerbell/actions/cexec
+    # resolved from upstream :latest on 2026-05-20
+    # NOTE: re-resolving :latest later will produce a different digest.
+    # This entry pins to one specific resolution. Update intentionally.
+    version: sha256:86d490ea9d5a27d0d11c1df812fdec49877e58e5076c4d5c0417d1a6dac530a9
+
+  jacobweinstock/waitdaemon:
+    source: ghcr.io/jacobweinstock/waitdaemon
+    # 0.1.1
+    version: sha256:907249ea6a9de0225f8aa583d9d8a92a5b77a89ab83d01b607a0051e0913dea5
