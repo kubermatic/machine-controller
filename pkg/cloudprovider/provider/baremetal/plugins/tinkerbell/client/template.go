@@ -183,7 +183,7 @@ echo "All partitions on ${disks} have been wiped."
 func createStreamUbuntuImageAction(destDisk, osImageURL string) Action {
 	return Action{
 		Name:    "stream-ubuntu-image",
-		Image:   mirror.Image("tinkerbell-actions/image2disk"),
+		Image:   mirror.Image("tinkerbell/actions/image2disk"),
 		Timeout: 600,
 		Environment: map[string]string{
 			"DEST_DISK":  destDisk,
@@ -196,7 +196,7 @@ func createStreamUbuntuImageAction(destDisk, osImageURL string) Action {
 func createGrowPartitionAction(destDisk string) Action {
 	return Action{
 		Name:    "grow-partition",
-		Image:   mirror.Image("tinkerbell/actions/cexec-pinned"),
+		Image:   mirror.Image("tinkerbell/actions/cexec"),
 		Timeout: 90,
 		Environment: map[string]string{
 			"BLOCK_DEVICE":        "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
@@ -226,7 +226,7 @@ network:
         via: {{.default_route}}`
 	return Action{
 		Name:    "add-netplan-config",
-		Image:   mirror.Image("tinkerbell-actions/writefile"),
+		Image:   mirror.Image("tinkerbell/actions/writefile"),
 		Timeout: 90,
 		Environment: map[string]string{
 			"DEST_DISK": "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
@@ -251,7 +251,7 @@ echo 'local-hostname: {{.hardware_name}}' >> /var/lib/cloud/seed/nocloud/meta-da
 
 	return Action{
 		Name:    "configure-cloud-init",
-		Image:   mirror.Image("tinkerbell-actions/cexec"),
+		Image:   mirror.Image("tinkerbell/actions/cexec"),
 		Timeout: 90,
 		Environment: map[string]string{
 			"BLOCK_DEVICE":        "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
@@ -266,7 +266,7 @@ echo 'local-hostname: {{.hardware_name}}' >> /var/lib/cloud/seed/nocloud/meta-da
 func decodeCloudInitFile(hardwareName string) Action {
 	return Action{
 		Name:    "decode-cloud-init-file",
-		Image:   mirror.Image("tinkerbell/actions/cexec-latest-resolved"),
+		Image:   mirror.Image("tinkerbell/actions/cexec"),
 		Timeout: 90,
 		Environment: map[string]string{
 			"BLOCK_DEVICE":        "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
