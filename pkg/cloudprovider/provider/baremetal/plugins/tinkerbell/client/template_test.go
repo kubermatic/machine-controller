@@ -29,11 +29,9 @@ import (
 // surface only when ProvisionServer runs. Catch it here instead.
 var tinkerbellImageKeys = []string{
 	"alpine",
-	"tinkerbell-actions/image2disk",
-	"tinkerbell/actions/cexec-pinned",
-	"tinkerbell-actions/writefile",
-	"tinkerbell-actions/cexec",
-	"tinkerbell/actions/cexec-latest-resolved",
+	"tinkerbell/actions/image2disk",
+	"tinkerbell/actions/cexec",
+	"tinkerbell/actions/writefile",
 	"jacobweinstock/waitdaemon",
 }
 
