@@ -12,37 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Images mirrored to quay.io/kubermatic-mirror/images/<key>@<version>.
+# Images mirrored to quay.io/kubermatic-mirror/images/<key>:<tag>.
 #
 # - `source`: upstream registry path. Must NOT include a tag or digest (no ":", no "@").
 # - `version`: must be a sha256 digest (sha256:<64-hex>). Tags, semver, "latest" forbidden.
-# - The comment above each entry records the human-readable tag the digest was resolved from
-#   (use `crane digest <source>:<tag>` to resolve). The comment is informational only.
+#   The upstream pull is always by digest (anti-tamper).
+# - `tag`: the human-readable tag that resolves to `version` upstream. The mirrored image
+#   is published under this tag in quay.io/kubermatic-mirror so it is browsable in the
+#   Quay UI. Format is whatever upstream uses (semver, git commit SHA, etc.) -- must
+#   match the OCI tag regex [a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}.
 # - The map key (e.g. "tinkerbell/actions/cexec") becomes the destination path segment
 #   under quay.io/kubermatic-mirror/images/.
 
 images:
   alpine:
     source: docker.io/library/alpine
-    # alpine:3.23
+    tag: "3.23"
     version: sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
 
   tinkerbell/actions/image2disk:
     source: quay.io/tinkerbell/actions/image2disk
-    # 2a7c298fe0292737371ca11913e3c0c3bf794981
+    tag: "2a7c298fe0292737371ca11913e3c0c3bf794981"
     version: sha256:4df1274b1a14757fca4b9648429d698336d14e58ff2142cd7f61270590d99db4
 
   tinkerbell/actions/cexec:
     source: quay.io/tinkerbell/actions/cexec
-    # 2a7c298fe0292737371ca11913e3c0c3bf794981
+    tag: "2a7c298fe0292737371ca11913e3c0c3bf794981"
     version: sha256:86d490ea9d5a27d0d11c1df812fdec49877e58e5076c4d5c0417d1a6dac530a9
 
   tinkerbell/actions/writefile:
     source: quay.io/tinkerbell/actions/writefile
-    # 2a7c298fe0292737371ca11913e3c0c3bf794981
+    tag: "2a7c298fe0292737371ca11913e3c0c3bf794981"
     version: sha256:bd3dcbf4c4a302025013bd552cc007658794d3953bdb870b952ff7a83eac3ca6
 
   jacobweinstock/waitdaemon:
     source: ghcr.io/jacobweinstock/waitdaemon
-    # 0.4.3
+    tag: "0.4.3"
     version: sha256:8535eca0df48bb46f523b6a3ec3d9fff925212777f1a2be56436a62495ee1e79
