@@ -58,9 +58,12 @@ login_vault() {
 }
 
 # --- Registry login ----------------------------------------------------------
+# Resolves push credentials from the secret store when not already provided
+# via env. QUAY_IO_USERNAME/QUAY_IO_PASSWORD must NOT be pre-populated by the
+# job spec with credentials scoped to a different organization -- doing so
+# bypasses this lookup and causes pushes to fail with 403 UNAUTHORIZED.
 login_registry() {
   if [ -z "${QUAY_IO_USERNAME:-}" ] || [ -z "${QUAY_IO_PASSWORD:-}" ]; then
-    echo "WARNING: Using read-only ${REGISTRY_HOST} registry credentials from Vault -- for local testing only!"
     login_vault
     : "${QUAY_IO_USERNAME:=$(vault kv get -field=username dev/kubermatic-mirror-quay.io)}"
     : "${QUAY_IO_PASSWORD:=$(vault kv get -field=password dev/kubermatic-mirror-quay.io)}"
