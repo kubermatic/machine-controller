@@ -21,15 +21,36 @@ source hack/lib.sh
 
 MANIFEST_FILE="${MANIFEST_FILE:-pkg/mirror/mirror-images.yaml}"
 SHA_RE='^sha256:[a-f0-9]{64}$'
+# OCI distribution spec: tag must match [a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}.
+TAG_RE='^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$'
 
 echodate "Validating ${MANIFEST_FILE}..."
 
+# Ensure yq is installed
 command -v yq > /dev/null || {
-  echo "ERROR: yq not installed"
+  echo "ERROR: yq not installed."
   exit 1
 }
+
+# Ensure we are using mikefarah/yq (Go version), not kislyuk/yq (Python version)
+if yq --version 2>&1 | grep -q "jq wrapper"; then
+  echo "ERROR: Detected Python 'yq' (kislyuk/yq). This script requires the Go version of 'yq' (mikefarah/yq v4+)."
+  exit 1
+fi
+
 [[ -f "$MANIFEST_FILE" ]] || {
   echo "ERROR: ${MANIFEST_FILE} not found"
+  exit 1
+}
+
+# fail fast on malformed YAML; process substitution swallows yq errors otherwise.
+yq 'true' "$MANIFEST_FILE" > /dev/null
+
+fail_if() {
+  local message="$1" offenders="$2"
+  [[ -z "$offenders" ]] && return 0
+  echo "ERROR: ${message}"
+  echo "$offenders" | sed 's/^/  - /'
   exit 1
 }
 
@@ -41,26 +62,29 @@ if [[ "$count" == "0" || "$count" == "null" ]]; then
 fi
 echodate "  ${count} entries found"
 
-# every entry needs both source and version fields.
-missing=$(yq -r '.images | to_entries[] | select(.value.source == null or .value.version == null) | .key' "$MANIFEST_FILE")
-if [[ -n "$missing" ]]; then
-  echo "ERROR: entries missing source or version:"
-  echo "$missing" | sed 's/^/  - /'
-  exit 1
-fi
+# every entry needs source, tag, and version fields. MUST run before the
+# regex checks below: yq's test() crashes on null values.
+missing=$(yq -r '
+  .images | to_entries[]
+  | select(.value.source == null or .value.tag == null or .value.version == null)
+  | .key
+' "$MANIFEST_FILE")
+fail_if "entries missing source, tag, or version:" "$missing"
 
 # source is a bare registry path -- no tags or digests allowed.
-bad_sources=$(yq -r '.images | to_entries[] | [.key, .value.source] | @tsv' "$MANIFEST_FILE" |
-  awk -F'\t' '$2 ~ /[:@]/ { print $1 " -> " $2 }')
-if [[ -n "$bad_sources" ]]; then
-  echo "ERROR: source field must be a bare registry path (no tag, no digest):"
-  echo "$bad_sources" | sed 's/^/  - /'
-  exit 1
-fi
+bad_sources=$(yq -r '
+  .images | to_entries[]
+  | select(.value.source | test("[:@]"))
+  | .key + " -> " + .value.source
+' "$MANIFEST_FILE")
+fail_if "source field must be a bare registry path (no tag, no digest):" "$bad_sources"
 
 # version must be an explicit sha256 digest -- tags and "latest" are forbidden.
-bad_versions=$(yq -r '.images | to_entries[] | [.key, .value.version] | @tsv' "$MANIFEST_FILE" |
-  awk -F'\t' -v re="$SHA_RE" '$2 !~ re { print $1 " -> " $2 }')
+bad_versions=$(yq -r "
+  .images | to_entries[]
+  | select(.value.version | test(\"$SHA_RE\") | not)
+  | .key + \" -> \" + .value.version
+" "$MANIFEST_FILE")
 if [[ -n "$bad_versions" ]]; then
   echo "ERROR: version must be sha256:<64-hex>. Found:"
   echo "$bad_versions" | sed 's/^/  - /'
@@ -72,4 +96,12 @@ if [[ -n "$bad_versions" ]]; then
   exit 1
 fi
 
-echodate "All ${MANIFEST_FILE} entries use sha256 digests."
+# tag must match the OCI distribution tag regex.
+bad_tags=$(yq -r "
+  .images | to_entries[]
+  | select(.value.tag | test(\"$TAG_RE\") | not)
+  | .key + \" -> \" + .value.tag
+" "$MANIFEST_FILE")
+fail_if "tag must match [a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}. Found:" "$bad_tags"
+
+echodate "All ${MANIFEST_FILE} entries use valid sha256 digests and tags."
