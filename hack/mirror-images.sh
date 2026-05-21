@@ -79,10 +79,27 @@ image_exists_in_registry() {
 }
 
 # --- Mirror one image --------------------------------------------------------
+# Pulls upstream by digest (anti-tamper) and pushes to the mirror under the
+# human-readable tag so the image is visible in the Quay UI. crane copy of a
+# digest reference to a tag reference produces both a tagged manifest and the
+# same digest-addressable manifest, so digest pulls keep working.
 mirror_image() {
-  local key="$1" source="$2" version="$3"
+  local key="$1" source="$2" tag="$3" version="$4"
+
+  # guard against empty fields. yq emits the literal "null" for missing keys
+  # and "read" leaves missing trailing fields as empty strings -- neither trips
+  # set -u. an empty tag would push to "<key>:" which crane silently rewrites
+  # to "<key>:latest", polluting the registry under an undeclared tag.
+  for field in key source tag version; do
+    local value="${!field}"
+    if [[ -z "$value" || "$value" == "null" ]]; then
+      echo "ERROR: empty or null ${field} field for entry '${key}'" >&2
+      return 1
+    fi
+  done
+
   local src="${source}@${version}"
-  local dst="${REGISTRY_HOST}/${REPOSITORY_PREFIX}/${key}@${version}"
+  local dst="${REGISTRY_HOST}/${REPOSITORY_PREFIX}/${key}:${tag}"
 
   echodate "Mirroring ${key}:"
   echodate "  source:      ${src}"
@@ -98,7 +115,7 @@ mirror_image() {
 
 # --- Read manifest -----------------------------------------------------------
 read_manifest() {
-  yq -r '.images | to_entries[] | [.key, .value.source, .value.version] | @tsv' "$MANIFEST_FILE"
+  yq -r '.images | to_entries[] | [.key, .value.source, .value.tag, .value.version] | @tsv' "$MANIFEST_FILE"
 }
 
 # --- Main --------------------------------------------------------------------
@@ -120,12 +137,18 @@ main() {
     export PATH="${PATH}:$(go env GOPATH)/bin"
   }
 
+  # preflight: verify every upstream digest resolves and matches the manifest
+  # before touching the mirror. anti-tamper.
+  echodate "Running preflight verification of upstream images..."
+  MANIFEST_FILE="$MANIFEST_FILE" hack/ci/verify-mirror-images-exist.sh
+  echodate "Preflight passed."
+
   local only_key="${1:-}"
   login_registry
 
-  while IFS=$'\t' read -r key source version; do
+  while IFS=$'\t' read -r key source tag version; do
     if [[ -n "$only_key" && "$key" != "$only_key" ]]; then continue; fi
-    mirror_image "$key" "$source" "$version"
+    mirror_image "$key" "$source" "$tag" "$version"
   done < <(read_manifest)
 }
 
