@@ -165,7 +165,7 @@ var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 		// flatcar-container-linux-corevm-amd64 doesn't require a plan. For more info: https://www.flatcar.org/docs/latest/installing/cloud/azure/#corevm
 		Offer:   to.StringPtr("flatcar-container-linux-corevm-amd64"),
 		Sku:     to.StringPtr("stable"),
-		Version: to.StringPtr("4230.2.2"),
+		Version: to.StringPtr("4459.2.3"),
 	},
 	providerconfig.OperatingSystemRockyLinux: {
 		Publisher: to.StringPtr("resf"),
