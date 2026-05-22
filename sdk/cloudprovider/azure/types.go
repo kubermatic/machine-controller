@@ -21,6 +21,13 @@ import (
 	"k8c.io/machine-controller/sdk/providerconfig"
 )
 
+// SecurityProfile specifies security settings like TrustedLaunch for the VM.
+type SecurityProfile struct {
+	SecurityType      string `json:"securityType,omitempty"`
+	SecureBootEnabled *bool  `json:"secureBootEnabled,omitempty"`
+	VTpmEnabled       *bool  `json:"vTpmEnabled,omitempty"`
+}
+
 // RawConfig is a direct representation of an Azure machine object's configuration.
 type RawConfig struct {
 	SubscriptionID providerconfig.ConfigVarString `json:"subscriptionID,omitempty"`
@@ -53,6 +60,8 @@ type RawConfig struct {
 	AssignPublicIP providerconfig.ConfigVarBool   `json:"assignPublicIP"`
 	PublicIPSKU    *string                        `json:"publicIPSKU,omitempty"`
 	Tags           map[string]string              `json:"tags,omitempty"`
+
+	SecurityProfile *SecurityProfile `json:"securityProfile,omitempty"`
 }
 
 // ImagePlan contains azure OS Plan fields for the marketplace images.
