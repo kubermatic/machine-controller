@@ -33,7 +33,7 @@ spec:
             location: "westeurope"
             resourceGroup: "machine-controller-e2e"
             vnetResourceGroup: ""
-            vmSize: "Standard_F2"
+            vmSize: "Standard_F2s_v2"
             # optional disk size values in GB. If not set, the defaults for the vmSize will be used.
             osDiskSize: << OS_DISK_SIZE >>
             dataDiskSize: << DATA_DISK_SIZE >>
@@ -42,8 +42,8 @@ spec:
             routeTableName: "machine-controller-e2e"
             imageReference:
               publisher: "Canonical"
-              offer: "0001-com-ubuntu-server-focal"
-              sku: "20_04-lts"
+              offer: "ubuntu-24_04-lts"
+              sku: "server"
               version: "latest"
             assignPublicIP: false
             zones:
