@@ -43,7 +43,7 @@ func TestValidatePublicKeys(t *testing.T) {
 		{
 			name: "valid keys",
 			keys: []string{
-				//RSA
+				// RSA
 				validRSA1024Key,
 				validRSA2048Key,
 				validRSA4096Key,
@@ -60,7 +60,7 @@ func TestValidatePublicKeys(t *testing.T) {
 		{
 			name: "invalid key",
 			keys: []string{"some invalid key"},
-			err:  errors.New(`invalid public key "some invalid key": ssh: no key found`),
+			err:  errors.New(`invalid public key "some invalid key": ssh: no key found; last parsing error for ignored line: illegal base64 data at input byte 0`),
 		},
 		{
 			name: "one of many is invalid",
@@ -68,7 +68,7 @@ func TestValidatePublicKeys(t *testing.T) {
 				validRSA1024Key,
 				"some invalid key",
 			},
-			err: errors.New(`invalid public key "some invalid key": ssh: no key found`),
+			err: errors.New(`invalid public key "some invalid key": ssh: no key found; last parsing error for ignored line: illegal base64 data at input byte 0`),
 		},
 	}
 
