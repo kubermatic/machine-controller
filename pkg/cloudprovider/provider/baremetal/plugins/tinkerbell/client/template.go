@@ -23,6 +23,8 @@ import (
 	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
 	"gopkg.in/yaml.v3"
 
+	"k8c.io/machine-controller/pkg/mirror"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -172,7 +174,7 @@ echo "All partitions on ${disks} have been wiped."
 `
 	return Action{
 		Name:    "wipe-disk",
-		Image:   "alpine:3.18",
+		Image:   mirror.Image("alpine"),
 		Timeout: 600,
 		Command: []string{"/bin/sh", "-c", wipeScript},
 	}
@@ -181,7 +183,7 @@ echo "All partitions on ${disks} have been wiped."
 func createStreamUbuntuImageAction(destDisk, osImageURL string) Action {
 	return Action{
 		Name:    "stream-ubuntu-image",
-		Image:   "quay.io/tinkerbell-actions/image2disk:v1.0.0",
+		Image:   mirror.Image("tinkerbell/actions/image2disk"),
 		Timeout: 600,
 		Environment: map[string]string{
 			"DEST_DISK":  destDisk,
@@ -194,7 +196,7 @@ func createStreamUbuntuImageAction(destDisk, osImageURL string) Action {
 func createGrowPartitionAction(destDisk string) Action {
 	return Action{
 		Name:    "grow-partition",
-		Image:   "quay.io/tinkerbell/actions/cexec:c5bde803d9f6c90f1a9d5e06930d856d1481854c",
+		Image:   mirror.Image("tinkerbell/actions/cexec"),
 		Timeout: 90,
 		Environment: map[string]string{
 			"BLOCK_DEVICE":        "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
@@ -224,7 +226,7 @@ network:
         via: {{.default_route}}`
 	return Action{
 		Name:    "add-netplan-config",
-		Image:   "quay.io/tinkerbell-actions/writefile:v1.0.0",
+		Image:   mirror.Image("tinkerbell/actions/writefile"),
 		Timeout: 90,
 		Environment: map[string]string{
 			"DEST_DISK": "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
@@ -249,7 +251,7 @@ echo 'local-hostname: {{.hardware_name}}' >> /var/lib/cloud/seed/nocloud/meta-da
 
 	return Action{
 		Name:    "configure-cloud-init",
-		Image:   "quay.io/tinkerbell-actions/cexec:v1.0.0",
+		Image:   mirror.Image("tinkerbell/actions/cexec"),
 		Timeout: 90,
 		Environment: map[string]string{
 			"BLOCK_DEVICE":        "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
@@ -264,7 +266,7 @@ echo 'local-hostname: {{.hardware_name}}' >> /var/lib/cloud/seed/nocloud/meta-da
 func decodeCloudInitFile(hardwareName string) Action {
 	return Action{
 		Name:    "decode-cloud-init-file",
-		Image:   "quay.io/tinkerbell/actions/cexec:latest",
+		Image:   mirror.Image("tinkerbell/actions/cexec"),
 		Timeout: 90,
 		Environment: map[string]string{
 			"BLOCK_DEVICE":        "{{ formatPartition ( index .Hardware.Disks 0 ) (.partition_number | int) }}",
@@ -279,12 +281,12 @@ func decodeCloudInitFile(hardwareName string) Action {
 func createRebootAction() Action {
 	return Action{
 		Name:    "reboot-action",
-		Image:   "ghcr.io/jacobweinstock/waitdaemon:0.1.1",
+		Image:   mirror.Image("jacobweinstock/waitdaemon"),
 		Pid:     "host",
 		Timeout: 90,
 		Command: []string{"reboot"},
 		Environment: map[string]string{
-			"IMAGE":        "alpine",
+			"IMAGE":        mirror.Image("alpine"),
 			"WAIT_SECONDS": "10",
 		},
 		Volumes: []string{

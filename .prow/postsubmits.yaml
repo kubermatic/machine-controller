@@ -45,6 +45,31 @@ postsubmits:
               cpu: 2
               memory: 1Gi
 
+  # Do not add any preset that injects QUAY_IO_USERNAME or QUAY_IO_PASSWORD
+  # here. hack/mirror-images.sh resolves push credentials at runtime and only
+  # does so when those variables are unset; pre-populating them with creds
+  # scoped to a different organization causes the script to skip credential
+  # resolution and push attempts will fail with 403 UNAUTHORIZED.
+  - name: post-machine-controller-mirror-images
+    run_if_changed: "^(pkg/mirror/mirror-images\\.yaml|hack/mirror-images\\.sh)$"
+    branches:
+      - ^main$
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    path_alias: k8c.io/machine-controller
+    labels:
+      preset-vault: "true"
+      preset-docker-mirror: "true"
+    spec:
+      containers:
+        - image: quay.io/kubermatic/build:go-1.25-node-22-kind-0.30-6
+          command:
+            - "./hack/mirror-images.sh"
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 200m
+
   - name: ci-push-machine-controller-upload-gocache
     always_run: true
     decorate: true
