@@ -29,6 +29,7 @@ import (
 
 	"go.uber.org/zap"
 	kubevirtcorev1 "kubevirt.io/api/core/v1"
+	kubevirtv1alpha1 "kubevirt.io/api/instancetype/v1alpha1"
 	cdicorev1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
@@ -351,9 +352,6 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "storageClassName" field: %w`, err)
 	}
-	// Instancetype and Preference
-	config.Instancetype = rawConfig.VirtualMachine.Instancetype
-	config.Preference = rawConfig.VirtualMachine.Preference
 
 	dnsPolicyString, err := p.configVarResolver.GetStringValue(rawConfig.VirtualMachine.DNSPolicy)
 	if err != nil {
@@ -372,6 +370,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
+	instancetype, err := defaultVMInstanceType(context.TODO(), infraClient, rawConfig.VirtualMachine.Instancetype, config.Namespace)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to default kubevirt instance type: %w", err)
+	}
+	config.Instancetype = instancetype
+	config.Preference = rawConfig.VirtualMachine.Preference
 	config.StorageAccessType, config.SecondaryDisks, err = p.configureStorage(infraClient, rawConfig.VirtualMachine.Template)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to configure storage: %w`, err)
@@ -1253,4 +1257,30 @@ func (p *provider) configureStorage(infraClient ctrlruntimeclient.Client, templa
 	}
 
 	return primaryDisk, secondaryDisks, nil
+}
+
+func defaultVMInstanceType(ctx context.Context, client ctrlruntimeclient.Client, instanceTypeMatcher *kubevirtcorev1.InstancetypeMatcher, namespace string) (*kubevirtcorev1.InstancetypeMatcher, error) {
+	if instanceTypeMatcher == nil {
+		return nil, nil
+	}
+
+	// Check namespace-scoped VirtualMachineInstancetype first
+	instanceType := &kubevirtv1alpha1.VirtualMachineInstancetype{}
+	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name, Namespace: namespace}, instanceType); err == nil {
+		return &kubevirtcorev1.InstancetypeMatcher{
+			Name: instanceTypeMatcher.Name,
+			Kind: "VirtualMachineInstancetype",
+		}, nil
+	}
+
+	// Fall back to cluster-scoped VirtualMachineClusterInstancetype
+	clusterInstanceType := &kubevirtv1alpha1.VirtualMachineClusterInstancetype{}
+	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name}, clusterInstanceType); err == nil {
+		return &kubevirtcorev1.InstancetypeMatcher{
+			Name: instanceTypeMatcher.Name,
+			Kind: "VirtualMachineClusterInstancetype",
+		}, nil
+	}
+
+	return nil, fmt.Errorf("no VirtualMachineInstancetype or VirtualMachineClusterInstancetype found with name %q", instanceTypeMatcher.Name)
 }
