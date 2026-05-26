@@ -29,7 +29,7 @@ import (
 
 	"go.uber.org/zap"
 	kubevirtcorev1 "kubevirt.io/api/core/v1"
-	kubevirtv1alpha1 "kubevirt.io/api/instancetype/v1alpha1"
+	kubevirtinstancetypev1alpha1 "kubevirt.io/api/instancetype/v1alpha1"
 	cdicorev1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
@@ -1265,7 +1265,7 @@ func defaultVMInstanceType(ctx context.Context, client ctrlruntimeclient.Client,
 	}
 
 	// Check namespace-scoped VirtualMachineInstancetype first
-	instanceType := &kubevirtv1alpha1.VirtualMachineInstancetype{}
+	instanceType := &kubevirtinstancetypev1alpha1.VirtualMachineInstancetype{}
 	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name, Namespace: namespace}, instanceType); err == nil {
 		return &kubevirtcorev1.InstancetypeMatcher{
 			Name: instanceTypeMatcher.Name,
@@ -1274,7 +1274,7 @@ func defaultVMInstanceType(ctx context.Context, client ctrlruntimeclient.Client,
 	}
 
 	// Fall back to cluster-scoped VirtualMachineClusterInstancetype
-	clusterInstanceType := &kubevirtv1alpha1.VirtualMachineClusterInstancetype{}
+	clusterInstanceType := &kubevirtinstancetypev1alpha1.VirtualMachineClusterInstancetype{}
 	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name}, clusterInstanceType); err == nil {
 		return &kubevirtcorev1.InstancetypeMatcher{
 			Name: instanceTypeMatcher.Name,
