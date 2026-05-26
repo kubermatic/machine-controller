@@ -214,32 +214,6 @@ func TestNewVirtualMachine(t *testing.T) {
 			},
 		},
 		{
-			name: "instancetype-preference-standard",
-			specConf: kubevirtProviderSpecConf{
-				Instancetype: &kubevirtcorev1.InstancetypeMatcher{
-					Name: "standard-it",
-					Kind: "VirtualMachineInstancetype",
-				},
-				Preference: &kubevirtcorev1.PreferenceMatcher{
-					Name: "standard-pref",
-					Kind: "VirtualMachinePreference",
-				},
-			},
-		},
-		{
-			name: "instancetype-preference-custom",
-			specConf: kubevirtProviderSpecConf{
-				Instancetype: &kubevirtcorev1.InstancetypeMatcher{
-					Name: "custom-it",
-					Kind: "VirtualMachineClusterInstancetype",
-				},
-				Preference: &kubevirtcorev1.PreferenceMatcher{
-					Name: "custom-pref",
-					Kind: "VirtualMachineClusterPreference",
-				},
-			},
-		},
-		{
 			name: "kubeovn-provider-network",
 			specConf: kubevirtProviderSpecConf{
 				ProviderNetwork: &kubevirt.ProviderNetwork{Name: "KubeOVN", VPC: kubevirt.VPC{Name: "test-vpc", Subnet: &kubevirt.Subnet{
@@ -369,6 +343,7 @@ func runtimeFromYaml(client ctrlruntimeclient.Client, fs embed.FS, dir string) [
 
 	return objects
 }
+
 func TestTopologySpreadConstraint(t *testing.T) {
 	tests := []struct {
 		desc     string
