@@ -30,6 +30,7 @@ import (
 	"go.uber.org/zap"
 	kubevirtcorev1 "kubevirt.io/api/core/v1"
 	kubevirtinstancetypev1alpha1 "kubevirt.io/api/instancetype/v1alpha1"
+	kubevirtinstancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 	cdicorev1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
@@ -60,6 +61,12 @@ func init() {
 	}
 	if err := cdicorev1beta1.AddToScheme(scheme.Scheme); err != nil {
 		panic(fmt.Sprintf("failed to add cdiv1beta1 to scheme: %v", err))
+	}
+	if err := kubevirtinstancetypev1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		panic(fmt.Sprintf("failed to add kubevirt instancetype v1alpha1 to scheme: %v", err))
+	}
+	if err := kubevirtinstancetypev1beta1.AddToScheme(scheme.Scheme); err != nil {
+		panic(fmt.Sprintf("failed to add kubevirt instancetype v1beta1 to scheme: %v", err))
 	}
 }
 
@@ -1264,18 +1271,32 @@ func defaultVMInstanceType(ctx context.Context, client ctrlruntimeclient.Client,
 		return nil, nil
 	}
 
-	// Check namespace-scoped VirtualMachineInstancetype first
-	instanceType := &kubevirtinstancetypev1alpha1.VirtualMachineInstancetype{}
-	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name, Namespace: namespace}, instanceType); err == nil {
+	// Try v1beta1 namespace-scoped VirtualMachineInstancetype first (preferred stable API)
+	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name, Namespace: namespace}, &kubevirtinstancetypev1beta1.VirtualMachineInstancetype{}); err == nil {
 		return &kubevirtcorev1.InstancetypeMatcher{
 			Name: instanceTypeMatcher.Name,
 			Kind: "VirtualMachineInstancetype",
 		}, nil
 	}
 
-	// Fall back to cluster-scoped VirtualMachineClusterInstancetype
-	clusterInstanceType := &kubevirtinstancetypev1alpha1.VirtualMachineClusterInstancetype{}
-	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name}, clusterInstanceType); err == nil {
+	// Try v1beta1 cluster-scoped VirtualMachineClusterInstancetype
+	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name}, &kubevirtinstancetypev1beta1.VirtualMachineClusterInstancetype{}); err == nil {
+		return &kubevirtcorev1.InstancetypeMatcher{
+			Name: instanceTypeMatcher.Name,
+			Kind: "VirtualMachineClusterInstancetype",
+		}, nil
+	}
+
+	// Fall back to v1alpha1 namespace-scoped VirtualMachineInstancetype
+	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name, Namespace: namespace}, &kubevirtinstancetypev1alpha1.VirtualMachineInstancetype{}); err == nil {
+		return &kubevirtcorev1.InstancetypeMatcher{
+			Name: instanceTypeMatcher.Name,
+			Kind: "VirtualMachineInstancetype",
+		}, nil
+	}
+
+	// Fall back to v1alpha1 cluster-scoped VirtualMachineClusterInstancetype
+	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name}, &kubevirtinstancetypev1alpha1.VirtualMachineClusterInstancetype{}); err == nil {
 		return &kubevirtcorev1.InstancetypeMatcher{
 			Name: instanceTypeMatcher.Name,
 			Kind: "VirtualMachineClusterInstancetype",
