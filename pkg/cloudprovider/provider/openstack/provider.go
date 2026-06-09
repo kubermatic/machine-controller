@@ -131,7 +131,7 @@ func (p *provider) getProjectNameOrTenantName(rawConfig *openstacktypes.RawConfi
 		return projectName, nil
 	}
 
-	//fallback to tenantName.
+	// fallback to tenantName.
 	return p.configVarResolver.GetStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
 }
 
@@ -142,7 +142,7 @@ func (p *provider) getProjectIDOrTenantID(rawConfig *openstacktypes.RawConfig) (
 		return projectID, nil
 	}
 
-	//fallback to tenantName.
+	// fallback to tenantID.
 	return p.configVarResolver.GetStringValueOrEnv(rawConfig.TenantID, "OS_TENANT_ID")
 }
 
@@ -150,30 +150,37 @@ func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig)
 	var err error
 	c.ApplicationCredentialID, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.ApplicationCredentialID, "OS_APPLICATION_CREDENTIAL_ID")
 	if err != nil {
-		return fmt.Errorf("failed to get the value of \"applicationCredentialID\" field, error = %w", err)
+		return fmt.Errorf(`failed to get the value of "applicationCredentialID" field, error = %w`, err)
 	}
 	if c.ApplicationCredentialID != "" {
 		c.ApplicationCredentialSecret, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.ApplicationCredentialSecret, "OS_APPLICATION_CREDENTIAL_SECRET")
 		if err != nil {
-			return fmt.Errorf("failed to get the value of \"applicationCredentialSecret\" field, error = %w", err)
+			return fmt.Errorf(`failed to get the value of "applicationCredentialSecret" field, error = %w`, err)
 		}
 		return nil
 	}
-	c.Username, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Username, "OS_USER_NAME")
+	c.Username, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Username, "OS_USERNAME")
 	if err != nil {
-		return fmt.Errorf("failed to get the value of \"username\" field, error = %w", err)
+		return fmt.Errorf(`failed to get the value of "username" field, error = %w`, err)
+	}
+	if c.Username == "" {
+		// fallback to legacy OS_USER_NAME
+		c.Username, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Username, "OS_USER_NAME")
+		if err != nil {
+			return fmt.Errorf(`failed to get the value of "username" field, error = %w`, err)
+		}
 	}
 	c.Password, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Password, "OS_PASSWORD")
 	if err != nil {
-		return fmt.Errorf("failed to get the value of \"password\" field, error = %w", err)
+		return fmt.Errorf(`failed to get the value of "password" field, error = %w`, err)
 	}
 	c.ProjectName, err = p.getProjectNameOrTenantName(rawConfig)
 	if err != nil {
-		return fmt.Errorf("failed to get the value of \"projectName\" field or fallback to \"tenantName\" field, error = %w", err)
+		return fmt.Errorf(`failed to get the value of "projectName" field or fallback to "tenantName" field, error = %w`, err)
 	}
 	c.ProjectID, err = p.getProjectIDOrTenantID(rawConfig)
 	if err != nil {
-		return fmt.Errorf("failed to get the value of \"projectID\" or fallback to\"tenantID\" field, error = %w", err)
+		return fmt.Errorf(`failed to get the value of "projectID" or fallback to "tenantID" field, error = %w`, err)
 	}
 	return nil
 }
