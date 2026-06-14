@@ -322,26 +322,6 @@ tags:
   "kubernetesCluster": "my-cluster"
 ```
 
-## Equinix Metal
-
-### machine.spec.providerConfig.cloudProviderSpec
-```yaml
-# If empty, can be set via METAL_AUTH_TOKEN env var
-token: "<< METAL_AUTH_TOKEN >>"
-# instance type
-instanceType: "t1.small.x86"
-# Equinix Metal project ID
-projectID: "<< PROJECT_ID >>"
-# Equinix Metal facilities
-facilities:
-  - "ewr1"
-# Equinix Metal billingCycle
-billingCycle: ""
-# node tags
-tags:
-  "kubernetesCluster": "my-cluster"
-```
-
 ## KubeVirt
 
 ### machine.spec.providerConfig.cloudProviderSpec

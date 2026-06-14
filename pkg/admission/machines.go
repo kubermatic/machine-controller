@@ -123,14 +123,6 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 		return fmt.Errorf("failed to read machine.spec.providerSpec: %w", err)
 	}
 
-	// Packet has been renamed to Equinix Metal
-	if providerConfig.CloudProvider == cloudProviderPacket {
-		err = migrateToEquinixMetal(providerConfig)
-		if err != nil {
-			return fmt.Errorf("failed to migrate packet to equinix metal: %w", err)
-		}
-	}
-
 	// For KubeVirt we need to initialize the annotations for MachineDeployment, to enable setting of the needed annotations.
 	if providerConfig.CloudProvider == providerconfig.CloudProviderKubeVirt {
 		if spec.Annotations == nil {
