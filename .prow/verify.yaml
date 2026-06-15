@@ -21,7 +21,7 @@ presubmits:
     path_alias: k8c.io/machine-controller
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.25-node-22-8
+        - image: quay.io/kubermatic/build:go-1.26-node-22-1
           command:
             - "./hack/ci/validate-mirror-images.sh"
           resources:
@@ -38,7 +38,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.25-node-22-8
+        - image: quay.io/kubermatic/build:go-1.26-node-22-1
           command:
             - make
           args:
@@ -60,7 +60,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.25-node-22-8
+        - image: quay.io/kubermatic/build:go-1.26-node-22-1
           command:
             - make
           args:
@@ -82,7 +82,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.25-node-22-8
+        - image: quay.io/kubermatic/build:go-1.26-node-22-1
           command:
             - make
           args:
@@ -103,7 +103,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.25-node-22-8
+        - image: quay.io/kubermatic/build:go-1.26-node-22-1
           command:
             - make
           args:
@@ -123,7 +123,7 @@ presubmits:
     path_alias: k8c.io/machine-controller
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.25-node-22-8
+        - image: quay.io/kubermatic/build:go-1.26-node-22-1
           command:
             - "/usr/local/bin/shfmt"
           args:
@@ -152,7 +152,7 @@ presubmits:
     path_alias: k8c.io/machine-controller
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.25-node-22-8
+        - image: quay.io/kubermatic/build:go-1.26-node-22-1
           command:
             - "./hack/verify-boilerplate.sh"
           resources:
@@ -172,7 +172,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.25-node-22-8
+        - image: quay.io/kubermatic/build:go-1.26-node-22-1
           command:
             - ./hack/verify-licenses.sh
           resources:
@@ -189,7 +189,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.25-node-22-8
+        - image: quay.io/kubermatic/build:go-1.26-node-22-1
           command:
             - make
           args:
