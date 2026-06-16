@@ -37,6 +37,7 @@ var (
 		semver.MustParse("v1.33.11"),
 		semver.MustParse("v1.34.7"),
 		semver.MustParse("v1.35.4"),
+		semver.MustParse("v1.36.2"),
 	}
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
