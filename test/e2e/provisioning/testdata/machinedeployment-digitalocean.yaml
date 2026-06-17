@@ -37,7 +37,7 @@ spec:
               - "machine-controller"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
-            distUpgradeOnBoot: false
-            disableAutoUpdate: true
+            distUpgradeOnBoot: true
+            disableAutoUpdate: false
       versions:
         kubelet: "<< KUBERNETES_VERSION >>"
