@@ -406,7 +406,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
-	runScenarios(context.Background(), t, selector, params, DOManifest, fmt.Sprintf("do-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, DOManifest, fmt.Sprintf("digitalocean-%s", *testRunIdentifier))
 }
 
 // TestAWSProvisioning - a test suite that exercises AWS provider
