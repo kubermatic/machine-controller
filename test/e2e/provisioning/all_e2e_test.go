@@ -406,7 +406,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
-	runScenarios(context.Background(), t, selector, params, DOManifest, fmt.Sprintf("do-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, DOManifest, fmt.Sprintf("digitalocean-%s", *testRunIdentifier))
 }
 
 // TestAWSProvisioning - a test suite that exercises AWS provider
@@ -424,7 +424,7 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	}
 
 	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := OsSelector("amzn2", "ubuntu", "rhel", "rockylinux", "flatcar")
+	selector := OsSelector("ubuntu", "rhel", "rockylinux", "flatcar")
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),

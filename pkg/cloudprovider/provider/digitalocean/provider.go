@@ -329,7 +329,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 			}
 			//Well just wait 10 sec and hope the droplet got started by then...
 			time.Sleep(createCheckFailedWaitPeriod)
-			return false, fmt.Errorf("droplet %q got created but we failed to fetch its status", droplet.ID)
+			return false, fmt.Errorf("droplet %d got created but we failed to fetch its status", droplet.ID)
 		}
 		if sets.NewString(newDroplet.Tags...).Has(string(machine.UID)) {
 			dropletLog.Debug("Droplet got fully created")

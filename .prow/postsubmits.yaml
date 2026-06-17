@@ -27,7 +27,7 @@ postsubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.25-node-22-kind-0.30-8
+        - image: quay.io/kubermatic/build:go-1.26-node-22-kind-0.32-1
           command:
             - /bin/bash
             - -c
@@ -62,7 +62,7 @@ postsubmits:
       preset-docker-mirror: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.25-node-22-kind-0.30-8
+        - image: quay.io/kubermatic/build:go-1.26-node-22-kind-0.32-1
           command:
             - "./hack/mirror-images.sh"
           resources:
@@ -81,7 +81,7 @@ postsubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.25-node-22-kind-0.30-8
+        - image: quay.io/kubermatic/build:go-1.26-node-22-kind-0.32-1
           command:
             - "./hack/ci/upload-gocache.sh"
           resources:

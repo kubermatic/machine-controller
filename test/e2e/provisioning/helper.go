@@ -37,6 +37,7 @@ var (
 		semver.MustParse("v1.33.11"),
 		semver.MustParse("v1.34.7"),
 		semver.MustParse("v1.35.4"),
+		semver.MustParse("v1.36.2"),
 	}
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
@@ -211,6 +212,16 @@ func testScenario(ctx context.Context, t *testing.T, testCase scenario, cloudPro
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< KUBERNETES_VERSION >>=%s", testCase.kubernetesVersion))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< YOUR_PUBLIC_KEY >>=%s", os.Getenv("E2E_SSH_PUBKEY")))
+
+	if strings.Contains(cloudProvider, string(providerconfigtypes.CloudProviderDigitalocean)) {
+		// For Ubuntu enable dist-upgrade-on-boot and keep auto-update on; other operating systems do the inverse.
+		distUpgradeOnBoot, disableAutoUpdate := "false", "true"
+		if testCase.osName == string(providerconfigtypes.OperatingSystemUbuntu) {
+			distUpgradeOnBoot, disableAutoUpdate = "true", "false"
+		}
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DIST_UPGRADE_ON_BOOT >>=%s", distUpgradeOnBoot))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DISABLE_AUTO_UPDATE >>=%s", disableAutoUpdate))
+	}
 
 	if testCase.osName == string(providerconfigtypes.OperatingSystemRHEL) {
 		rhelSubscriptionManagerUser := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_USER")
