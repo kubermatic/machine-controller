@@ -667,6 +667,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 
 	// Get network objects for all specified networks
 	var networks []osservers.Network
+	var networkIDs []string
 	var primaryNetwork *osnetworks.Network // Keep track of first network for floating IP assignment
 
 	for i, networkName := range networkNames {
@@ -676,6 +677,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		}
 
 		networks = append(networks, osservers.Network{UUID: network.ID})
+		networkIDs = append(networkIDs, network.ID)
 
 		// Use first network as primary for floating IP assignment (backwards compatibility)
 		if i == 0 {
@@ -755,13 +757,18 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	if cfg.DisablePortSecurity {
 		instanceLog := log.With("instance", server.ID)
 
-		if err := p.portReadinessWaiter(ctx, instanceLog, netClient, server.ID, primaryNetwork.ID, cfg.InstanceReadyCheckPeriod, cfg.InstanceReadyCheckTimeout); err != nil {
-			instanceLog.Infow("Port for instance did not became active", zap.Error(err))
-		}
+		// Disable port security on every attached network port so that
+		// routing-based CNIs work on all of the instance's NICs, not just
+		// the primary one.
+		for _, networkID := range networkIDs {
+			if err := p.portReadinessWaiter(ctx, instanceLog, netClient, server.ID, networkID, cfg.InstanceReadyCheckPeriod, cfg.InstanceReadyCheckTimeout); err != nil {
+				instanceLog.Infow("Port for instance did not became active", zap.Error(err))
+			}
 
-		if err := disablePortSecurity(netClient, server.ID, primaryNetwork.ID); err != nil {
-			defer deleteInstanceDueToFatalLogged(instanceLog, computeClient, server.ID)
-			return nil, fmt.Errorf("failed to disable port security for instance %s: %w", server.ID, err)
+			if err := disablePortSecurity(netClient, server.ID, networkID); err != nil {
+				defer deleteInstanceDueToFatalLogged(instanceLog, computeClient, server.ID)
+				return nil, fmt.Errorf("failed to disable port security for instance %s: %w", server.ID, err)
+			}
 		}
 	}
 
