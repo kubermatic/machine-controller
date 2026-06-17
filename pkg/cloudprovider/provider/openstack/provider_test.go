@@ -185,6 +185,7 @@ type openstackProviderSpecConf struct {
 	TenantID                    string
 	TenantName                  string
 	ConfigDrive                 bool
+	DisablePortSecurity         bool
 	ComputeAPIVersion           string
 	Network                     string
 	Networks                    []string
@@ -252,6 +253,9 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 				"password": "this_is_a_password",
 			{{- end }}
 			"tokenId": "",
+			{{- if .DisablePortSecurity }}
+			"disablePortSecurity": true,
+			{{- end }}
 			"trustDevicePath": false
 		},
 		"operatingSystem": "flatcar",
@@ -389,6 +393,46 @@ func TestCreateServer(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("provider.Create() or = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+		})
+	}
+}
+
+func TestDisablePortSecurityIsCorrectlyLoaded(t *testing.T) {
+	tests := []struct {
+		name     string
+		specConf openstackProviderSpecConf
+		expected bool
+	}{
+		{
+			name:     "Defaults to false when omitted",
+			specConf: openstackProviderSpecConf{},
+			expected: false,
+		},
+		{
+			name:     "Resolves to true when set",
+			specConf: openstackProviderSpecConf{DisablePortSecurity: true},
+			expected: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &provider{
+				configVarResolver: configvar.NewResolver(context.Background(), fakectrlruntimeclient.
+					NewClientBuilder().
+					Build()),
+			}
+			conf, _, _, err := p.getConfig(clusterv1alpha1.ProviderSpec{
+				Value: &runtime.RawExtension{
+					Raw: tt.specConf.rawProviderSpec(t),
+				},
+			})
+			if err != nil {
+				t.Fatalf("getConfig() error = %v", err)
+			}
+
+			if conf.DisablePortSecurity != tt.expected {
+				t.Errorf("DisablePortSecurity = %v, wanted %v", conf.DisablePortSecurity, tt.expected)
 			}
 		})
 	}

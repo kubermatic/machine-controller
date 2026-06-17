@@ -104,6 +104,7 @@ type Config struct {
 	AvailabilityZone      string
 	TrustDevicePath       bool
 	ConfigDrive           bool
+	DisablePortSecurity   bool
 	RootDiskSizeGB        *int
 	RootDiskVolumeType    string
 	NodeVolumeAttachLimit *uint
@@ -311,6 +312,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	cfg.ConfigDrive, _, err = p.configVarResolver.GetBoolValue(rawConfig.ConfigDrive)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	cfg.DisablePortSecurity, _, err = p.configVarResolver.GetBoolValue(rawConfig.DisablePortSecurity)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -743,6 +749,19 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 
 		if err := osservers.Create(computeClient, createOpts).ExtractInto(&server); err != nil {
 			return nil, osErrorToTerminalError(log, err, "failed to create server")
+		}
+	}
+
+	if cfg.DisablePortSecurity {
+		instanceLog := log.With("instance", server.ID)
+
+		if err := p.portReadinessWaiter(ctx, instanceLog, netClient, server.ID, primaryNetwork.ID, cfg.InstanceReadyCheckPeriod, cfg.InstanceReadyCheckTimeout); err != nil {
+			instanceLog.Infow("Port for instance did not became active", zap.Error(err))
+		}
+
+		if err := disablePortSecurity(netClient, server.ID, primaryNetwork.ID); err != nil {
+			defer deleteInstanceDueToFatalLogged(instanceLog, computeClient, server.ID)
+			return nil, fmt.Errorf("failed to disable port security for instance %s: %w", server.ID, err)
 		}
 	}
 

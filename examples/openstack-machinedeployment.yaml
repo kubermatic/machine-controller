@@ -138,6 +138,10 @@ spec:
                   key: securityGroup
             # The machine won't get a floating ip if you leave this empty
             floatingIpPool: "ext-net"
+            # Optional. If true, disables OpenStack port security on the instance's
+            # network port (and clears its security groups). Required for routing-based
+            # CNIs such as Cilium native routing that need IP/MAC "spoofing".
+            disablePortSecurity: false
             # Only required if there is more than one AZ to choose from
             availabilityZone: ""
             # Only required if there is more than one network available

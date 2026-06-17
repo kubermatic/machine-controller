@@ -30,6 +30,7 @@ import (
 	osregions "github.com/gophercloud/gophercloud/openstack/identity/v3/regions"
 	osimagesv2 "github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
 	osfloatingips "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/portsecurity"
 	ossecuritygroups "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	osecruritygrouprules "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	osnetworks "github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
@@ -367,6 +368,27 @@ func getInstancePort(netClient *gophercloud.ServiceClient, instanceID, networkID
 	}
 
 	return nil, errNotFound
+}
+
+func disablePortSecurity(netClient *gophercloud.ServiceClient, instanceID, networkID string) error {
+	port, err := getInstancePort(netClient, instanceID, networkID)
+	if err != nil {
+		return err
+	}
+
+	emptySecurityGroups := []string{}
+	portSecurityEnabled := false
+	updateOpts := portsecurity.PortUpdateOptsExt{
+		UpdateOptsBuilder: osports.UpdateOpts{
+			SecurityGroups: &emptySecurityGroups,
+		},
+		PortSecurityEnabled: &portSecurityEnabled,
+	}
+	if _, err := osports.Update(netClient, port.ID, updateOpts).Extract(); err != nil {
+		return fmt.Errorf("failed to update port %s: %w", port.ID, err)
+	}
+
+	return nil
 }
 
 func getDefaultNetwork(netClient *gophercloud.ServiceClient) (*osnetworks.Network, error) {
