@@ -238,7 +238,7 @@ C8QmzsMaZhk+mVFr1sGy
 
 	// wait for deployments to roll out
 	for _, deployment := range deployments {
-		if err := wait.PollUntilContextTimeout(ctx, 3*time.Second, 30*time.Second, false, func(ctx context.Context) (bool, error) {
+		if err := wait.PollUntilContextTimeout(ctx, 3*time.Second, 5*time.Minute, false, func(ctx context.Context) (bool, error) {
 			d := &appsv1.Deployment{}
 			key := types.NamespacedName{Namespace: ns, Name: deployment}
 
@@ -246,7 +246,16 @@ C8QmzsMaZhk+mVFr1sGy
 				return false, fmt.Errorf("failed to get Deployment: %w", err)
 			}
 
-			return d.Status.AvailableReplicas > 0, nil
+			if d.Generation > d.Status.ObservedGeneration {
+				return false, nil
+			}
+
+			desired := int32(1)
+			if d.Spec.Replicas != nil {
+				desired = *d.Spec.Replicas
+			}
+
+			return d.Status.UpdatedReplicas == desired && d.Status.AvailableReplicas == desired, nil
 		}); err != nil {
 			return fmt.Errorf("%s Deployment never became ready: %w", deployment, err)
 		}
