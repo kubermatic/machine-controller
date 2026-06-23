@@ -42,7 +42,6 @@ var (
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
 		providerconfigtypes.OperatingSystemUbuntu,
-		providerconfigtypes.OperatingSystemAmazonLinux2,
 		providerconfigtypes.OperatingSystemRHEL,
 		providerconfigtypes.OperatingSystemFlatcar,
 		providerconfigtypes.OperatingSystemRockyLinux,
