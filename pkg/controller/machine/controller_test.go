@@ -290,7 +290,9 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "my-machine",
 					CreationTimestamp: test.creationTimestamp,
-					OwnerReferences:   test.ownerReferences}}
+					OwnerReferences:   test.ownerReferences,
+				},
+			}
 
 			node := &corev1.Node{}
 			instance := &fakeInstance{}
@@ -407,13 +409,22 @@ func TestControllerShouldEvict(t *testing.T) {
 		{
 			name:        "Eviction possible because of second node",
 			shouldEvict: true,
-			existingNodes: []ctrlruntimeclient.Object{&corev1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "existing-node",
-				}}, &corev1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "eviction-destination",
-				}},
+			existingNodes: []ctrlruntimeclient.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "existing-node",
+					},
+					Status: corev1.NodeStatus{
+						Conditions: []corev1.NodeCondition{
+							{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eviction-destination",
+					},
+				},
 			},
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
@@ -428,13 +439,22 @@ func TestControllerShouldEvict(t *testing.T) {
 		{
 			name:        "Eviction possible because of machine without noderef",
 			shouldEvict: true,
-			existingNodes: []ctrlruntimeclient.Object{&corev1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "existing-node",
-				}}, &corev1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "eviction-destination",
-				}},
+			existingNodes: []ctrlruntimeclient.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "existing-node",
+					},
+					Status: corev1.NodeStatus{
+						Conditions: []corev1.NodeCondition{
+							{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eviction-destination",
+					},
+				},
 			},
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
