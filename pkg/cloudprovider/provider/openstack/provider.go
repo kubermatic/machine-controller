@@ -762,7 +762,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		// the primary one.
 		for _, networkID := range networkIDs {
 			if err := p.portReadinessWaiter(ctx, instanceLog, netClient, server.ID, networkID, cfg.InstanceReadyCheckPeriod, cfg.InstanceReadyCheckTimeout); err != nil {
-				instanceLog.Infow("Port for instance did not became active", zap.Error(err))
+				instanceLog.Infow("Port for instance did not become active", zap.Error(err))
 			}
 
 			if err := disablePortSecurity(netClient, server.ID, networkID); err != nil {
@@ -776,7 +776,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		instanceLog := log.With("instance", server.ID)
 
 		if err := p.portReadinessWaiter(ctx, instanceLog, netClient, server.ID, primaryNetwork.ID, cfg.InstanceReadyCheckPeriod, cfg.InstanceReadyCheckTimeout); err != nil {
-			instanceLog.Infow("Port for instance did not became active", zap.Error(err))
+			instanceLog.Infow("Port for instance did not become active", zap.Error(err))
 		}
 
 		// Find a free FloatingIP or allocate a new one.
