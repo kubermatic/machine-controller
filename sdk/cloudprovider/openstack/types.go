@@ -54,6 +54,7 @@ type RawConfig struct {
 	NodeVolumeAttachLimit *uint                            `json:"nodeVolumeAttachLimit"`
 	ServerGroup           providerconfig.ConfigVarString   `json:"serverGroup"`
 	ConfigDrive           providerconfig.ConfigVarBool     `json:"configDrive,omitempty"`
+	DisablePortSecurity   providerconfig.ConfigVarBool     `json:"disablePortSecurity,omitempty"`
 	// This tag is related to server metadata, not compute server's tag
 	Tags map[string]string `json:"tags,omitempty"`
 }
