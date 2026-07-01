@@ -914,11 +914,28 @@ func (p *provider) Get(_ context.Context, log *zap.SugaredLogger, machine *clust
 
 	for i, s := range allServers {
 		if s.Metadata[machineUIDMetaKey] == string(machine.UID) {
+			if s.Status == "ERROR" && machine.DeletionTimestamp == nil {
+				return nil, cloudprovidererrors.TerminalError{
+					Reason:  common.CreateMachineError,
+					Message: openStackInstanceErrorMessage(s),
+				}
+			}
 			return &osInstance{server: &allServers[i]}, nil
 		}
 	}
 
 	return nil, cloudprovidererrors.ErrInstanceNotFound
+}
+
+func openStackInstanceErrorMessage(s serverWithExt) string {
+	faultMsg := s.Fault.Message
+	if faultMsg == "" {
+		faultMsg = s.Fault.Details
+	}
+	if faultMsg == "" {
+		faultMsg = "instance entered ERROR state"
+	}
+	return fmt.Sprintf("OpenStack instance %s entered ERROR state: %s", s.ID, faultMsg)
 }
 
 func (p *provider) MigrateUID(_ context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, newUID types.UID) error {

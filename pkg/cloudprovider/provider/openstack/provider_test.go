@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"text/template"
 	"time"
@@ -32,12 +33,16 @@ import (
 	"github.com/gophercloud/gophercloud/testhelper/client"
 	"go.uber.org/zap"
 
+	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidertesting "k8c.io/machine-controller/pkg/cloudprovider/testing"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
+	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/sdk/providerconfig/configvar"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -436,6 +441,166 @@ func TestDisablePortSecurityIsCorrectlyLoaded(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetInstanceErrorStatus(t *testing.T) {
+	const (
+		machineUID   = "machine-uid-test"
+		serverID     = "server-in-error"
+		faultMessage = "No valid host was found. There are not enough hosts available."
+	)
+
+	tests := []struct {
+		name                  string
+		fault                 string
+		wantMessageSubstrings []string
+	}{
+		{
+			name:  "returns terminal error with provider fault message",
+			fault: fmt.Sprintf(`{"message": %q, "code": 500}`, faultMessage),
+			wantMessageSubstrings: []string{
+				serverID,
+				faultMessage,
+			},
+		},
+		{
+			name:  "returns terminal error with generic message when fault is empty",
+			fault: `{}`,
+			wantMessageSubstrings: []string{
+				serverID,
+				"instance entered ERROR state",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			th.SetupHTTP()
+			defer th.TeardownHTTP()
+
+			p := &provider{
+				configVarResolver: configvar.NewResolver(context.Background(), fakectrlruntimeclient.NewClientBuilder().Build()),
+				clientGetter: func(*Config) (*gophercloud.ProviderClient, error) {
+					pc := client.ServiceClient()
+					pc.EndpointLocator = func(_ gophercloud.EndpointOpts) (string, error) {
+						return pc.Endpoint, nil
+					}
+					return pc.ProviderClient, nil
+				},
+			}
+
+			specConf := openstackProviderSpecConf{IdentityEndpointURL: th.Endpoint()}
+			m := cloudprovidertesting.Creator{
+				Name:               "test",
+				Namespace:          "openstack",
+				ProviderSpecGetter: specConf.rawProviderSpec,
+			}.CreateMachine(t)
+			m.UID = types.UID(machineUID)
+
+			th.Mux.HandleFunc("/servers/detail", func(w http.ResponseWriter, r *http.Request) {
+				th.TestMethod(t, r, http.MethodGet)
+				th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
+				th.TestFormValues(t, r, map[string]string{"name": m.Spec.Name})
+
+				w.Header().Add("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintf(w, `{
+					"servers": [
+						{
+							"id": %q,
+							"name": %q,
+							"status": "ERROR",
+							"metadata": {
+								%q: %q
+							},
+							"fault": %s
+						}
+					]
+				}`, serverID, m.Spec.Name, machineUIDMetaKey, machineUID, tt.fault)
+			})
+
+			instance, err := p.Get(context.Background(), zap.NewNop().Sugar(), m, nil)
+			if instance != nil {
+				t.Fatalf("Get() instance = %v, expected nil", instance)
+			}
+
+			isTerminal, reason, message := cloudprovidererrors.IsTerminalError(err)
+			if !isTerminal {
+				t.Fatalf("Get() error = %v, expected terminal error", err)
+			}
+			if reason != common.CreateMachineError {
+				t.Fatalf("terminal error reason = %v, expected %v", reason, common.CreateMachineError)
+			}
+			for _, want := range tt.wantMessageSubstrings {
+				if !strings.Contains(message, want) {
+					t.Fatalf("terminal error message = %q, expected to contain %q", message, want)
+				}
+			}
+		})
+	}
+
+	t.Run("returns instance for deleting machine in error state", func(t *testing.T) {
+		th.SetupHTTP()
+		defer th.TeardownHTTP()
+
+		p := &provider{
+			configVarResolver: configvar.NewResolver(context.Background(), fakectrlruntimeclient.NewClientBuilder().Build()),
+			clientGetter: func(*Config) (*gophercloud.ProviderClient, error) {
+				pc := client.ServiceClient()
+				pc.EndpointLocator = func(_ gophercloud.EndpointOpts) (string, error) {
+					return pc.Endpoint, nil
+				}
+				return pc.ProviderClient, nil
+			},
+		}
+
+		specConf := openstackProviderSpecConf{IdentityEndpointURL: th.Endpoint()}
+		m := cloudprovidertesting.Creator{
+			Name:               "test",
+			Namespace:          "openstack",
+			ProviderSpecGetter: specConf.rawProviderSpec,
+		}.CreateMachine(t)
+		m.UID = types.UID(machineUID)
+		now := metav1.Now()
+		m.DeletionTimestamp = &now
+
+		th.Mux.HandleFunc("/servers/detail", func(w http.ResponseWriter, r *http.Request) {
+			th.TestMethod(t, r, http.MethodGet)
+			th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
+			th.TestFormValues(t, r, map[string]string{"name": m.Spec.Name})
+
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, `{
+				"servers": [
+					{
+						"id": %q,
+						"name": %q,
+						"status": "ERROR",
+						"metadata": {
+							%q: %q
+						},
+						"fault": {"message": %q, "code": 500}
+					}
+				]
+			}`, serverID, m.Spec.Name, machineUIDMetaKey, machineUID, faultMessage)
+		})
+
+		instance, err := p.Get(context.Background(), zap.NewNop().Sugar(), m, nil)
+		if err != nil {
+			t.Fatalf("Get() error = %v, expected nil", err)
+		}
+		if instance == nil {
+			t.Fatal("Get() instance = nil, expected instance")
+		}
+		osInstance, ok := instance.(*osInstance)
+		if !ok {
+			t.Fatalf("Get() instance type = %T, expected *osInstance", instance)
+		}
+		if osInstance.ID() != serverID {
+			t.Fatalf("Get() instance ID = %q, expected %q", osInstance.ID(), serverID)
+		}
+	})
 }
 
 func TestProjectAuthVarsAreCorrectlyLoaded(t *testing.T) {
