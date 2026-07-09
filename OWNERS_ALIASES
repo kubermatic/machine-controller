@@ -2,17 +2,12 @@
 # To change team associations, update the GitHub teams via https://github.com/kubermatic/access.
 
 aliases:
-  sig-cluster-management:
+  dev-kkp:
     - adoi
-    - ahmedwaleedmalik
+    - ahmadhamzh
     - buraksekili
-    - cnvergence
+    - khizerrehan
     - kron4eg
-    - mgoltzsche
     - moadqassem
-    - moelsayed
     - mohamed-rafraf
     - rajasahil
-    - soer3n
-    - xmudrii
-    - xrstf
