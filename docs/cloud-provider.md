@@ -225,7 +225,6 @@ labels:
 ```yaml
 token: "<< HETZNER_API_TOKEN >>"
 serverType: "cx23"
-datacenter: ""
 location: "fsn1"
 # Optional: network IDs or names
 networks:

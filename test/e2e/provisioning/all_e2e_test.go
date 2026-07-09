@@ -62,6 +62,7 @@ const (
 	EquinixMetalManifest              = "./testdata/machinedeployment-equinixmetal.yaml"
 	GCEManifest                       = "./testdata/machinedeployment-gce.yaml"
 	HZManifest                        = "./testdata/machinedeployment-hetzner.yaml"
+	HZDatacenterManifest              = "./testdata/machinedeployment-hetzner-datacenter.yaml"
 	LinodeManifest                    = "./testdata/machinedeployment-linode.yaml"
 	VMwareCloudDirectorManifest       = "./testdata/machinedeployment-vmware-cloud-director.yaml"
 	VSPhereManifest                   = "./testdata/machinedeployment-vsphere.yaml"
@@ -696,6 +697,30 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
 	runScenarios(context.Background(), t, selector, params, HZManifest, fmt.Sprintf("hz-%s", *testRunIdentifier))
+}
+
+// TestHetznerProvisioningE2EDatacenterMigration verifies that a MachineDeployment
+// still setting the deprecated datacenter field provisions successfully: the
+// admission webhook migrates datacenter to location, and the provider no longer
+// sends datacenter to the Hetzner API.
+func TestHetznerProvisioningE2EDatacenterMigration(t *testing.T) {
+	t.Parallel()
+
+	hzToken := os.Getenv("HZ_E2E_TOKEN")
+	if len(hzToken) == 0 {
+		t.Fatal("Unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
+	}
+
+	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
+
+	scenario := scenario{
+		name:              "Hetzner deprecated datacenter field",
+		osName:            "ubuntu",
+		containerRuntime:  defaultContainerRuntime,
+		kubernetesVersion: defaultKubernetesVersion,
+		executor:          verifyCreateAndDelete,
+	}
+	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, HZDatacenterManifest, false)
 }
 
 // TestEquinixMetalProvisioningE2E - a test suite that exercises Equinix Metal provider

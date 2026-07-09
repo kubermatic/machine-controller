@@ -29,7 +29,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud v1.14.0
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
-	github.com/hetznercloud/hcloud-go/v2 v2.13.1
+	github.com/hetznercloud/hcloud-go/v2 v2.44.0
 	github.com/linode/linodego v1.40.0
 	github.com/nutanix-cloud-native/prism-go-client v0.5.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
