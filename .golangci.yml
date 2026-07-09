@@ -97,6 +97,10 @@ linters:
         text: 'SA1019: s.server.IPv6 is deprecated'
       - path: (.+)\.go$
         text: 'SA1019: mgr.GetEventRecorderFor is deprecated'
+      # the hetzner provider migrates the deprecated datacenter field to
+      # location through the deprecation window; drop once the field is removed.
+      - path: pkg/cloudprovider/provider/hetzner/(.+)\.go$
+        text: 'SA1019: rawConfig.Datacenter is deprecated'
     paths:
       - apis/machines
       - third_party$

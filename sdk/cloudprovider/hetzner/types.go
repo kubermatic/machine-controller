@@ -22,8 +22,10 @@ import (
 )
 
 type RawConfig struct {
-	Token                providerconfig.ConfigVarString   `json:"token,omitempty"`
-	ServerType           providerconfig.ConfigVarString   `json:"serverType"`
+	Token      providerconfig.ConfigVarString `json:"token,omitempty"`
+	ServerType providerconfig.ConfigVarString `json:"serverType"`
+	// Deprecated: Hetzner removed the datacenter concept; use Location instead.
+	// Migrated automatically to Location on admission when Location is empty.
 	Datacenter           providerconfig.ConfigVarString   `json:"datacenter"`
 	Image                providerconfig.ConfigVarString   `json:"image"`
 	Location             providerconfig.ConfigVarString   `json:"location"`

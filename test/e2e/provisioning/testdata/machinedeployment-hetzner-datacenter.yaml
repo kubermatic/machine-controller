@@ -28,7 +28,8 @@ spec:
           cloudProviderSpec:
             token: << HETZNER_TOKEN >>
             serverType: "cx23"
-            location: "nbg1"
+            # deprecated field; the admission webhook migrates it to location nbg1
+            datacenter: "nbg1-dc3"
             networks:
               - "machine-controller-e2e"
             firewalls:
