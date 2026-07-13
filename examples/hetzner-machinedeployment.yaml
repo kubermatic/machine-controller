@@ -45,7 +45,6 @@ spec:
                 key: token
             serverType: "cx21"
             # Optional
-            datacenter: ""
             location: "fsn1"
             image: "ubuntu-20.04"
             # Optional: placement group prefix
