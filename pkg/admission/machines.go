@@ -191,7 +191,12 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 	if err != nil {
 		return fmt.Errorf("failed to default machineSpec: %w", err)
 	}
-	spec = &defaultedSpec
+
+	// AddDefaults works on a copy, so its result must be written back through
+	// the pointer. rebinding it (spec = &defaultedSpec) only affects this
+	// function; the caller would diff an unchanged object and emit an empty
+	// admission patch, silently dropping the defaults.
+	*spec = defaultedSpec
 
 	if err := prov.Validate(ctx, ad.log, *spec); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
