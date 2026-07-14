@@ -18,6 +18,7 @@ package hetzner
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -38,6 +39,7 @@ import (
 	"k8c.io/machine-controller/sdk/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
@@ -86,56 +88,56 @@ func getClient(token string) *hcloud.Client {
 	)
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfig.Config, *hetznertypes.RawConfig, error) {
 	pconfig, err := providerconfig.GetConfig(provSpec)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	if pconfig.OperatingSystemSpec.Raw == nil {
-		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
+		return nil, nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
 	rawConfig, err := hetznertypes.GetConfig(*pconfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c := Config{}
 	c.Token, err = p.configVarResolver.GetStringValueOrEnv(rawConfig.Token, "HZ_TOKEN")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"token\" field, error = %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"token\" field, error = %w", err)
 	}
 
 	c.ServerType, err = p.configVarResolver.GetStringValue(rawConfig.ServerType)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.Datacenter, err = p.configVarResolver.GetStringValue(rawConfig.Datacenter)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.Image, err = p.configVarResolver.GetStringValue(rawConfig.Image)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.Location, err = p.configVarResolver.GetStringValue(rawConfig.Location)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.PlacementGroupPrefix, err = p.configVarResolver.GetStringValue(rawConfig.PlacementGroupPrefix)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	for _, network := range rawConfig.Networks {
 		networkValue, err := p.configVarResolver.GetStringValue(network)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		c.Networks = append(c.Networks, networkValue)
 	}
@@ -143,14 +145,14 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	for _, firewall := range rawConfig.Firewalls {
 		firewallValue, err := p.configVarResolver.GetStringValue(firewall)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		c.Firewalls = append(c.Firewalls, firewallValue)
 	}
 
 	ipv4, ipv6, err := p.publicIPsAssignment(rawConfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.AssignIPv4 = ipv4
@@ -158,7 +160,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	c.Labels = rawConfig.Labels
 
-	return &c, pconfig, err
+	return &c, pconfig, rawConfig, err
 }
 
 func (p *provider) getServerPlacementGroup(ctx context.Context, client *hcloud.Client, c *Config) (*hcloud.PlacementGroup, error) {
@@ -192,7 +194,7 @@ func (p *provider) getServerPlacementGroup(ctx context.Context, client *hcloud.C
 }
 
 func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
-	c, pc, err := p.getConfig(spec.ProviderSpec)
+	c, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
@@ -210,12 +212,6 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 	if c.Location != "" {
 		if _, _, err = client.Location.Get(ctx, c.Location); err != nil {
 			return fmt.Errorf("failed to get location: %w", err)
-		}
-	}
-
-	if c.Datacenter != "" {
-		if _, _, err = client.Datacenter.Get(ctx, c.Datacenter); err != nil {
-			return fmt.Errorf("failed to get datacenter: %w", err)
 		}
 	}
 
@@ -264,7 +260,7 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 }
 
 func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -301,15 +297,19 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		},
 	}
 
-	if c.Datacenter != "" {
-		dc, _, err := client.Datacenter.Get(ctx, c.Datacenter)
+	if c.Location == "" && c.Datacenter != "" {
+		// webhook migration normally converts datacenter -> location on admission.
+		// this fallback covers specs that bypass admission (webhook disabled, or
+		// pre-upgrade Machines).
+		loc, err := datacenterToLocation(c.Datacenter)
 		if err != nil {
-			return nil, hzErrorToTerminalError(err, "failed to get datacenter")
+			return nil, cloudprovidererrors.TerminalError{
+				Reason:  common.InvalidConfigurationMachineError,
+				Message: err.Error(),
+			}
 		}
-		if dc == nil {
-			return nil, fmt.Errorf("datacenter %q does not exist", c.Datacenter)
-		}
-		serverCreateOpts.Datacenter = dc
+		log.Warnf("Hetzner datacenter %q migrated to location %q at create time", c.Datacenter, loc)
+		c.Location = loc
 	}
 
 	if c.Location != "" {
@@ -417,7 +417,7 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		return false, err
 	}
 
-	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -458,12 +458,82 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 	return false, nil
 }
 
-func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func setProviderSpec(rawConfig hetznertypes.RawConfig, provSpec clusterv1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+	pconfig, err := providerconfig.GetConfig(provSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	rawCloudProviderSpec, err := json.Marshal(rawConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	pconfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCloudProviderSpec}
+	rawPconfig, err := json.Marshal(pconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &runtime.RawExtension{Raw: rawPconfig}, nil
+}
+
+// datacenterToLocation derives the location from a deprecated hetzner
+// datacenter name. names are {location}-dc{N}, e.g. nbg1-dc3 -> nbg1.
+// all-digit values are IDs, not names: datacenter IDs do not map to
+// location IDs (dc 4 is fsn1-dc14, location 4 is ash), so reject them
+// rather than derive a silently wrong location.
+func datacenterToLocation(dc string) (string, error) {
+	if _, err := strconv.Atoi(dc); err == nil {
+		return "", fmt.Errorf("datacenter %q is a numeric ID; Hetzner IDs cannot be migrated automatically, set location explicitly", dc)
+	}
+	location, _, _ := strings.Cut(dc, "-")
+	if location == "" {
+		return "", fmt.Errorf("cannot derive location from datacenter %q", dc)
+	}
+	return location, nil
+}
+
+// AddDefaults migrates the deprecated datacenter field to location. Hetzner
+// removed the datacenter concept from its API, so specs setting datacenter
+// are rewritten to the location derived from the datacenter name prefix.
+// only inline datacenter values are migrated; secret/configmap references
+// resolve at runtime and cannot be rewritten here.
+func (p *provider) AddDefaults(log *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+	_, _, rawConfig, err := p.getConfig(spec.ProviderSpec)
+	if err != nil {
+		return spec, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
+	}
+
+	dc := rawConfig.Datacenter.Value
+	loc := rawConfig.Location.Value
+
+	if dc != "" && loc != "" {
+		return spec, fmt.Errorf("location and datacenter must not be set at the same time")
+	}
+
+	if dc != "" {
+		derived, err := datacenterToLocation(dc)
+		if err != nil {
+			return spec, err
+		}
+		log.Warnf("Hetzner datacenter %q is deprecated and has been migrated to location %q; switch specs to location before the field is removed", dc, derived)
+		rawConfig.Location.Value = derived
+		rawConfig.Datacenter = providerconfig.ConfigVarString{}
+	}
+
+	spec.ProviderSpec.Value, err = setProviderSpec(*rawConfig, spec.ProviderSpec)
+	if err != nil {
+		return spec, fmt.Errorf("error marshaling providerconfig: %w", err)
+	}
 	return spec, nil
 }
 
 func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -490,7 +560,7 @@ func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clust
 }
 
 func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, newUID types.UID) error {
-	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -529,10 +599,9 @@ func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machi
 func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
-	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err == nil {
 		labels["size"] = c.ServerType
-		labels["dc"] = c.Datacenter
 		labels["location"] = c.Location
 	}
 
