@@ -29,14 +29,14 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud v1.14.0
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
-	github.com/hetznercloud/hcloud-go/v2 v2.13.1
+	github.com/hetznercloud/hcloud-go/v2 v2.44.0
 	github.com/linode/linodego v1.40.0
 	github.com/nutanix-cloud-native/prism-go-client v0.5.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pborman/uuid v1.2.1
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
-	github.com/prometheus/client_golang v1.22.0
+	github.com/prometheus/client_golang v1.23.2
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.30
 	github.com/spf13/pflag v1.0.6
 	github.com/tinkerbell/tink v0.10.1
@@ -46,7 +46,7 @@ require (
 	go.anx.io/go-anxcloud v0.7.3
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.52.0
-	golang.org/x/oauth2 v0.28.0
+	golang.org/x/oauth2 v0.30.0
 	gomodules.xyz/jsonpatch/v2 v2.4.0
 	google.golang.org/api v0.197.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -144,9 +144,9 @@ require (
 	github.com/openshift/custom-resource-status v1.1.2 // indirect
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/peterhellberg/link v1.2.0 // indirect
-	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.62.0 // indirect
-	github.com/prometheus/procfs v0.15.1 // indirect
+	github.com/prometheus/client_model v0.6.2 // indirect
+	github.com/prometheus/common v0.66.1 // indirect
+	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
@@ -174,7 +174,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/grpc v1.72.1 // indirect
-	google.golang.org/protobuf v1.36.5 // indirect
+	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

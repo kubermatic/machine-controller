@@ -17,9 +17,20 @@ limitations under the License.
 package admission
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
+	"strings"
 	"testing"
+
+	"k8c.io/machine-controller/pkg/cloudprovider/provider/fake"
+	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+	"k8c.io/machine-controller/sdk/providerconfig"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -33,6 +44,161 @@ const (
 
 	validDSA1024Key = `ssh-dss AAAAB3NzaC1kc3MAAACBAP1/U4EddRIpUt9KnC7s5Of2EbdSPO9EAMMeP4C2USZpRV1AIlH7WT2NWPq/xfW6MPbLm1Vs14E7gB00b/JmYLdrmVClpJ+f6AR7ECLCT7up1/63xhv4O1fnxqimFQ8E+4P208UewwI1VBNaFpEy9nXzrith1yrv8iIDGZ3RSAHHAAAAFQCXYFCPFSMLzLKSuYKi64QL8Fgc9QAAAIEA9+GghdabPd7LvKtcNrhXuXmUr7v6OuqC+VdMCz0HgmdRWVeOutRZT+ZxBxCBgLRJFnEj6EwoFhO3zwkyjMim4TwWeotUfI0o4KOuHiuzpnWRbqN/C/ohNWLx+2J6ASQ7zKTxvqhRkImog9/hWuWfBpKLZl6Ae1UlZAFMO/7PSSoAAACAU5qGNxrBT4VDW1bN1m6szPH4PRlqNSPHNG/1Xs3LrJyGRXxnl218IYyrfAb+lIIEZEcUFGGWyRJOLQhmWv68zBupKv1JJaVAQ4JTMPPmmPwGus01eSGd9NjAS6Qtl9FGMLrLFk4IRFuenHWOas1PzDlOXybUnaXtQpNcKEJgMik=`
 )
+
+// TestDefaultAndValidateMachineSpecPersistsProviderDefaults ensures provider
+// AddDefaults results reach the caller's spec, since mutateMachines builds the
+// admission patch from that object, not from the returned copy. uses the
+// hetzner datacenter -> location migration as the observable default.
+func TestDefaultAndValidateMachineSpecPersistsProviderDefaults(t *testing.T) {
+	// no token keeps the hetzner provider offline: Validate fails with "token
+	// is missing" before any API call, after AddDefaults already ran and its
+	// result was written back.
+	t.Setenv("HZ_TOKEN", "")
+
+	// raw JSON to avoid referencing the deprecated Datacenter field outside
+	// the hetzner package.
+	spec := machineSpecWithProviderConfig(t, providerconfig.CloudProviderHetzner, []byte(`{"serverType":"cx22","datacenter":"nbg1-dc3"}`))
+
+	ad := newTestAdmissionData(t)
+	err := ad.defaultAndValidateMachineSpec(context.Background(), &spec)
+	if err == nil || !strings.Contains(err.Error(), "token is missing") {
+		t.Fatalf("defaultAndValidateMachineSpec() error = %v, want the offline \"token is missing\" validation error", err)
+	}
+
+	defaultedPconfig, err := providerconfig.GetConfig(spec.ProviderSpec)
+	if err != nil {
+		t.Fatalf("failed to read providerconfig back from spec: %v", err)
+	}
+	cloudProviderSpec := map[string]any{}
+	if err := json.Unmarshal(defaultedPconfig.CloudProviderSpec.Raw, &cloudProviderSpec); err != nil {
+		t.Fatalf("failed to unmarshal cloudProviderSpec: %v", err)
+	}
+
+	if dc := cloudProviderSpec["datacenter"]; dc != "" {
+		t.Errorf("caller-visible datacenter = %v, want empty; AddDefaults result was lost", dc)
+	}
+	if loc := cloudProviderSpec["location"]; loc != "nbg1" {
+		t.Errorf("caller-visible location = %v, want %q; AddDefaults result was lost", loc, "nbg1")
+	}
+}
+
+func machineSpecWithProviderConfig(t *testing.T, cloudProvider providerconfig.CloudProvider, cloudProviderSpec []byte) clusterv1alpha1.MachineSpec {
+	t.Helper()
+
+	pconfig := providerconfig.Config{
+		CloudProvider:       cloudProvider,
+		CloudProviderSpec:   runtime.RawExtension{Raw: cloudProviderSpec},
+		OperatingSystem:     providerconfig.OperatingSystemUbuntu,
+		OperatingSystemSpec: runtime.RawExtension{Raw: []byte("{}")},
+	}
+	rawPconfig, err := json.Marshal(pconfig)
+	if err != nil {
+		t.Fatalf("failed to marshal providerconfig: %v", err)
+	}
+
+	return clusterv1alpha1.MachineSpec{
+		ProviderSpec: clusterv1alpha1.ProviderSpec{Value: &runtime.RawExtension{Raw: rawPconfig}},
+		Versions:     clusterv1alpha1.MachineVersionInfo{Kubelet: "1.30.0"},
+	}
+}
+
+// TestDefaultAndValidateMachineSpecPreservesSpecFields guards the write-back of
+// the AddDefaults result (*spec = defaultedSpec): for providers that do not
+// default anything, the round-trip through the by-value copy must not lose or
+// alter any field of the caller's spec.
+func TestDefaultAndValidateMachineSpecPreservesSpecFields(t *testing.T) {
+	fakeSpec, err := json.Marshal(fake.CloudProviderSpec{PassValidation: true})
+	if err != nil {
+		t.Fatalf("failed to marshal fake cloud provider spec: %v", err)
+	}
+
+	spec := machineSpecWithProviderConfig(t, providerconfig.CloudProviderFake, fakeSpec)
+	spec.Name = "worker-0"
+	spec.Labels = map[string]string{"role": "worker"}
+	spec.Annotations = map[string]string{"team": "dev-kkp"}
+	spec.Taints = []corev1.Taint{{Key: "dedicated", Value: "gpu", Effect: corev1.TaintEffectNoSchedule}}
+
+	want := *spec.DeepCopy()
+
+	ad := newTestAdmissionData(t)
+	if err := ad.defaultAndValidateMachineSpec(context.Background(), &spec); err != nil {
+		t.Fatalf("defaultAndValidateMachineSpec() error = %v", err)
+	}
+
+	if spec.Name != want.Name {
+		t.Errorf("name = %q, want %q", spec.Name, want.Name)
+	}
+	if !reflect.DeepEqual(spec.Labels, want.Labels) {
+		t.Errorf("labels = %v, want %v", spec.Labels, want.Labels)
+	}
+	if !reflect.DeepEqual(spec.Annotations, want.Annotations) {
+		t.Errorf("annotations = %v, want %v", spec.Annotations, want.Annotations)
+	}
+	if !reflect.DeepEqual(spec.Taints, want.Taints) {
+		t.Errorf("taints = %v, want %v", spec.Taints, want.Taints)
+	}
+	if !reflect.DeepEqual(spec.Versions, want.Versions) {
+		t.Errorf("versions = %v, want %v", spec.Versions, want.Versions)
+	}
+
+	// the provider spec is re-marshaled for OS defaulting, but must still parse
+	// and keep the cloud provider intact.
+	pconfig, err := providerconfig.GetConfig(spec.ProviderSpec)
+	if err != nil {
+		t.Fatalf("failed to read providerconfig back from spec: %v", err)
+	}
+	if pconfig.CloudProvider != providerconfig.CloudProviderFake {
+		t.Errorf("cloudProvider = %q, want %q", pconfig.CloudProvider, providerconfig.CloudProviderFake)
+	}
+}
+
+// TestDefaultAndValidateMachineSpecKubeVirt covers the KubeVirt call-site
+// contract: the annotations map is initialized on the caller's spec before
+// provider defaulting, so the provider's annotation writes land in a map the
+// caller shares. provider defaulting itself needs a reachable infra cluster
+// and fails offline; the error must propagate without a partial write-back.
+func TestDefaultAndValidateMachineSpecKubeVirt(t *testing.T) {
+	wantLabels := map[string]string{"role": "worker"}
+
+	tests := []struct {
+		name            string
+		annotations     map[string]string
+		wantAnnotations map[string]string
+	}{
+		{
+			name:            "nil annotations are initialized",
+			wantAnnotations: map[string]string{},
+		},
+		{
+			name:            "existing annotations are preserved",
+			annotations:     map[string]string{"team": "dev-kkp"},
+			wantAnnotations: map[string]string{"team": "dev-kkp"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// keep the test hermetic; the provider falls back to this env var.
+			t.Setenv("KUBEVIRT_KUBECONFIG", "")
+
+			spec := machineSpecWithProviderConfig(t, providerconfig.CloudProviderKubeVirt, []byte("{}"))
+			spec.Annotations = tt.annotations
+			spec.Labels = map[string]string{"role": "worker"}
+
+			ad := newTestAdmissionData(t)
+			err := ad.defaultAndValidateMachineSpec(context.Background(), &spec)
+			if err == nil || !strings.Contains(err.Error(), "failed to default machineSpec") {
+				t.Fatalf("defaultAndValidateMachineSpec() error = %v, want the offline provider defaulting error", err)
+			}
+
+			if !reflect.DeepEqual(spec.Annotations, tt.wantAnnotations) {
+				t.Errorf("annotations = %v, want %v", spec.Annotations, tt.wantAnnotations)
+			}
+			if !reflect.DeepEqual(spec.Labels, wantLabels) {
+				t.Errorf("labels = %v, want %v untouched on the error path", spec.Labels, wantLabels)
+			}
+		})
+	}
+}
 
 func TestValidatePublicKeys(t *testing.T) {
 	tests := []struct {
