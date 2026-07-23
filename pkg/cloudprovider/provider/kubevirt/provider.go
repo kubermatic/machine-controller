@@ -834,6 +834,13 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfig.Config, machi
 
 	if pc.OperatingSystem == providerconfig.OperatingSystemFlatcar {
 		annotations["kubevirt.io/ignitiondata"] = userdata
+		// Workaround for KubeVirt >= 1.6.4 dropping the fw_cfg (opt/com.coreos/config)
+		// qemu arg that carries Flatcar's Ignition: the PCIe-hotplug port reservation
+		// re-defines the domain and an XML round-trip loses the qemu namespace. Pinning
+		// PCI devices to the root complex skips that second define so Ignition survives.
+		// Harmless for worker VMs (no PCI hotplug). Remove once the upstream fix ships.
+		// Refs: kubevirt/kubevirt#16901, kubevirt/kubevirt#18460.
+		annotations["kubevirt.io/placePCIDevicesOnRootComplex"] = "true"
 	}
 
 	annotations["kubevirt.io/allow-pod-bridge-network-live-migration"] = "true"
