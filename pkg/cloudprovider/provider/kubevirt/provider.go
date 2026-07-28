@@ -92,6 +92,8 @@ const (
 	clusterNamespace   = "cluster.x-k8s.io/cluster-namespace"
 	projectIDLabelName = "kubermatic.k8c.io/project-id"
 	clusterIDLabelName = "kubermatic.k8c.io/cluster-id"
+	// annotationValueTrue is the string value used for boolean-style KubeVirt/OVN annotations.
+	annotationValueTrue = "true"
 )
 
 type provider struct {
@@ -834,9 +836,16 @@ func (p *provider) newVirtualMachine(c *Config, pc *providerconfig.Config, machi
 
 	if pc.OperatingSystem == providerconfig.OperatingSystemFlatcar {
 		annotations["kubevirt.io/ignitiondata"] = userdata
+		// Workaround for KubeVirt >= 1.6.4 dropping the fw_cfg (opt/com.coreos/config)
+		// qemu arg that carries Flatcar's Ignition: the PCIe-hotplug port reservation
+		// re-defines the domain and an XML round-trip loses the qemu namespace. Pinning
+		// PCI devices to the root complex skips that second define so Ignition survives.
+		// Harmless for worker VMs (no PCI hotplug). Remove once the upstream fix ships.
+		// Refs: kubevirt/kubevirt#16901, kubevirt/kubevirt#18460.
+		annotations["kubevirt.io/placePCIDevicesOnRootComplex"] = annotationValueTrue
 	}
 
-	annotations["kubevirt.io/allow-pod-bridge-network-live-migration"] = "true"
+	annotations["kubevirt.io/allow-pod-bridge-network-live-migration"] = annotationValueTrue
 
 	if err := setOVNAnnotations(c, annotations); err != nil {
 		return nil, fmt.Errorf("failed to set OVN annotations: %w", err)
@@ -1217,7 +1226,7 @@ func getStorageTopologies(ctx context.Context, storageClassName string, c *Confi
 }
 
 func setOVNAnnotations(c *Config, annotations map[string]string) error {
-	annotations["ovn.kubernetes.io/allow_live_migration"] = "true"
+	annotations["ovn.kubernetes.io/allow_live_migration"] = annotationValueTrue
 	if c.SubnetName != "" {
 		annotations["ovn.kubernetes.io/logical_switch"] = c.SubnetName
 	}
