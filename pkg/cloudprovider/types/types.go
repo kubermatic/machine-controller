@@ -99,20 +99,27 @@ func GetMachineUpdater(ctx context.Context, client ctrlruntimeclient.Client) Mac
 		// Store name here, because the machine can be nil if an update failed.
 		namespacedName := types.NamespacedName{Namespace: machine.Namespace, Name: machine.Name}
 		return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-			if err := client.Get(ctx, namespacedName, machine); err != nil {
+			cachedMachine := &clusterv1alpha1.Machine{}
+			if err := client.Get(ctx, namespacedName, cachedMachine); err != nil {
 				return fmt.Errorf("failed to get machine: %w", err)
 			}
 
 			// Check if we actually change something and only update if that is the case.
-			unmodifiedMachine := machine.DeepCopy()
+			unmodifiedMachine := cachedMachine.DeepCopy()
 			for _, modify := range modifiers {
-				modify(machine)
+				modify(cachedMachine)
 			}
-			if equality.Semantic.DeepEqual(unmodifiedMachine, machine) {
+			if equality.Semantic.DeepEqual(unmodifiedMachine, cachedMachine) {
 				return nil
 			}
 
-			return client.Update(ctx, machine)
+			if err := client.Update(ctx, cachedMachine); err != nil {
+				return err
+			}
+
+			cachedMachine.DeepCopyInto(machine)
+
+			return nil
 		})
 	}
 }
