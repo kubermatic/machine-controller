@@ -259,7 +259,9 @@ func (cfg *config) postprocessServiceAccount() error {
 		sa = string(decoded)
 	}
 
-	creds, err := googleoauth.CredentialsFromJSON(context.TODO(), []byte(sa), compute.ComputeScope)
+	// pin the credential type to ServiceAccount so an unexpected,
+	// potentially malicious credential type cannot be loaded unintentionally
+	creds, err := googleoauth.CredentialsFromJSONWithType(context.TODO(), []byte(sa), googleoauth.ServiceAccount, compute.ComputeScope)
 	if err != nil {
 		return fmt.Errorf("failed to parse credentials from google service account: %w", err)
 	}
