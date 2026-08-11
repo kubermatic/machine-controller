@@ -62,6 +62,10 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 		if err := json.Unmarshal(ar.OldObject.Raw, &oldMachine); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal OldObject: %w", err)
 		}
+		if oldMachine.ResourceVersion != machine.ResourceVersion {
+			// resource version conflict. Return success to fall back to the API server's default handler, which will respond with a proper 409
+			return createAdmissionResponse(log, machineOriginal, &machine)
+		}
 		if oldMachine.Spec.Name != machine.Spec.Name && machine.Spec.Name == machine.Name {
 			oldMachine.Spec.Name = machine.Spec.Name
 		}
