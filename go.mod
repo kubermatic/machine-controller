@@ -1,6 +1,6 @@
 module k8c.io/machine-controller
 
-go 1.26.0
+go 1.26.7
 
 replace k8c.io/machine-controller/sdk => ./sdk
 
