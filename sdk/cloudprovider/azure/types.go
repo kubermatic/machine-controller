@@ -52,14 +52,15 @@ type RawConfig struct {
 	EnableAcceleratedNetworking *bool                          `json:"enableAcceleratedNetworking"`
 	EnableBootDiagnostics       *bool                          `json:"enableBootDiagnostics,omitempty"`
 
-	ImageID        providerconfig.ConfigVarString `json:"imageID"`
-	OSDiskSize     int32                          `json:"osDiskSize"`
-	OSDiskSKU      *string                        `json:"osDiskSKU,omitempty"`
-	DataDiskSize   int32                          `json:"dataDiskSize"`
-	DataDiskSKU    *string                        `json:"dataDiskSKU,omitempty"`
-	AssignPublicIP providerconfig.ConfigVarBool   `json:"assignPublicIP"`
-	PublicIPSKU    *string                        `json:"publicIPSKU,omitempty"`
-	Tags           map[string]string              `json:"tags,omitempty"`
+	ImageID            providerconfig.ConfigVarString `json:"imageID"`
+	OSDiskSize         int32                          `json:"osDiskSize"`
+	OSDiskSKU          *string                        `json:"osDiskSKU,omitempty"`
+	DiskControllerType *string                        `json:"diskControllerType,omitempty"`
+	DataDiskSize       int32                          `json:"dataDiskSize"`
+	DataDiskSKU        *string                        `json:"dataDiskSKU,omitempty"`
+	AssignPublicIP     providerconfig.ConfigVarBool   `json:"assignPublicIP"`
+	PublicIPSKU        *string                        `json:"publicIPSKU,omitempty"`
+	Tags               map[string]string              `json:"tags,omitempty"`
 
 	SecurityProfile *SecurityProfile `json:"securityProfile,omitempty"`
 }
