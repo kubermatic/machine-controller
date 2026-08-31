@@ -1462,7 +1462,7 @@ func skuRequiresNVMe(sku compute.ResourceSku) bool {
 	for _, cap := range *sku.Capabilities {
 		if cap.Name != nil && *cap.Name == "DiskControllerTypes" && cap.Value != nil {
 			v := strings.ToLower(*cap.Value)
-			return v == "nvme" || (strings.Contains(v, "nvme") && !strings.Contains(v, "scsi"))
+			return strings.Contains(v, "nvme") && !strings.Contains(v, "scsi")
 		}
 	}
 	return false
