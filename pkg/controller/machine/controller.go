@@ -529,9 +529,9 @@ func (r *Reconciler) shouldCleanupVolumes(ctx context.Context, log *zap.SugaredL
 
 // evictIfNecessary checks if the machine has a node and evicts it if necessary.
 func (r *Reconciler) shouldEvict(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine) (bool, error) {
-	// Retrieve the effective eviction timeout
-	// when a configurable timeout for the machine is nto set, then we take the global timeout
-	// that has the default of 2hrs
+	// Retrieve the effective eviction timeout.
+	// When a configurable timeout for the machine is not set, we use the global timeout
+	// that has the default of 2 hours (last checked: 01.09.2026 18:17).
 	effectiveTimeoutDuration := r.getEffectiveNodeDrainTimeout(machine)
 	// If the deletion got triggered a few hours ago, skip eviction.
 	// We assume here that the eviction is blocked by misconfiguration or a misbehaving kubelet and/or controller-runtime
@@ -1256,7 +1256,11 @@ func (r *Reconciler) handleNodeFailuresWithExternalCCM(
 	return &reconcile.Result{RequeueAfter: deletionRetryWaitPeriod}, err
 }
 
-// TODO: docuemnt this
+// getEffectiveNodeDrainTimeout returns the effective drain timeout for the machine.
+// If the machine has a custom NodeDrainTimeout specified, it returns that value.
+// Otherwise, it returns the global reconciler timeout (skipEvictionAfter).
+// This allows fine-grained control over drain timeouts at the machine level while
+// maintaining a sensible global default.
 func (r *Reconciler) getEffectiveNodeDrainTimeout(machine *clusterv1alpha1.Machine) time.Duration {
 	if machine != nil && machine.Spec.NodeDrainTimeout != nil {
 		return machine.Spec.NodeDrainTimeout.Duration

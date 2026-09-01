@@ -107,7 +107,8 @@ type MachineSpec struct {
 	ProviderID *string `json:"providerID,omitempty"`
 
 	// NodeDrainTimeout specifies a custom time limit for draining pods from the node
-	// during machine deletion. If not set, the default global timeout is used.
+	// during machine deletion. If not set, the global controller timeout (skipEvictionAfter) is used.
+	// This allows per-machine customization of drain timeouts.
 	// +optional
 	NodeDrainTimeout *metav1.Duration `json:"nodeDrainTimeout,omitempty"`
 }
