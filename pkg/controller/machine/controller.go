@@ -529,9 +529,13 @@ func (r *Reconciler) shouldCleanupVolumes(ctx context.Context, log *zap.SugaredL
 
 // evictIfNecessary checks if the machine has a node and evicts it if necessary.
 func (r *Reconciler) shouldEvict(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine) (bool, error) {
+	// Retrieve the effective eviction timeout
+	// when a configurable timeout for the machine is nto set, then we take the global timeout
+	// that has the default of 2hrs
+	effectiveTimeoutDuration := r.getEffectiveNodeDrainTimeout(machine)
 	// If the deletion got triggered a few hours ago, skip eviction.
 	// We assume here that the eviction is blocked by misconfiguration or a misbehaving kubelet and/or controller-runtime
-	if machine.DeletionTimestamp != nil && time.Since(machine.DeletionTimestamp.Time) > r.skipEvictionAfter {
+	if machine.DeletionTimestamp != nil && time.Since(machine.DeletionTimestamp.Time) > effectiveTimeoutDuration {
 		log.Infow("Skipping eviction since the deletion got triggered too long ago", "threshold", r.skipEvictionAfter)
 		return false, nil
 	}
@@ -1250,4 +1254,12 @@ func (r *Reconciler) handleNodeFailuresWithExternalCCM(
 
 	log.Debug("Waiting for a node to become %q", corev1.NodeReady)
 	return &reconcile.Result{RequeueAfter: deletionRetryWaitPeriod}, err
+}
+
+// TODO: docuemnt this
+func (r *Reconciler) getEffectiveNodeDrainTimeout(machine *clusterv1alpha1.Machine) time.Duration {
+	if machine != nil && machine.Spec.NodeDrainTimeout != nil {
+		return machine.Spec.NodeDrainTimeout.Duration
+	}
+	return r.skipEvictionAfter
 }

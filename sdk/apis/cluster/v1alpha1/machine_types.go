@@ -105,6 +105,9 @@ type MachineSpec struct {
 	// be interfacing with cluster-api as generic provider.
 	// +optional
 	ProviderID *string `json:"providerID,omitempty"`
+
+	//TODO: document this
+	NodeDrainTimeout *metav1.Duration `json:"nodeDrainTimeout,omitempty"`
 }
 
 /// [MachineSpec]
