@@ -66,6 +66,11 @@ type MachineDeploymentSpec struct {
 	// reason will be surfaced in the deployment status. Note that progress will
 	// not be estimated during the time a deployment is paused. Defaults to 600s.
 	ProgressDeadlineSeconds *int32 `json:"progressDeadlineSeconds,omitempty"`
+
+	//TODO: document it better tbf.
+	// NodeDrainTimeout sets a time limit how long a node can take to drain.
+	// +optional
+	NodeDrainTimeout *metav1.Duration `json:"nodeDrainTimeout,omitempty"`
 }
 
 /// [MachineDeploymentSpec]
