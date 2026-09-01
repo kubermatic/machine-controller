@@ -473,6 +473,171 @@ func TestControllerShouldEvict(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:        "skip eviction due to custom NodeDrainTimeout exceeded",
+			shouldEvict: false,
+			existingNodes: []ctrlruntimeclient.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "existing-node",
+					},
+					Status: corev1.NodeStatus{
+						Conditions: []corev1.NodeCondition{
+							{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eviction-destination",
+					},
+				},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &metav1.Time{Time: time.Now().Add(-30 * time.Minute)},
+					Finalizers:        []string{finalizer},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: &metav1.Duration{Duration: 10 * time.Minute},
+				},
+			},
+		},
+		{
+			name:        "allow eviction when within custom NodeDrainTimeout",
+			shouldEvict: true,
+			existingNodes: []ctrlruntimeclient.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "existing-node",
+					},
+					Status: corev1.NodeStatus{
+						Conditions: []corev1.NodeCondition{
+							{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eviction-destination",
+					},
+				},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &metav1.Time{Time: time.Now().Add(-5 * time.Minute)},
+					Finalizers:        []string{finalizer},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: &metav1.Duration{Duration: 10 * time.Minute},
+				},
+			},
+		},
+		{
+			name:        "custom NodeDrainTimeout overrides default longer timeout",
+			shouldEvict: false,
+			existingNodes: []ctrlruntimeclient.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "existing-node",
+					},
+					Status: corev1.NodeStatus{
+						Conditions: []corev1.NodeCondition{
+							{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eviction-destination",
+					},
+				},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &metav1.Time{Time: time.Now().Add(-15 * time.Minute)},
+					Finalizers:        []string{finalizer},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: &metav1.Duration{Duration: 10 * time.Minute},
+				},
+			},
+		},
+		{
+			name:        "nil NodeDrainTimeout uses default timeout (skip eviction)",
+			shouldEvict: false,
+			existingNodes: []ctrlruntimeclient.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "existing-node",
+					},
+					Status: corev1.NodeStatus{
+						Conditions: []corev1.NodeCondition{
+							{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eviction-destination",
+					},
+				},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &threeHoursAgo,
+					Finalizers:        []string{finalizer},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: nil,
+				},
+			},
+		},
+		{
+			name:        "nil NodeDrainTimeout uses default timeout (allow eviction)",
+			shouldEvict: true,
+			existingNodes: []ctrlruntimeclient.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "existing-node",
+					},
+					Status: corev1.NodeStatus{
+						Conditions: []corev1.NodeCondition{
+							{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eviction-destination",
+					},
+				},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+					Finalizers:        []string{finalizer},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: nil,
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -723,6 +888,180 @@ func TestControllerFindNodeByProviderID(t *testing.T) {
 			node := findNodeByProviderID(test.instance, test.provider, test.nodes)
 			if (node != nil) != test.expectedNode {
 				t.Errorf("expected %t, but got %t", test.expectedNode, (node != nil))
+			}
+		})
+	}
+}
+
+func TestGetEffectiveNodeDrainTimeout(t *testing.T) {
+	defaultSkipEvictionAfter := 2 * time.Hour
+	customNodeDrainTimeout := 5 * time.Minute
+	anotherCustomTimeout := 30 * time.Minute
+
+	tests := []struct {
+		name              string
+		machine           *clusterv1alpha1.Machine
+		skipEvictionAfter time.Duration
+		expectedTimeout   time.Duration
+		description       string
+	}{
+		{
+			name:              "nil machine returns default timeout",
+			machine:           nil,
+			skipEvictionAfter: defaultSkipEvictionAfter,
+			expectedTimeout:   defaultSkipEvictionAfter,
+			description:       "When machine is nil, should return the reconciler's default skipEvictionAfter",
+		},
+		{
+			name: "machine with nil NodeDrainTimeout returns default",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-machine",
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: nil,
+				},
+			},
+			skipEvictionAfter: defaultSkipEvictionAfter,
+			expectedTimeout:   defaultSkipEvictionAfter,
+			description:       "When machine has no custom NodeDrainTimeout, should return the default timeout",
+		},
+		{
+			name: "machine with custom NodeDrainTimeout overrides default",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-machine-custom",
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: &metav1.Duration{Duration: customNodeDrainTimeout},
+				},
+			},
+			skipEvictionAfter: defaultSkipEvictionAfter,
+			expectedTimeout:   customNodeDrainTimeout,
+			description:       "When machine has custom NodeDrainTimeout, should use that instead of default",
+		},
+		{
+			name: "machine with custom timeout smaller than default",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-machine-small-timeout",
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: &metav1.Duration{Duration: 1 * time.Minute},
+				},
+			},
+			skipEvictionAfter: defaultSkipEvictionAfter,
+			expectedTimeout:   1 * time.Minute,
+			description:       "Custom timeout smaller than default should be respected",
+		},
+		{
+			name: "machine with custom timeout larger than default",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-machine-large-timeout",
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: &metav1.Duration{Duration: anotherCustomTimeout},
+				},
+			},
+			skipEvictionAfter: defaultSkipEvictionAfter,
+			expectedTimeout:   anotherCustomTimeout,
+			description:       "Custom timeout larger than default should be respected",
+		},
+		{
+			name: "zero default timeout with nil machine NodeDrainTimeout",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-machine",
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: nil,
+				},
+			},
+			skipEvictionAfter: 0,
+			expectedTimeout:   0,
+			description:       "When default timeout is zero, should return zero",
+		},
+		{
+			name: "machine with zero custom NodeDrainTimeout",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-machine-zero-timeout",
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: &metav1.Duration{Duration: 0},
+				},
+			},
+			skipEvictionAfter: defaultSkipEvictionAfter,
+			expectedTimeout:   0,
+			description:       "When machine has zero custom NodeDrainTimeout, should use zero",
+		},
+		{
+			name: "very large custom timeout",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-machine-very-large",
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: &metav1.Duration{Duration: 24 * time.Hour},
+				},
+			},
+			skipEvictionAfter: defaultSkipEvictionAfter,
+			expectedTimeout:   24 * time.Hour,
+			description:       "Very large custom timeout should be respected",
+		},
+		{
+			name: "machine with very small custom timeout (1 nanosecond)",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-machine-nano",
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: &metav1.Duration{Duration: 1 * time.Nanosecond},
+				},
+			},
+			skipEvictionAfter: defaultSkipEvictionAfter,
+			expectedTimeout:   1 * time.Nanosecond,
+			description:       "Very small custom timeout (nanosecond precision) should be respected",
+		},
+		{
+			name:              "different default timeouts are correctly used",
+			machine:           nil,
+			skipEvictionAfter: 10 * time.Minute,
+			expectedTimeout:   10 * time.Minute,
+			description:       "Different default timeout should be returned when no custom timeout is set",
+		},
+		{
+			name: "machine with custom timeout takes precedence over different default",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-machine-precedence",
+				},
+				Spec: clusterv1alpha1.MachineSpec{
+					NodeDrainTimeout: &metav1.Duration{Duration: 3 * time.Hour},
+				},
+			},
+			skipEvictionAfter: 10 * time.Minute,
+			expectedTimeout:   3 * time.Hour,
+			description:       "Machine custom timeout takes precedence regardless of default value",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			reconciler := &Reconciler{
+				skipEvictionAfter: test.skipEvictionAfter,
+			}
+
+			actualTimeout := reconciler.getEffectiveNodeDrainTimeout(test.machine)
+
+			if actualTimeout != test.expectedTimeout {
+				t.Errorf(
+					"getEffectiveNodeDrainTimeout failed: expected %v, got %v. %s",
+					test.expectedTimeout,
+					actualTimeout,
+					test.description,
+				)
 			}
 		})
 	}
