@@ -140,6 +140,11 @@ func (r *ReconcileMachineDeployment) getNewMachineSet(ctx context.Context, log *
 		minReadySeconds = *d.Spec.MinReadySeconds
 	}
 
+	// Propagate NodeDrainTimeout from MachineDeployment to MachineSet template (when not already set).
+	if d.Spec.NodeDrainTimeout != nil && newMSTemplate.Spec.NodeDrainTimeout == nil {
+		newMSTemplate.Spec.NodeDrainTimeout = d.Spec.NodeDrainTimeout.DeepCopy()
+	}
+
 	// Create new MachineSet
 	newMS := clusterv1alpha1.MachineSet{
 		ObjectMeta: metav1.ObjectMeta{
