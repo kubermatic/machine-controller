@@ -67,8 +67,10 @@ type MachineDeploymentSpec struct {
 	// not be estimated during the time a deployment is paused. Defaults to 600s.
 	ProgressDeadlineSeconds *int32 `json:"progressDeadlineSeconds,omitempty"`
 
-	//TODO: document it better tbf.
-	// NodeDrainTimeout sets a time limit how long a node can take to drain.
+	// NodeDrainTimeout specifies a custom time limit for draining pods from nodes
+	// during machine deletion. This value is inherited by Machines created from this
+	// deployment if they don't have their own NodeDrainTimeout set.
+	// If not set, the default global timeout is used.
 	// +optional
 	NodeDrainTimeout *metav1.Duration `json:"nodeDrainTimeout,omitempty"`
 }
