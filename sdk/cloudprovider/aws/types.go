@@ -40,6 +40,7 @@ type RawConfig struct {
 	DiskType           providerconfig.ConfigVarString   `json:"diskType,omitempty"`
 	DiskIops           *int32                           `json:"diskIops,omitempty"`
 	EBSVolumeEncrypted providerconfig.ConfigVarBool     `json:"ebsVolumeEncrypted"`
+	EBSOptimized       providerconfig.ConfigVarBool     `json:"ebsOptimized"`
 	Tags               map[string]string                `json:"tags,omitempty"`
 	AssignPublicIP     *bool                            `json:"assignPublicIP,omitempty"`
 
