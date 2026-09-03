@@ -432,12 +432,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, nil, fmt.Errorf("failed to get ebsVolumeEncrypted value: %w", err)
 	}
 
-	ebsOptimized, _, err := p.configVarResolver.GetBoolValue(rawConfig.EBSOptimized)
+	ebsOptimized, ebsOptimizedSet, err := p.configVarResolver.GetBoolValue(rawConfig.EBSOptimized)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get ebsOptimized value: %w", err)
 	}
 
-	if ebsOptimized {
+	if ebsOptimizedSet {
 		c.EBSOptimized = aws.Bool(ebsOptimized)
 	}
 	c.Tags = rawConfig.Tags
