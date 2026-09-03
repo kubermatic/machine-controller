@@ -66,11 +66,10 @@ const (
 	awsMetadataHTTPPutResponseHopLimit = 3
 )
 
-var (
-	metricInstancesForMachines = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "machine_controller_aws_instances_for_machine",
-		Help: "The number of instances at aws for a given machine"}, []string{"machine"})
-)
+var metricInstancesForMachines = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "machine_controller_aws_instances_for_machine",
+	Help: "The number of instances at aws for a given machine",
+}, []string{"machine"})
 
 func init() {
 	metrics.Registry.MustRegister(metricInstancesForMachines)
@@ -188,6 +187,7 @@ type Config struct {
 	DiskType           ec2types.VolumeType
 	DiskIops           *int32
 	EBSVolumeEncrypted bool
+	EBSOptimized       *bool
 	Tags               map[string]string
 	AssignPublicIP     *bool
 
@@ -290,7 +290,6 @@ func getCPUArchitecture(ctx context.Context, client *ec2.Client, instanceType ec
 	instanceTypes, err := client.DescribeInstanceTypes(ctx, &ec2.DescribeInstanceTypesInput{
 		InstanceTypes: []ec2types.InstanceType{instanceType},
 	})
-
 	if err != nil {
 		return "", err
 	}
@@ -432,9 +431,19 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get ebsVolumeEncrypted value: %w", err)
 	}
+
+	ebsOptimized, ebsOptimizedSet, err := p.configVarResolver.GetBoolValue(rawConfig.EBSOptimized)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get ebsOptimized value: %w", err)
+	}
+
+	if ebsOptimizedSet {
+		c.EBSOptimized = aws.Bool(ebsOptimized)
+	}
 	c.Tags = rawConfig.Tags
 	c.AssignPublicIP = rawConfig.AssignPublicIP
 	c.IsSpotInstance = rawConfig.IsSpotInstance
+
 	if rawConfig.SpotInstanceConfig != nil && c.IsSpotInstance != nil && *c.IsSpotInstance {
 		maxPrice, err := p.configVarResolver.GetStringValue(rawConfig.SpotInstanceConfig.MaxPrice)
 		if err != nil {
@@ -469,19 +478,21 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 }
 
 func getAwsConfig(ctx context.Context, id, secret, token, region, assumeRoleARN, assumeRoleExternalID string) (aws.Config, error) {
-	cfg, err := awsconfig.LoadDefaultConfig(ctx,
+	cfg, err := awsconfig.LoadDefaultConfig(
+		ctx,
 		awsconfig.WithRegion(region),
 		awsconfig.WithCredentialsProvider(awscredentials.NewStaticCredentialsProvider(id, secret, token)),
 		awsconfig.WithRetryMaxAttempts(maxRetries),
 	)
-
 	if err != nil {
 		return aws.Config{}, err
 	}
 
 	if assumeRoleARN != "" {
 		stsSvc := sts.NewFromConfig(cfg)
-		creds := stscreds.NewAssumeRoleProvider(stsSvc, assumeRoleARN,
+		creds := stscreds.NewAssumeRoleProvider(
+			stsSvc,
+			assumeRoleARN,
 			func(o *stscreds.AssumeRoleOptions) {
 				o.ExternalID = ptr.To(assumeRoleExternalID)
 			},
@@ -624,7 +635,6 @@ func getVpc(ctx context.Context, client *ec2.Client, id string) (*ec2types.Vpc, 
 			{Name: aws.String("vpc-id"), Values: []string{id}},
 		},
 	})
-
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed to list vpc's")
 	}
@@ -641,7 +651,6 @@ func areVpcDNSHostnamesEnabled(ctx context.Context, client *ec2.Client, id strin
 		VpcId:     &id,
 		Attribute: ec2types.VpcAttributeNameEnableDnsHostnames,
 	})
-
 	if err != nil {
 		return false, awsErrorToTerminalError(err, "failed to describe vpc attributes")
 	}
@@ -676,7 +685,6 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	if amiID == "" {
 		// read the instance type to know which cpu architecture is needed in the AMI
 		cpuArchitecture, err := getCPUArchitecture(ctx, ec2Client, config.InstanceType)
-
 		if err != nil {
 			return nil, cloudprovidererrors.TerminalError{
 				Reason:  common.InvalidConfigurationMachineError,
@@ -765,6 +773,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 				},
 			},
 		},
+		EbsOptimized: config.EBSOptimized,
 		MaxCount:     aws.Int32(1),
 		MinCount:     aws.Int32(1),
 		InstanceType: config.InstanceType,
@@ -819,7 +828,6 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 
 	// (*Config, *providerconfig.Config, *awstypes.RawConfig, error)
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
-
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -837,7 +845,6 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		cOut, err := ec2Client.CancelSpotInstanceRequests(ctx, &ec2.CancelSpotInstanceRequestsInput{
 			SpotInstanceRequestIds: []string{*ec2instance.instance.SpotInstanceRequestId},
 		})
-
 		if err != nil {
 			return false, awsErrorToTerminalError(err, "failed to cancel spot instance request")
 		}
@@ -944,9 +951,18 @@ func (p *provider) MigrateUID(ctx context.Context, _ *zap.SugaredLogger, machine
 		return fmt.Errorf("failed to get EC2 client: %w", err)
 	}
 
-	_, err = ec2Client.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: []string{machineInstance.ID()},
-		Tags:      []ec2types.Tag{{Key: aws.String(machineUIDTag), Value: aws.String(string(newUID))}}})
+	_, err = ec2Client.CreateTags(
+		ctx,
+		&ec2.CreateTagsInput{
+			Resources: []string{machineInstance.ID()},
+			Tags: []ec2types.Tag{
+				{
+					Key:   aws.String(machineUIDTag),
+					Value: aws.String(string(newUID)),
+				},
+			},
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to update instance with new machineUIDTag: %w", err)
 	}
@@ -1140,7 +1156,8 @@ func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) e
 
 	for _, machine := range machines.Items {
 		metricInstancesForMachines.WithLabelValues(fmt.Sprintf("%s/%s", machine.Namespace, machine.Name)).Set(
-			getInstanceCountForMachine(machine, allReservations))
+			getInstanceCountForMachine(machine, allReservations),
+		)
 	}
 
 	if len(machineErrors) > 0 {
