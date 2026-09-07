@@ -22,6 +22,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -102,10 +104,11 @@ type config struct {
 	ImagePlan             *compute.Plan
 	ImageReference        *compute.ImageReference
 
-	OSDiskSize   int32
-	OSDiskSKU    *compute.StorageAccountTypes
-	DataDiskSize int32
-	DataDiskSKU  *compute.StorageAccountTypes
+	OSDiskSize         int32
+	OSDiskSKU          *compute.StorageAccountTypes
+	DataDiskSize       int32
+	DataDiskSKU        *compute.StorageAccountTypes
+	DiskControllerType *compute.DiskControllerTypes
 
 	AssignPublicIP              bool
 	PublicIPSKU                 *network.PublicIPAddressSkuName
@@ -341,6 +344,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 
 	if rawCfg.DataDiskSKU != nil {
 		c.DataDiskSKU = storageTypePtr(*rawCfg.DataDiskSKU)
+	}
+
+	if rawCfg.DiskControllerType != nil {
+		dct := compute.DiskControllerTypes(*rawCfg.DiskControllerType)
+		c.DiskControllerType = &dct
 	}
 
 	if rawCfg.ImagePlan != nil && rawCfg.ImagePlan.Name != "" {
@@ -627,6 +635,13 @@ func getStorageProfile(config *config, providerCfg *providerconfig.Config) (*com
 			}
 		}
 	}
+
+	if config.DiskControllerType != nil {
+		sp.DiskControllerType = *config.DiskControllerType
+	} else if vmSizeRequiresNVMe(config.VMSize) {
+		sp.DiskControllerType = compute.NVMe
+	}
+
 	return sp, nil
 }
 
@@ -1025,6 +1040,18 @@ func validateDiskSKUs(_ context.Context, c *config, sku compute.ResourceSku) err
 	return nil
 }
 
+func validateDiskControllerType(_ context.Context, c *config, sku compute.ResourceSku) error {
+	if c.DiskControllerType != nil {
+		if !slices.Contains(compute.PossibleDiskControllerTypesValues(), *c.DiskControllerType) {
+			return fmt.Errorf("invalid diskControllerType %q, valid values are: %v", *c.DiskControllerType, compute.PossibleDiskControllerTypesValues())
+		}
+		if *c.DiskControllerType == compute.SCSI && skuRequiresNVMe(sku) {
+			return fmt.Errorf("VM size %q only supports NVMe disk controller, cannot use %q", c.VMSize, compute.SCSI)
+		}
+	}
+	return nil
+}
+
 func validateSKUCapabilities(_ context.Context, c *config, sku compute.ResourceSku) error {
 	if c.EnableAcceleratedNetworking != nil && *c.EnableAcceleratedNetworking {
 		if !SKUHasCapability(sku, capabilityAcceleratedNetworking) {
@@ -1184,6 +1211,9 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 
 	if err := validateSecurityProfile(ctx, c, sku); err != nil {
 		return fmt.Errorf("failed to validate security profile: %w", err)
+	}
+	if err := validateDiskControllerType(ctx, c, sku); err != nil {
+		return fmt.Errorf("failed to validate disk controller type: %w", err)
 	}
 
 	_, err = getOSImageReference(c, providerConfig.OperatingSystem)
@@ -1368,13 +1398,7 @@ func supportsDiskSKU(vmSKU compute.ResourceSku, diskSKU compute.StorageAccountTy
 				for _, zone := range zones {
 					found := false
 					for _, details := range *(*vmSKU.LocationInfo)[0].ZoneDetails {
-						matchesZone := false
-						for _, zoneName := range *details.Name {
-							if zone == zoneName {
-								matchesZone = true
-								break
-							}
-						}
+						matchesZone := slices.Contains(*details.Name, zone)
 
 						// we only check this zone details for capabilities if it actually includes the zone we're checking for
 						if matchesZone {
@@ -1426,6 +1450,34 @@ func getHyperVGenerations(sku compute.ResourceSku) string {
 func skuSupportsGen2(sku compute.ResourceSku) bool {
 	generations := getHyperVGenerations(sku)
 	return strings.Contains(generations, "V2")
+}
+
+// skuRequiresNVMe checks if a VM SKU only supports NVMe disk controller using the Azure SKU API.
+// v6 and later generation VMs exclusively support NVMe; the DiskControllerTypes capability
+// value is "NVMe" (no "SCSI") for those SKUs.
+func skuRequiresNVMe(sku compute.ResourceSku) bool {
+	if sku.Capabilities == nil {
+		return false
+	}
+	for _, cap := range *sku.Capabilities {
+		if cap.Name != nil && *cap.Name == "DiskControllerTypes" && cap.Value != nil {
+			v := strings.ToLower(*cap.Value)
+			return strings.Contains(v, "nvme") && !strings.Contains(v, "scsi")
+		}
+	}
+	return false
+}
+
+// vmSizeRequiresNVMe checks if a VM size requires NVMe disk controller using heuristics.
+// Azure v6 and later generation VMs (e.g. Standard_D4s_v6) do not support SCSI disk controllers.
+func vmSizeRequiresNVMe(vmSize string) bool {
+	size := strings.ToLower(vmSize)
+	idx := strings.LastIndex(size, "_v")
+	if idx == -1 {
+		return false
+	}
+	n, err := strconv.Atoi(size[idx+2:])
+	return err == nil && n >= 6
 }
 
 // vmSizeSupportsGen2 checks if a VM size is known to support Generation 2 VMs using heuristics.
