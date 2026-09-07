@@ -121,6 +121,20 @@ func skuWithoutGenCap() compute.ResourceSku {
 	}
 }
 
+func skuWithDiskControllerTypes(value string) compute.ResourceSku {
+	return compute.ResourceSku{
+		Capabilities: &[]compute.ResourceSkuCapabilities{
+			{Name: to.StringPtr("DiskControllerTypes"), Value: to.StringPtr(value)},
+		},
+	}
+}
+
+func nvmeOnlySKU() compute.ResourceSku { return skuWithDiskControllerTypes("NVMe") }
+func scsiAndNvmeSKU() compute.ResourceSku {
+	return skuWithDiskControllerTypes("SCSI,NVMe")
+}
+func scsiOnlySKU() compute.ResourceSku { return skuWithDiskControllerTypes("SCSI") }
+
 func TestValidateSecurityProfile(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -475,12 +489,204 @@ func TestBuildSecurityProfile(t *testing.T) {
 			},
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := buildSecurityProfile(tt.raw)
 			if diff := cmp.Diff(tt.expected, got); diff != "" {
 				t.Errorf("buildSecurityProfile() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+func TestVMSizeRequiresNVMe(t *testing.T) {
+	tests := []struct {
+		name     string
+		vmSize   string
+		expected bool
+	}{
+		{
+			name:     "Standard_D4s_v6 requires NVMe",
+			vmSize:   "Standard_D4s_v6",
+			expected: true,
+		},
+		{
+			name:     "Standard_E8s_v6 requires NVMe",
+			vmSize:   "Standard_E8s_v6",
+			expected: true,
+		},
+		{
+			name:     "lowercase standard_d4s_v6 requires NVMe",
+			vmSize:   "standard_d4s_v6",
+			expected: true,
+		},
+		{
+			name:     "Standard_D4s_v5 does not require NVMe",
+			vmSize:   "Standard_D4s_v5",
+			expected: false,
+		},
+		{
+			name:     "Standard_D4s_v3 does not require NVMe",
+			vmSize:   "Standard_D4s_v3",
+			expected: false,
+		},
+		{
+			name:     "Standard_NC40ads_H100_v5 does not require NVMe",
+			vmSize:   "Standard_NC40ads_H100_v5",
+			expected: false,
+		},
+		{
+			name:     "Standard_B2ms (no version suffix) does not require NVMe",
+			vmSize:   "Standard_B2ms",
+			expected: false,
+		},
+		{
+			name:     "Standard_A2 does not require NVMe",
+			vmSize:   "Standard_A2",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := vmSizeRequiresNVMe(tt.vmSize)
+			if result != tt.expected {
+				t.Errorf("vmSizeRequiresNVMe(%s) = %v, expected %v", tt.vmSize, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSkuRequiresNVMe(t *testing.T) {
+	tests := []struct {
+		name     string
+		sku      compute.ResourceSku
+		expected bool
+	}{
+		{
+			name:     "SKU with only NVMe capability requires NVMe",
+			sku:      nvmeOnlySKU(),
+			expected: true,
+		},
+		{
+			name:     "SKU with lowercase nvme capability requires NVMe",
+			sku:      skuWithDiskControllerTypes("nvme"),
+			expected: true,
+		},
+		{
+			name:     "SKU supporting both SCSI and NVMe does not require NVMe",
+			sku:      scsiAndNvmeSKU(),
+			expected: false,
+		},
+		{
+			name:     "SKU with only SCSI capability does not require NVMe",
+			sku:      scsiOnlySKU(),
+			expected: false,
+		},
+		{
+			name:     "SKU without DiskControllerTypes capability does not require NVMe",
+			sku:      skuWithoutGenCap(),
+			expected: false,
+		},
+		{
+			name:     "SKU with nil Capabilities does not require NVMe",
+			sku:      compute.ResourceSku{},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := skuRequiresNVMe(tt.sku)
+			if result != tt.expected {
+				t.Errorf("skuRequiresNVMe() = %v, expected %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestValidateDiskControllerType(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      *config
+		sku         compute.ResourceSku
+		expectError bool
+	}{
+		{
+			name:        "nil DiskControllerType passes regardless of SKU",
+			config:      &config{VMSize: testVMSizeGen2},
+			sku:         nvmeOnlySKU(),
+			expectError: false,
+		},
+		{
+			name: "explicit NVMe on NVMe-only SKU passes",
+			config: &config{
+				VMSize:             "Standard_D4s_v6",
+				DiskControllerType: ptr.To(compute.NVMe),
+			},
+			sku:         nvmeOnlySKU(),
+			expectError: false,
+		},
+		{
+			name: "explicit SCSI on NVMe-only SKU fails",
+			config: &config{
+				VMSize:             "Standard_D4s_v6",
+				DiskControllerType: ptr.To(compute.SCSI),
+			},
+			sku:         nvmeOnlySKU(),
+			expectError: true,
+		},
+		{
+			name: "explicit SCSI on SKU supporting both SCSI and NVMe passes",
+			config: &config{
+				VMSize:             testVMSizeGen2,
+				DiskControllerType: ptr.To(compute.SCSI),
+			},
+			sku:         scsiAndNvmeSKU(),
+			expectError: false,
+		},
+		{
+			name: "explicit SCSI on SCSI-only SKU passes",
+			config: &config{
+				VMSize:             testVMSizeGen1,
+				DiskControllerType: ptr.To(compute.SCSI),
+			},
+			sku:         scsiOnlySKU(),
+			expectError: false,
+		},
+		{
+			name: "explicit SCSI on SKU without DiskControllerTypes capability passes",
+			config: &config{
+				VMSize:             testVMSizeGen1,
+				DiskControllerType: ptr.To(compute.SCSI),
+			},
+			sku:         skuWithoutGenCap(),
+			expectError: false,
+		},
+		{
+			name: "invalid diskControllerType value fails",
+			config: &config{
+				VMSize:             testVMSizeGen2,
+				DiskControllerType: ptr.To(compute.DiskControllerTypes("Nonsense")),
+			},
+			sku:         gen2SKU(),
+			expectError: true,
+		},
+		{
+			name: "lowercase nvme fails (case-sensitive)",
+			config: &config{
+				VMSize:             testVMSizeGen2,
+				DiskControllerType: ptr.To(compute.DiskControllerTypes("nvme")),
+			},
+			sku:         gen2SKU(),
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateDiskControllerType(context.Background(), tt.config, tt.sku)
+			if (err != nil) != tt.expectError {
+				t.Errorf("validateDiskControllerType() error = %v, expectError %v", err, tt.expectError)
 			}
 		})
 	}
