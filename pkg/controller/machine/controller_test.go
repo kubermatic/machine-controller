@@ -333,6 +333,7 @@ func durationPtr(d time.Duration) *time.Duration {
 
 func TestControllerShouldEvict(t *testing.T) {
 	threeHoursAgo := metav1.NewTime(time.Now().Add(-3 * time.Hour))
+	oneHourAgo := metav1.NewTime(time.Now().Add(-1 * time.Hour))
 	now := metav1.Now()
 	finalizer := "test"
 
@@ -355,6 +356,81 @@ func TestControllerShouldEvict(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &threeHoursAgo,
 					Finalizers:        []string{finalizer},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+		},
+		{
+			name:        "skip eviction due to per-machine override shorter than the global flag",
+			shouldEvict: false,
+			existingNodes: []ctrlruntimeclient.Object{&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "existing-node",
+				},
+			}},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &oneHourAgo,
+					Annotations: map[string]string{
+						AnnotationSkipEvictionAfter: "30m",
+					},
+					Finalizers: []string{finalizer},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+		},
+		{
+			name:        "eviction possible due to per-machine override longer than the global flag",
+			shouldEvict: true,
+			existingNodes: []ctrlruntimeclient.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "existing-node",
+					},
+					Status: corev1.NodeStatus{
+						Conditions: []corev1.NodeCondition{
+							{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eviction-destination",
+					},
+				},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &threeHoursAgo,
+					Annotations: map[string]string{
+						AnnotationSkipEvictionAfter: "4h",
+					},
+					Finalizers: []string{finalizer},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+		},
+		{
+			name:        "skip eviction due to unparseable override falling back to the global flag",
+			shouldEvict: false,
+			existingNodes: []ctrlruntimeclient.Object{&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "existing-node",
+				},
+			}},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &threeHoursAgo,
+					Annotations: map[string]string{
+						AnnotationSkipEvictionAfter: "fast",
+					},
+					Finalizers: []string{finalizer},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
