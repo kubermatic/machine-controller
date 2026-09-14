@@ -85,6 +85,11 @@ const (
 	// Its value should consist of one or more initializers, separated by a comma.
 	AnnotationMachineUninitialized = "machine-controller.kubermatic.io/initializers"
 
+	// AnnotationSkipEvictionAfter allows overriding the global --skip-eviction-after
+	// flag per Machine. Its value must be a valid duration string (e.g. "45m", "2h").
+	// If the value cannot be parsed, the controller falls back to the global flag.
+	AnnotationSkipEvictionAfter = "machine-controller.kubermatic.io/skip-eviction-after"
+
 	deletionRetryWaitPeriod = 10 * time.Second
 
 	controllerNameLabelKey = "machine.k8s.io/controller"
@@ -530,9 +535,20 @@ func (r *Reconciler) shouldCleanupVolumes(ctx context.Context, log *zap.SugaredL
 // evictIfNecessary checks if the machine has a node and evicts it if necessary.
 func (r *Reconciler) shouldEvict(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine) (bool, error) {
 	// If the deletion got triggered a few hours ago, skip eviction.
-	// We assume here that the eviction is blocked by misconfiguration or a misbehaving kubelet and/or controller-runtime
-	if machine.DeletionTimestamp != nil && time.Since(machine.DeletionTimestamp.Time) > r.skipEvictionAfter {
-		log.Infow("Skipping eviction since the deletion got triggered too long ago", "threshold", r.skipEvictionAfter)
+	// We assume here that the eviction is blocked by misconfiguration or a misbehaving kubelet and/or controller-runtime.
+	// The effective threshold can be overridden per Machine via an annotation; without
+	// an override the global --skip-eviction-after flag value applies.
+	threshold := r.skipEvictionAfter
+	if raw, ok := machine.Annotations[AnnotationSkipEvictionAfter]; ok {
+		if duration, err := time.ParseDuration(raw); err == nil {
+			threshold = duration
+		} else {
+			log.Errorw("Invalid value for the skip-eviction-after annotation, using the global flag", "annotation", AnnotationSkipEvictionAfter, "value", raw, zap.Error(err))
+		}
+	}
+
+	if machine.DeletionTimestamp != nil && time.Since(machine.DeletionTimestamp.Time) > threshold {
+		log.Infow("Skipping eviction since the deletion got triggered too long ago", "threshold", threshold)
 		return false, nil
 	}
 

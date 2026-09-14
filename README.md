@@ -19,6 +19,7 @@
     - [CA Data](#ca-data)
     - [Apiserver Endpoint](#apiserver-endpoint)
       - [Example cluster-info ConfigMap](#example-cluster-info-configmap)
+    - [Node Eviction Timeout](#node-eviction-timeout)
   - [Development](#development)
     - [Testing](#testing)
       - [Unit Tests](#unit-tests)
@@ -127,6 +128,24 @@ data:
     preferences: {}
     users: []
 ```
+
+### Node Eviction Timeout
+
+When a Machine is deleted, the machine-controller evicts its Pods (via the Eviction API, respecting PodDisruptionBudgets) before deleting the cloud instance. The `--skip-eviction-after` flag (default `2h`) bounds how long that eviction is attempted: once a Machine's deletion timestamp is older than the threshold, eviction is skipped and the cloud instance is deleted even if Pods remain, so a blocked eviction cannot stall machine deletion indefinitely.
+
+The threshold can be overridden per Machine via an annotation:
+
+```yaml
+metadata:
+  annotations:
+    machine-controller.kubermatic.io/skip-eviction-after: 30m
+```
+
+The value must be a valid duration string (for example `30m`, `1h`, `90s`). If the value cannot be parsed, the controller logs it and falls back to the global flag.
+
+Set the annotation directly on a Machine, or on a MachineDeployment: MachineDeployment annotations are synced onto their MachineSet objects, and the MachineSet controller copies the override onto each Machine it creates. Changing the value does not rewrite or roll out to existing Machines; only Machines created afterwards carry the new value.
+
+This annotation only adjusts the eviction timeout. To skip eviction for a node entirely, use the `kubermatic.io/skip-eviction` annotation on the Node instead.
 
 ## Development
 

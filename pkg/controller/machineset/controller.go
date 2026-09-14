@@ -28,6 +28,7 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
+	machinecontroller "k8c.io/machine-controller/pkg/controller/machine"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -330,6 +331,19 @@ func (r *ReconcileMachineSet) createMachine(machineSet *clusterv1alpha1.MachineS
 	machine.GenerateName = fmt.Sprintf("%s-", machineSet.Name)
 	machine.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(machineSet, controllerKind)}
 	machine.Namespace = machineSet.Namespace
+
+	// Propagate the per-Machine eviction timeout override from the MachineSet
+	// object onto the Machines it creates. MachineSet objects receive their
+	// annotations from the MachineDeployment sync, so this carries a
+	// MachineDeployment-level override down to each Machine without touching
+	// the (hashed) template, which would roll existing Machines on every change.
+	if raw, exists := machineSet.Annotations[machinecontroller.AnnotationSkipEvictionAfter]; exists {
+		if machine.Annotations == nil {
+			machine.Annotations = map[string]string{}
+		}
+		machine.Annotations[machinecontroller.AnnotationSkipEvictionAfter] = raw
+	}
+
 	return machine
 }
 
