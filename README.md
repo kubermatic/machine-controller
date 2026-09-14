@@ -43,10 +43,10 @@ machine-controller tries to follow the Kubernetes version
 
 Currently supported K8S versions are:
 
+- 1.37
 - 1.36
 - 1.35
 - 1.34
-- 1.33
 
 ### Community Providers
 
