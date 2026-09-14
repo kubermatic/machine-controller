@@ -86,7 +86,7 @@ const (
 )
 
 const (
-	defaultKubernetesVersion    = "v1.33.5"
+	defaultKubernetesVersion    = "v1.36.2"
 	awsDefaultKubernetesVersion = "1.26.12"
 	defaultContainerRuntime     = "containerd"
 )
