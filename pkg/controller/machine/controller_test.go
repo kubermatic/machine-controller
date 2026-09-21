@@ -344,7 +344,9 @@ func TestControllerShouldEvict(t *testing.T) {
 		machine            *clusterv1alpha1.Machine
 		additionalMachines []ctrlruntimeclient.Object
 		existingNodes      []ctrlruntimeclient.Object
-		shouldEvict        bool
+		// skipEvictionAfter overrides the global flag; nil keeps the default of two hours.
+		skipEvictionAfter *time.Duration
+		shouldEvict       bool
 	}{
 		{
 			name:        "skip eviction due to eviction timeout",
@@ -431,6 +433,128 @@ func TestControllerShouldEvict(t *testing.T) {
 					DeletionTimestamp: &threeHoursAgo,
 					Annotations: map[string]string{
 						AnnotationSkipEvictionAfter: "fast",
+					},
+					Finalizers: []string{finalizer},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+		},
+		{
+			name:        "eviction possible since the per-machine override disables the timeout",
+			shouldEvict: true,
+			existingNodes: []ctrlruntimeclient.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "existing-node",
+					},
+					Status: corev1.NodeStatus{
+						Conditions: []corev1.NodeCondition{
+							{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eviction-destination",
+					},
+				},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &threeHoursAgo,
+					Annotations: map[string]string{
+						AnnotationSkipEvictionAfter: "0",
+					},
+					Finalizers: []string{finalizer},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+		},
+		{
+			name:              "eviction possible since the global flag disables the timeout",
+			shouldEvict:       true,
+			skipEvictionAfter: durationPtr(0),
+			existingNodes: []ctrlruntimeclient.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "existing-node",
+					},
+					Status: corev1.NodeStatus{
+						Conditions: []corev1.NodeCondition{
+							{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eviction-destination",
+					},
+				},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &threeHoursAgo,
+					Finalizers:        []string{finalizer},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+		},
+		{
+			name:              "skip eviction since the per-machine override re-enables the timeout the global flag disabled",
+			shouldEvict:       false,
+			skipEvictionAfter: durationPtr(0),
+			existingNodes: []ctrlruntimeclient.Object{&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "existing-node",
+				},
+			}},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &oneHourAgo,
+					Annotations: map[string]string{
+						AnnotationSkipEvictionAfter: "30m",
+					},
+					Finalizers: []string{finalizer},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+		},
+		{
+			// A negative value parses fine, so it must take the same fallback as an
+			// unparseable one; otherwise every deleting Machine counts as past the
+			// threshold and gets force-deleted.
+			name:        "eviction possible since a negative override falls back to the global flag",
+			shouldEvict: true,
+			existingNodes: []ctrlruntimeclient.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "existing-node",
+					},
+					Status: corev1.NodeStatus{
+						Conditions: []corev1.NodeCondition{
+							{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eviction-destination",
+					},
+				},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &oneHourAgo,
+					Annotations: map[string]string{
+						AnnotationSkipEvictionAfter: "-30m",
 					},
 					Finalizers: []string{finalizer},
 				},
@@ -564,9 +688,14 @@ func TestControllerShouldEvict(t *testing.T) {
 				WithObjects(objects...).
 				Build()
 
+			skipEvictionAfter := 2 * time.Hour
+			if test.skipEvictionAfter != nil {
+				skipEvictionAfter = *test.skipEvictionAfter
+			}
+
 			reconciler := &Reconciler{
 				client:            client,
-				skipEvictionAfter: 2 * time.Hour,
+				skipEvictionAfter: skipEvictionAfter,
 			}
 
 			shouldEvict, err := reconciler.shouldEvict(ctx, zap.NewNop().Sugar(), test.machine)
