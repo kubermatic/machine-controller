@@ -87,6 +87,7 @@ const (
 
 	// AnnotationSkipEvictionAfter allows overriding the global --skip-eviction-after
 	// flag per Machine. Its value must be a valid duration string (e.g. "45m", "2h").
+	// A value of "0" disables the timeout for that Machine.
 	// If the value cannot be parsed, the controller falls back to the global flag.
 	AnnotationSkipEvictionAfter = "machine-controller.kubermatic.io/skip-eviction-after"
 
@@ -540,14 +541,20 @@ func (r *Reconciler) shouldEvict(ctx context.Context, log *zap.SugaredLogger, ma
 	// an override the global --skip-eviction-after flag value applies.
 	threshold := r.skipEvictionAfter
 	if raw, ok := machine.Annotations[AnnotationSkipEvictionAfter]; ok {
-		if duration, err := time.ParseDuration(raw); err == nil {
-			threshold = duration
-		} else {
+		duration, err := time.ParseDuration(raw)
+		switch {
+		case err != nil:
 			log.Errorw("Invalid value for the skip-eviction-after annotation, using the global flag", "annotation", AnnotationSkipEvictionAfter, "value", raw, zap.Error(err))
+		case duration < 0:
+			log.Errorw("Negative value for the skip-eviction-after annotation, using the global flag", "annotation", AnnotationSkipEvictionAfter, "value", raw)
+		default:
+			threshold = duration
 		}
 	}
 
-	if machine.DeletionTimestamp != nil && time.Since(machine.DeletionTimestamp.Time) > threshold {
+	if threshold == 0 {
+		log.Debugw("Eviction timeout is disabled, not skipping eviction", "threshold", threshold)
+	} else if machine.DeletionTimestamp != nil && time.Since(machine.DeletionTimestamp.Time) > threshold {
 		log.Infow("Skipping eviction since the deletion got triggered too long ago", "threshold", threshold)
 		return false, nil
 	}
