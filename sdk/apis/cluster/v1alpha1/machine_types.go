@@ -39,10 +39,13 @@ const (
 // Machine is the Schema for the machines API
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName=ma
-// +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="ProviderID",type="string",JSONPath=".spec.providerID",description="Provider ID"
-// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Machine status such as Terminating/Pending/Running/Failed etc"
-// +kubebuilder:printcolumn:name="NodeName",type="string",JSONPath=".status.nodeRef.name",description="Node name associated with this machine",priority=1
+// +kubebuilder:printcolumn:name="Provider",type="string",JSONPath=".spec.providerSpec.value.cloudProvider",description="Cloud provider the machine is created on"
+// +kubebuilder:printcolumn:name="OS",type="string",JSONPath=".spec.providerSpec.value.operatingSystem",description="Operating system of the machine"
+// +kubebuilder:printcolumn:name="Node",type="string",JSONPath=".status.nodeRef.name",description="Node name associated with this machine"
+// +kubebuilder:printcolumn:name="Kubelet",type="string",JSONPath=".spec.versions.kubelet",description="Kubelet version of the machine"
+// +kubebuilder:printcolumn:name="Address",type="string",JSONPath=".status.addresses[0].address",description="Address of the machine"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Deleted",type="date",JSONPath=".metadata.deletionTimestamp",priority=1
 type Machine struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
