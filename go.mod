@@ -45,7 +45,7 @@ require (
 	github.com/vultr/govultr/v3 v3.9.1
 	go.anx.io/go-anxcloud v0.7.3
 	go.uber.org/zap v1.27.1
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/oauth2 v0.36.0
 	gomodules.xyz/jsonpatch/v2 v2.4.0
 	google.golang.org/api v0.264.0
