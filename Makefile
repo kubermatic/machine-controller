@@ -69,13 +69,16 @@ docker-image:
 .PHONY: docker-image-publish
 docker-image-publish: docker-image
 	docker push $(IMAGE_NAME)
+	./hack/attach-image-sbom.sh $(IMAGE_NAME)
 	if [[ -n "$(GIT_TAG)" ]]; then \
 		$(eval IMAGE_TAG = $(GIT_TAG)) \
 		docker build -t $(IMAGE_NAME) . && \
 		docker push $(IMAGE_NAME) && \
+		./hack/attach-image-sbom.sh $(IMAGE_NAME) && \
 		$(eval IMAGE_TAG = latest) \
 		docker build -t $(IMAGE_NAME) . ;\
 		docker push $(IMAGE_NAME) ;\
+		./hack/attach-image-sbom.sh $(IMAGE_NAME) ;\
 	fi
 
 .PHONY: test-unit-docker
