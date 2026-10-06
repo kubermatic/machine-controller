@@ -81,22 +81,21 @@ func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, 
 		Template: false,
 		Location: relocateSpec,
 	}
+	resourcepoolref, err := resolveResourcePoolRef(ctx, config, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve resourcePool: %w", err)
+	}
+	cloneSpec.Location.Pool = resourcepoolref
+
 	datastoreref, err := resolveDatastoreRef(ctx, log, config, session, tpl, targetVMFolder, &cloneSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve datastore: %w", err)
 	}
 
-	resourcepoolref, err := resolveResourcePoolRef(ctx, config, session)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve resourcePool: %w", err)
-	}
-
 	cloneSpec.Location.Datastore = datastoreref
-	cloneSpec.Location.Pool = resourcepoolref
 	// Create a cloned VM from the template VM's snapshot.
 	// We split the cloning from the reconfiguring as those actions differ on the permission side.
-	// It's nicer to tell which specific action failed due to lacking permissions.
-	clonedVMTask, err := tpl.Clone(ctx, targetVMFolder, vmName, cloneSpec)
+	// It's nicer to tell which specific action failed due to lacking permissions.	clonedVMTask, err := tpl.Clone(ctx, targetVMFolder, vmName, cloneSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to clone template vm: %w", err)
 	}
@@ -450,9 +449,19 @@ func resolveResourcePoolRef(ctx context.Context, config *Config, session *Sessio
 		}
 		return types.NewReference(targetResourcePool.Reference()), nil
 	}
+	if config.Cluster != "" {
+		cluster, err := session.Finder.ClusterComputeResource(ctx, config.Cluster)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get cluster %q: %w", config.Cluster, err)
+		}
+		clusterResourcePool, err := cluster.ResourcePool(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get root resourcepool of cluster %q: %w", config.Cluster, err)
+		}
+		return types.NewReference(clusterResourcePool.Reference()), nil
+	}
 	return nil, nil
 }
-
 func attachTags(ctx context.Context, log *zap.SugaredLogger, config *Config, vm *object.VirtualMachine) error {
 	restAPISession, err := NewRESTSession(ctx, config)
 	if err != nil {

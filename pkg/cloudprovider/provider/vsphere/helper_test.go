@@ -191,6 +191,33 @@ func TestResolveResourcePoolRef(t *testing.T) {
 			wantErr:          true,
 			wantResourcePool: false,
 		},
+		{
+			name: "Cluster specified without Resource Pool",
+			config: &Config{
+				Cluster: "DC0_C0",
+			},
+			wantErr:              false,
+			wantResourcePool:     true,
+			expectedResourcePool: "Resources",
+		},
+		{
+			name: "Resource Pool takes precedence over Cluster",
+			config: &Config{
+				Cluster:      "DC0_C0",
+				ResourcePool: "DC0_C0_RP1",
+			},
+			wantErr:              false,
+			wantResourcePool:     true,
+			expectedResourcePool: "DC0_C0_RP1",
+		},
+		{
+			name: "Cluster specified missing",
+			config: &Config{
+				Cluster: "DC0_C0_WRONG",
+			},
+			wantErr:          true,
+			wantResourcePool: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
