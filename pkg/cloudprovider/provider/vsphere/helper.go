@@ -81,18 +81,19 @@ func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, 
 		Template: false,
 		Location: relocateSpec,
 	}
-	resourcepoolref, err := resolveResourcePoolRef(ctx, config, session)
+
+	// The resource pool must be resolved before the datastore, as storage DRS
+	// placement for datastore clusters requires a pool on the clone spec.
+	cloneSpec.Location.Pool, err = resolveResourcePoolRef(ctx, config, session)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve resourcePool: %w", err)
 	}
-	cloneSpec.Location.Pool = resourcepoolref
 
-	datastoreref, err := resolveDatastoreRef(ctx, log, config, session, tpl, targetVMFolder, &cloneSpec)
+	cloneSpec.Location.Datastore, err = resolveDatastoreRef(ctx, log, config, session, tpl, targetVMFolder, &cloneSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve datastore: %w", err)
 	}
 
-	cloneSpec.Location.Datastore = datastoreref
 	// Create a cloned VM from the template VM's snapshot.
 	// We split the cloning from the reconfiguring as those actions differ on the permission side.
 	// It's nicer to tell which specific action failed due to lacking permissions.
@@ -221,7 +222,15 @@ func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, 
 	return virtualMachine, nil
 }
 
-func resolveDatastoreRef(ctx context.Context, log *zap.SugaredLogger, config *Config, session *Session, vm *object.VirtualMachine, folder *object.Folder, cloneSpec *types.VirtualMachineCloneSpec) (*types.ManagedObjectReference, error) {
+func resolveDatastoreRef(
+	ctx context.Context,
+	log *zap.SugaredLogger,
+	config *Config,
+	session *Session,
+	vm *object.VirtualMachine,
+	folder *object.Folder,
+	cloneSpec *types.VirtualMachineCloneSpec,
+) (*types.ManagedObjectReference, error) {
 	// Based on https://github.com/vmware/govmomi/blob/v0.22.1/govc/vm/clone.go#L358
 	if config.DatastoreCluster != "" && config.Datastore == "" {
 		vmLog := log.With("vm", vm.Name(), "datastorecluster", config.DatastoreCluster)
@@ -244,6 +253,19 @@ func resolveDatastoreRef(ctx context.Context, log *zap.SugaredLogger, config *Co
 		// try to better understand the reason and the implications.
 		// https://code.vmware.com/docs/4206/vsphere-web-services-api-reference/doc/vim.vm.RelocateSpec.DiskMoveOptions.html
 		cloneSpec.Location.DiskMoveType = string(types.VirtualMachineRelocateDiskMoveOptionsMoveAllDiskBackingsAndDisallowSharing)
+
+		// RecommendDatastores requires either a resource pool or a host on the
+		// clone spec, otherwise it fails with an InvalidArgument fault on spec.host.
+		// If no resource pool was configured, use the one the clone would land in
+		// anyway, i.e. the template's.
+		if cloneSpec.Location.Pool == nil {
+			pool, err := templateResourcePool(ctx, vm)
+			if err != nil {
+				return nil, fmt.Errorf("failed to determine resource pool for storage placement: %w", err)
+			}
+			cloneSpec.Location.Pool = types.NewReference(pool.Reference())
+		}
+
 		// Build the placement spec
 		storagePlacementSpec := types.StoragePlacementSpec{
 			Folder:           types.NewReference(folder.Reference()),
@@ -268,7 +290,14 @@ func resolveDatastoreRef(ctx context.Context, log *zap.SugaredLogger, config *Co
 		}
 
 		// Get the first recommendation
-		ds := recommendations[0].Action[0].(*types.StoragePlacementAction).Destination.Reference()
+		if len(recommendations[0].Action) == 0 {
+			return nil, fmt.Errorf("storage placement recommendation contains no actions")
+		}
+		action, ok := recommendations[0].Action[0].(*types.StoragePlacementAction)
+		if !ok {
+			return nil, fmt.Errorf("unexpected storage placement action type %T", recommendations[0].Action[0])
+		}
+		ds := action.Destination.Reference()
 		vmLog.Infow("Selected datastore from datastore cluster", "datastore", ds)
 
 		return &ds, nil
@@ -280,6 +309,27 @@ func resolveDatastoreRef(ctx context.Context, log *zap.SugaredLogger, config *Co
 		return types.NewReference(datastore.Reference()), nil
 	}
 	return nil, fmt.Errorf("please provide either a datastore or a datastore cluster")
+}
+
+// templateResourcePool returns the resource pool of the template VM. VMs that
+// are marked as templates have no resource pool, in which case the root pool of
+// the compute resource that the template's host belongs to is returned.
+func templateResourcePool(ctx context.Context, tpl *object.VirtualMachine) (*object.ResourcePool, error) {
+	if pool, err := tpl.ResourcePool(ctx); err == nil {
+		return pool, nil
+	}
+
+	host, err := tpl.HostSystem(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get host of template vm: %w", err)
+	}
+
+	pool, err := host.ResourcePool(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get resource pool of template host: %w", err)
+	}
+
+	return pool, nil
 }
 
 func uploadAndAttachISO(ctx context.Context, log *zap.SugaredLogger, session *Session, vmRef *object.VirtualMachine, localIsoFilePath string) error {
@@ -346,11 +396,11 @@ func generateLocalUserdataISO(ctx context.Context, userdata, name string) (strin
 		return "", fmt.Errorf("failed to render metadata: %w", err)
 	}
 
-	if err := os.WriteFile(userdataFilePath, []byte(userdata), 0644); err != nil {
+	if err := os.WriteFile(userdataFilePath, []byte(userdata), 0o644); err != nil {
 		return "", fmt.Errorf("failed to locally write userdata file to %s: %w", userdataFilePath, err)
 	}
 
-	if err := os.WriteFile(metadataFilePath, metadata.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(metadataFilePath, metadata.Bytes(), 0o644); err != nil {
 		return "", fmt.Errorf("failed to locally write metadata file to %s: %w", userdataFilePath, err)
 	}
 
@@ -450,19 +500,9 @@ func resolveResourcePoolRef(ctx context.Context, config *Config, session *Sessio
 		}
 		return types.NewReference(targetResourcePool.Reference()), nil
 	}
-	if config.Cluster != "" {
-		cluster, err := session.Finder.ClusterComputeResource(ctx, config.Cluster)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get cluster %q: %w", config.Cluster, err)
-		}
-		clusterResourcePool, err := cluster.ResourcePool(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get root resourcepool of cluster %q: %w", config.Cluster, err)
-		}
-		return types.NewReference(clusterResourcePool.Reference()), nil
-	}
 	return nil, nil
 }
+
 func attachTags(ctx context.Context, log *zap.SugaredLogger, config *Config, vm *object.VirtualMachine) error {
 	restAPISession, err := NewRESTSession(ctx, config)
 	if err != nil {

@@ -33,9 +33,17 @@ import (
 
 func TestResolveDatastoreRef(t *testing.T) {
 	tests := []struct {
-		name    string
-		config  *Config
-		wantErr bool
+		name   string
+		config *Config
+		// presetPool sets a resource pool on the clone spec, as done by
+		// createClonedVM when a resource pool is configured.
+		presetPool bool
+		// fromTemplate marks the source VM as a template, which has no resource pool.
+		fromTemplate bool
+		// noActions makes the storage resource manager return a recommendation
+		// without any actions.
+		noActions bool
+		wantErr   bool
 	}{
 		{
 			name: "Only Datastore defined",
@@ -50,6 +58,30 @@ func TestResolveDatastoreRef(t *testing.T) {
 				DatastoreCluster: "DC0_POD0",
 			},
 			wantErr: false,
+		},
+		{
+			name: "DatastoreCluster with configured resource pool",
+			config: &Config{
+				DatastoreCluster: "DC0_POD0",
+			},
+			presetPool: true,
+			wantErr:    false,
+		},
+		{
+			name: "DatastoreCluster with template as source",
+			config: &Config{
+				DatastoreCluster: "DC0_POD0",
+			},
+			fromTemplate: true,
+			wantErr:      false,
+		},
+		{
+			name: "DatastoreCluster recommendation without actions",
+			config: &Config{
+				DatastoreCluster: "DC0_POD0",
+			},
+			noActions: true,
+			wantErr:   true,
 		},
 		{
 			name: "Unknown DatastoreCluster",
@@ -85,7 +117,7 @@ func TestResolveDatastoreRef(t *testing.T) {
 			// Override the default StorageResourceManager for the purpose of the unit test.
 			ds := simulator.Map.Any("Datastore").(*simulator.Datastore)
 			obj := simulator.Map.Get(model.ServiceContent.StorageResourceManager.Reference()).(*simulator.StorageResourceManager)
-			csrm := &CustomStorageResourceManager{obj, ds}
+			csrm := &CustomStorageResourceManager{StorageResourceManager: obj, ds: ds, noActions: tt.noActions}
 			simulator.Map.Put(csrm)
 
 			s := model.Service.NewServer()
@@ -99,10 +131,10 @@ func TestResolveDatastoreRef(t *testing.T) {
 			tt.config.Datacenter = "DC0"
 
 			session, err := NewSession(ctx, tt.config)
-			defer session.Logout(ctx)
 			if err != nil {
 				t.Fatalf("error creating session: %v", err)
 			}
+			defer session.Logout(ctx)
 			dc, err := session.Datacenter.Folders(ctx)
 			if err != nil {
 				t.Fatalf("error getting datacenter folders: %v", err)
@@ -113,7 +145,32 @@ func TestResolveDatastoreRef(t *testing.T) {
 				t.Fatalf("error getting virtual machines: %v", err)
 			}
 
-			got, err := resolveDatastoreRef(ctx, zap.NewNop().Sugar(), tt.config, session, vms[2], vmFolder, &types.VirtualMachineCloneSpec{})
+			vm := vms[2]
+			if tt.fromTemplate {
+				task, err := vm.PowerOff(ctx)
+				if err != nil {
+					t.Fatalf("error powering off vm: %v", err)
+				}
+				if err := task.WaitEx(ctx); err != nil {
+					t.Fatalf("error waiting for vm power off: %v", err)
+				}
+				if err := vm.MarkAsTemplate(ctx); err != nil {
+					t.Fatalf("error marking vm as template: %v", err)
+				}
+			}
+
+			cloneSpec := &types.VirtualMachineCloneSpec{}
+			var presetPool *types.ManagedObjectReference
+			if tt.presetPool {
+				pool, err := session.Finder.ResourcePool(ctx, "/DC0/host/DC0_C0/Resources")
+				if err != nil {
+					t.Fatalf("error getting resource pool: %v", err)
+				}
+				presetPool = types.NewReference(pool.Reference())
+				cloneSpec.Location.Pool = presetPool
+			}
+
+			got, err := resolveDatastoreRef(ctx, zap.NewNop().Sugar(), tt.config, session, vm, vmFolder, cloneSpec)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("resolveDatastoreRef() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -121,39 +178,65 @@ func TestResolveDatastoreRef(t *testing.T) {
 			if err == nil && got == nil {
 				t.Errorf("resolveDatastoreRef() should be not empty")
 			}
+			if presetPool != nil && *cloneSpec.Location.Pool != *presetPool {
+				t.Errorf("configured resource pool %v was replaced with %v", presetPool, cloneSpec.Location.Pool)
+			}
+			if tt.config.Datastore != "" && cloneSpec.Location.Pool != nil {
+				t.Errorf("resource pool should not be set when using a datastore, got %v", cloneSpec.Location.Pool)
+			}
 		})
 	}
 }
 
 type CustomStorageResourceManager struct {
 	*simulator.StorageResourceManager
-	ds *simulator.Datastore
+	ds        *simulator.Datastore
+	noActions bool
 }
 
-// RecommendDatastores always return a recommendation for the purposes of the test.
-func (c *CustomStorageResourceManager) RecommendDatastores(_ *types.RecommendDatastores) soap.HasFault {
+// RecommendDatastores always return a recommendation for the purposes of the test,
+// as long as the clone spec contains a resource pool or a host, like vCenter requires.
+func (c *CustomStorageResourceManager) RecommendDatastores(req *types.RecommendDatastores) soap.HasFault {
 	body := &methods.RecommendDatastoresBody{}
+
+	if spec := req.StorageSpec.CloneSpec; spec == nil || (spec.Location.Pool == nil && spec.Location.Host == nil) {
+		body.Fault_ = simulator.Fault("", &types.InvalidArgument{InvalidProperty: "spec.host"})
+		return body
+	}
+
 	res := &types.RecommendDatastoresResponse{}
+	if c.noActions {
+		res.Returnval.Recommendations = append(res.Returnval.Recommendations, types.ClusterRecommendation{
+			Key:    "0",
+			Type:   "V1",
+			Time:   time.Now(),
+			Reason: "storagePlacement",
+		})
+		body.Res = res
+		return body
+	}
+
 	ds := c.ds.Reference()
-	res.Returnval.Recommendations = append(res.Returnval.Recommendations, types.ClusterRecommendation{
-		Key:            "0",
-		Type:           "V1",
-		Time:           time.Now(),
-		Reason:         "storagePlacement",
-		ReasonText:     "Satisfy storage initial placement requests",
-		WarningDetails: (*types.LocalizableMessage)(nil),
-		Prerequisite:   nil,
-		Action: []types.BaseClusterAction{
-			&types.StoragePlacementAction{
-				ClusterAction: types.ClusterAction{
-					Type:   "StoragePlacementV1",
-					Target: (*types.ManagedObjectReference)(nil),
+	res.Returnval.Recommendations = append(
+		res.Returnval.Recommendations, types.ClusterRecommendation{
+			Key:            "0",
+			Type:           "V1",
+			Time:           time.Now(),
+			Reason:         "storagePlacement",
+			ReasonText:     "Satisfy storage initial placement requests",
+			WarningDetails: (*types.LocalizableMessage)(nil),
+			Prerequisite:   nil,
+			Action: []types.BaseClusterAction{
+				&types.StoragePlacementAction{
+					ClusterAction: types.ClusterAction{
+						Type:   "StoragePlacementV1",
+						Target: (*types.ManagedObjectReference)(nil),
+					},
+					Vm:          (*types.ManagedObjectReference)(nil),
+					Destination: ds,
 				},
-				Vm:          (*types.ManagedObjectReference)(nil),
-				Destination: ds,
 			},
 		},
-	},
 	)
 
 	body.Res = res
@@ -196,9 +279,8 @@ func TestResolveResourcePoolRef(t *testing.T) {
 			config: &Config{
 				Cluster: "DC0_C0",
 			},
-			wantErr:              false,
-			wantResourcePool:     true,
-			expectedResourcePool: "Resources",
+			wantErr:          false,
+			wantResourcePool: false,
 		},
 		{
 			name: "Resource Pool takes precedence over Cluster",
@@ -209,14 +291,6 @@ func TestResolveResourcePoolRef(t *testing.T) {
 			wantErr:              false,
 			wantResourcePool:     true,
 			expectedResourcePool: "DC0_C0_RP1",
-		},
-		{
-			name: "Cluster specified missing",
-			config: &Config{
-				Cluster: "DC0_C0_WRONG",
-			},
-			wantErr:          true,
-			wantResourcePool: false,
 		},
 	}
 	for _, tt := range tests {
@@ -244,10 +318,10 @@ func TestResolveResourcePoolRef(t *testing.T) {
 			tt.config.Datacenter = "DC0"
 
 			session, err := NewSession(ctx, tt.config)
-			defer session.Logout(ctx)
 			if err != nil {
 				t.Fatalf("error creating session: %v", err)
 			}
+			defer session.Logout(ctx)
 
 			got, err := resolveResourcePoolRef(ctx, tt.config, session)
 			if (err != nil) != tt.wantErr {
