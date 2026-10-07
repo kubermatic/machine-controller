@@ -256,8 +256,8 @@ func resolveDatastoreRef(
 
 		// RecommendDatastores requires either a resource pool or a host on the
 		// clone spec, otherwise it fails with an InvalidArgument fault on spec.host.
-		// If no resource pool was configured, use the one the clone would land in
-		// anyway, i.e. the template's.
+		// If neither a resource pool nor a cluster was configured, use the one the
+		// clone would land in anyway, i.e. the template's.
 		if cloneSpec.Location.Pool == nil {
 			pool, err := templateResourcePool(ctx, vm)
 			if err != nil {
@@ -499,6 +499,19 @@ func resolveResourcePoolRef(ctx context.Context, config *Config, session *Sessio
 			return nil, fmt.Errorf("failed to get target resourcepool: %w", err)
 		}
 		return types.NewReference(targetResourcePool.Reference()), nil
+	}
+	// VM anti-affinity rules and VM groups are applied to the configured cluster,
+	// so the VM must be placed into that cluster even if no resource pool is set.
+	if config.Cluster != "" {
+		cluster, err := session.Finder.ClusterComputeResource(ctx, config.Cluster)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get cluster %q: %w", config.Cluster, err)
+		}
+		clusterResourcePool, err := cluster.ResourcePool(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get root resourcepool of cluster %q: %w", config.Cluster, err)
+		}
+		return types.NewReference(clusterResourcePool.Reference()), nil
 	}
 	return nil, nil
 }

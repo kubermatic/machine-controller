@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/simulator"
 	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/soap"
@@ -32,48 +31,87 @@ import (
 )
 
 func TestResolveDatastoreRef(t *testing.T) {
+	const (
+		// The template VM used by default lives in cluster DC0_C0.
+		defaultTemplateVM = "DC0_C0_RP0_VM0"
+		c0RootPool        = "/DC0/host/DC0_C0/Resources"
+		c1RootPool        = "/DC0/host/DC0_C1/Resources"
+	)
+
 	tests := []struct {
 		name   string
 		config *Config
-		// presetPool sets a resource pool on the clone spec, as done by
-		// createClonedVM when a resource pool is configured.
-		presetPool bool
-		// fromTemplate marks the source VM as a template, which has no resource pool.
-		fromTemplate bool
+		// markAsTemplate marks the source VM as a template, which has no resource pool.
+		markAsTemplate bool
 		// noActions makes the storage resource manager return a recommendation
 		// without any actions.
 		noActions bool
-		wantErr   bool
+		// expectedPool is the inventory path of the resource pool expected on the
+		// clone spec, empty if no pool is expected.
+		expectedPool string
+		wantErr      bool
 	}{
 		{
 			name: "Only Datastore defined",
 			config: &Config{
 				Datastore: "LocalDS_0",
 			},
-			wantErr: false,
+			expectedPool: "",
+			wantErr:      false,
+		},
+		{
+			name: "Datastore with Cluster different from the template's",
+			config: &Config{
+				Datastore: "LocalDS_0",
+				Cluster:   "DC0_C1",
+			},
+			expectedPool: c1RootPool,
+			wantErr:      false,
 		},
 		{
 			name: "Only DatastoreCluster defined",
 			config: &Config{
 				DatastoreCluster: "DC0_POD0",
 			},
-			wantErr: false,
-		},
-		{
-			name: "DatastoreCluster with configured resource pool",
-			config: &Config{
-				DatastoreCluster: "DC0_POD0",
-			},
-			presetPool: true,
-			wantErr:    false,
+			expectedPool: c0RootPool,
+			wantErr:      false,
 		},
 		{
 			name: "DatastoreCluster with template as source",
 			config: &Config{
 				DatastoreCluster: "DC0_POD0",
 			},
-			fromTemplate: true,
+			markAsTemplate: true,
+			expectedPool:   c0RootPool,
+			wantErr:        false,
+		},
+		{
+			name: "DatastoreCluster with ResourcePool",
+			config: &Config{
+				DatastoreCluster: "DC0_POD0",
+				ResourcePool:     c1RootPool,
+			},
+			expectedPool: c1RootPool,
 			wantErr:      false,
+		},
+		{
+			name: "DatastoreCluster with Cluster different from the template's",
+			config: &Config{
+				DatastoreCluster: "DC0_POD0",
+				Cluster:          "DC0_C1",
+			},
+			expectedPool: c1RootPool,
+			wantErr:      false,
+		},
+		{
+			name: "DatastoreCluster with Cluster different from the template's and template as source",
+			config: &Config{
+				DatastoreCluster: "DC0_POD0",
+				Cluster:          "DC0_C1",
+			},
+			markAsTemplate: true,
+			expectedPool:   c1RootPool,
+			wantErr:        false,
 		},
 		{
 			name: "DatastoreCluster recommendation without actions",
@@ -140,13 +178,11 @@ func TestResolveDatastoreRef(t *testing.T) {
 				t.Fatalf("error getting datacenter folders: %v", err)
 			}
 			vmFolder := dc.VmFolder
-			vms, err := session.Finder.VirtualMachineList(ctx, "*")
+			vm, err := session.Finder.VirtualMachine(ctx, defaultTemplateVM)
 			if err != nil {
-				t.Fatalf("error getting virtual machines: %v", err)
+				t.Fatalf("error getting virtual machine: %v", err)
 			}
-
-			vm := vms[2]
-			if tt.fromTemplate {
+			if tt.markAsTemplate {
 				task, err := vm.PowerOff(ctx)
 				if err != nil {
 					t.Fatalf("error powering off vm: %v", err)
@@ -159,15 +195,11 @@ func TestResolveDatastoreRef(t *testing.T) {
 				}
 			}
 
+			// Resolve the resource pool before the datastore, like createClonedVM does.
 			cloneSpec := &types.VirtualMachineCloneSpec{}
-			var presetPool *types.ManagedObjectReference
-			if tt.presetPool {
-				pool, err := session.Finder.ResourcePool(ctx, "/DC0/host/DC0_C0/Resources")
-				if err != nil {
-					t.Fatalf("error getting resource pool: %v", err)
-				}
-				presetPool = types.NewReference(pool.Reference())
-				cloneSpec.Location.Pool = presetPool
+			cloneSpec.Location.Pool, err = resolveResourcePoolRef(ctx, tt.config, session)
+			if err != nil {
+				t.Fatalf("error resolving resource pool: %v", err)
 			}
 
 			got, err := resolveDatastoreRef(ctx, zap.NewNop().Sugar(), tt.config, session, vm, vmFolder, cloneSpec)
@@ -175,14 +207,25 @@ func TestResolveDatastoreRef(t *testing.T) {
 				t.Errorf("resolveDatastoreRef() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if err == nil && got == nil {
+			if err != nil {
+				return
+			}
+			if got == nil {
 				t.Errorf("resolveDatastoreRef() should be not empty")
 			}
-			if presetPool != nil && *cloneSpec.Location.Pool != *presetPool {
-				t.Errorf("configured resource pool %v was replaced with %v", presetPool, cloneSpec.Location.Pool)
+
+			if tt.expectedPool == "" {
+				if cloneSpec.Location.Pool != nil {
+					t.Errorf("expected no resource pool, got %v", cloneSpec.Location.Pool)
+				}
+				return
 			}
-			if tt.config.Datastore != "" && cloneSpec.Location.Pool != nil {
-				t.Errorf("resource pool should not be set when using a datastore, got %v", cloneSpec.Location.Pool)
+			expectedPool, err := session.Finder.ResourcePool(ctx, tt.expectedPool)
+			if err != nil {
+				t.Fatalf("error getting expected resource pool: %v", err)
+			}
+			if cloneSpec.Location.Pool == nil || *cloneSpec.Location.Pool != expectedPool.Reference() {
+				t.Errorf("expected resource pool %v (%s), got %v", expectedPool.Reference(), tt.expectedPool, cloneSpec.Location.Pool)
 			}
 		})
 	}
@@ -279,7 +322,16 @@ func TestResolveResourcePoolRef(t *testing.T) {
 			config: &Config{
 				Cluster: "DC0_C0",
 			},
-			wantErr:          false,
+			wantErr:              false,
+			wantResourcePool:     true,
+			expectedResourcePool: "/DC0/host/DC0_C0/Resources",
+		},
+		{
+			name: "Unknown Cluster",
+			config: &Config{
+				Cluster: "DC0_C0_WRONG",
+			},
+			wantErr:          true,
 			wantResourcePool: false,
 		},
 		{
@@ -331,11 +383,14 @@ func TestResolveResourcePoolRef(t *testing.T) {
 			if tt.wantResourcePool != (got != nil) {
 				t.Errorf("resourcePool = %v, wantResourcePool %v", got, tt.wantResourcePool)
 			}
-			if tt.wantResourcePool {
-				rp := object.NewResourcePool(session.Client.Client, got.Reference())
-				n, _ := rp.ObjectName(ctx)
-				if e, a := tt.expectedResourcePool, n; e != a {
-					t.Errorf("expected resource pool %v but got %+v", e, a)
+			if tt.wantResourcePool && got != nil {
+				// Compare references rather than names, as every root resource pool is named "Resources".
+				expected, err := session.Finder.ResourcePool(ctx, tt.expectedResourcePool)
+				if err != nil {
+					t.Fatalf("error getting expected resource pool: %v", err)
+				}
+				if *got != expected.Reference() {
+					t.Errorf("expected resource pool %v (%s) but got %v", expected.Reference(), tt.expectedResourcePool, got)
 				}
 			}
 		})
