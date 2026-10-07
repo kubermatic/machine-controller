@@ -143,6 +143,9 @@ metadata:
 
 The value must be a valid duration string (for example `30m`, `1h`, `90s`). If the value cannot be parsed, the controller logs it and falls back to the global flag.
 
+Setting the value to `0` disables the timeout entirely.
+With the timeout disabled, the Machine waits for eviction as long as its node is `Ready` and a schedulable target node exists.
+
 Set the annotation directly on a Machine, or on a MachineDeployment: MachineDeployment annotations are synced onto their MachineSet objects, and the MachineSet controller copies the override onto each Machine it creates. Changing the value does not rewrite or roll out to existing Machines; only Machines created afterwards carry the new value.
 
 This annotation only adjusts the eviction timeout. To skip eviction for a node entirely, use the `kubermatic.io/skip-eviction` annotation on the Node instead.
