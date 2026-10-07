@@ -17,3 +17,4 @@ examples/*.srl
 .gitpod.yml
 cmd/machine-controller/__debug_bin*
 !pkg
+_dist
