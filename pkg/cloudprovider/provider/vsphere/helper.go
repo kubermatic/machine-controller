@@ -95,7 +95,8 @@ func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, 
 	cloneSpec.Location.Datastore = datastoreref
 	// Create a cloned VM from the template VM's snapshot.
 	// We split the cloning from the reconfiguring as those actions differ on the permission side.
-	// It's nicer to tell which specific action failed due to lacking permissions.	clonedVMTask, err := tpl.Clone(ctx, targetVMFolder, vmName, cloneSpec)
+	// It's nicer to tell which specific action failed due to lacking permissions.
+	clonedVMTask, err := tpl.Clone(ctx, targetVMFolder, vmName, cloneSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to clone template vm: %w", err)
 	}
