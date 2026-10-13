@@ -101,6 +101,10 @@ linters:
         text: 'SA1019: corev1.Endpoints is deprecated: This API is deprecated in v1.33+.'
       - path: (.+)\.go$
         text: 'SA1019: corev1.EndpointSubset is deprecated: This API is deprecated in v1.33+.'
+      # the hetzner provider migrates the deprecated datacenter field to
+      # location through the deprecation window; drop once the field is removed.
+      - path: pkg/cloudprovider/provider/hetzner/(.+)\.go$
+        text: 'SA1019: rawConfig.Datacenter is deprecated'
     paths:
       - apis/machines
       - third_party$

@@ -22,6 +22,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -55,6 +57,10 @@ const (
 	CapabilityUltraSSD              = "UltraSSDAvailable"
 	CapabilityValueTrue             = "True"
 	capabilityAcceleratedNetworking = "AcceleratedNetworkingEnabled"
+
+	// the legacy Track-1 SDK only exports SecurityTypesTrustedLaunch and SecurityTypesConfidentialVM.
+	// compute.SecurityTypes is a string alias so casting the literal is safe.
+	securityTypeStandard = compute.SecurityTypes("Standard")
 
 	machineUIDTag = "Machine-UID"
 
@@ -98,16 +104,18 @@ type config struct {
 	ImagePlan             *compute.Plan
 	ImageReference        *compute.ImageReference
 
-	OSDiskSize   int32
-	OSDiskSKU    *compute.StorageAccountTypes
-	DataDiskSize int32
-	DataDiskSKU  *compute.StorageAccountTypes
+	OSDiskSize         int32
+	OSDiskSKU          *compute.StorageAccountTypes
+	DataDiskSize       int32
+	DataDiskSKU        *compute.StorageAccountTypes
+	DiskControllerType *compute.DiskControllerTypes
 
 	AssignPublicIP              bool
 	PublicIPSKU                 *network.PublicIPAddressSkuName
 	EnableAcceleratedNetworking *bool
 	EnableBootDiagnostics       bool
 	Tags                        map[string]string
+	SecurityProfile             *compute.SecurityProfile
 }
 
 type azureVM struct {
@@ -160,7 +168,7 @@ var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 		// flatcar-container-linux-corevm-amd64 doesn't require a plan. For more info: https://www.flatcar.org/docs/latest/installing/cloud/azure/#corevm
 		Offer:   to.StringPtr("flatcar-container-linux-corevm-amd64"),
 		Sku:     to.StringPtr("stable"),
-		Version: to.StringPtr("4230.2.2"),
+		Version: to.StringPtr("4459.2.3"),
 	},
 	providerconfig.OperatingSystemRockyLinux: {
 		Publisher: to.StringPtr("resf"),
@@ -338,6 +346,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 		c.DataDiskSKU = storageTypePtr(*rawCfg.DataDiskSKU)
 	}
 
+	if rawCfg.DiskControllerType != nil {
+		dct := compute.DiskControllerTypes(*rawCfg.DiskControllerType)
+		c.DiskControllerType = &dct
+	}
+
 	if rawCfg.ImagePlan != nil && rawCfg.ImagePlan.Name != "" {
 		c.ImagePlan = &compute.Plan{
 			Name:      ptr.To(rawCfg.ImagePlan.Name),
@@ -363,6 +376,8 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	if rawCfg.EnableBootDiagnostics != nil {
 		c.EnableBootDiagnostics = *rawCfg.EnableBootDiagnostics
 	}
+
+	c.SecurityProfile = buildSecurityProfile(rawCfg.SecurityProfile)
 
 	return &c, pConfig, nil
 }
@@ -620,6 +635,13 @@ func getStorageProfile(config *config, providerCfg *providerconfig.Config) (*com
 			}
 		}
 	}
+
+	if config.DiskControllerType != nil {
+		sp.DiskControllerType = *config.DiskControllerType
+	} else if vmSizeRequiresNVMe(config.VMSize) {
+		sp.DiskControllerType = compute.NVMe
+	}
+
 	return sp, nil
 }
 
@@ -759,6 +781,10 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 				Enabled: ptr.To(config.EnableBootDiagnostics),
 			},
 		}
+	}
+
+	if config.SecurityProfile != nil {
+		vmSpec.SecurityProfile = config.SecurityProfile
 	}
 
 	log.Info("Creating machine")
@@ -1014,12 +1040,75 @@ func validateDiskSKUs(_ context.Context, c *config, sku compute.ResourceSku) err
 	return nil
 }
 
+func validateDiskControllerType(_ context.Context, c *config, sku compute.ResourceSku) error {
+	if c.DiskControllerType != nil {
+		if !slices.Contains(compute.PossibleDiskControllerTypesValues(), *c.DiskControllerType) {
+			return fmt.Errorf("invalid diskControllerType %q, valid values are: %v", *c.DiskControllerType, compute.PossibleDiskControllerTypesValues())
+		}
+		if *c.DiskControllerType == compute.SCSI && skuRequiresNVMe(sku) {
+			return fmt.Errorf("VM size %q only supports NVMe disk controller, cannot use %q", c.VMSize, compute.SCSI)
+		}
+	}
+	return nil
+}
+
 func validateSKUCapabilities(_ context.Context, c *config, sku compute.ResourceSku) error {
 	if c.EnableAcceleratedNetworking != nil && *c.EnableAcceleratedNetworking {
 		if !SKUHasCapability(sku, capabilityAcceleratedNetworking) {
 			return fmt.Errorf("VM size %q does not support accelerated networking", c.VMSize)
 		}
 	}
+	return nil
+}
+
+// buildSecurityProfile converts the raw provider-spec SecurityProfile into the
+// Azure SDK shape. Returns nil when no SecurityProfile is configured so the
+// VM CreateOrUpdate call lets Azure apply its subscription defaults.
+func buildSecurityProfile(raw *azuretypes.SecurityProfile) *compute.SecurityProfile {
+	if raw == nil {
+		return nil
+	}
+
+	sp := &compute.SecurityProfile{}
+	if raw.SecurityType != "" {
+		sp.SecurityType = compute.SecurityTypes(raw.SecurityType)
+	}
+
+	if raw.SecureBootEnabled != nil || raw.VTpmEnabled != nil {
+		sp.UefiSettings = &compute.UefiSettings{
+			SecureBootEnabled: raw.SecureBootEnabled,
+			VTpmEnabled:       raw.VTpmEnabled,
+		}
+	}
+
+	return sp
+}
+
+func validateSecurityProfile(_ context.Context, c *config, sku compute.ResourceSku) error {
+	if c.SecurityProfile == nil {
+		return nil
+	}
+
+	secProfile := c.SecurityProfile
+	secType := secProfile.SecurityType
+
+	switch secProfile.SecurityType {
+	case compute.SecurityTypesTrustedLaunch:
+		if !skuSupportsGen2(sku) {
+			return fmt.Errorf("securityType %q requires a Gen2 VM size, but %q does not support Gen2", secType, c.VMSize)
+		}
+	case securityTypeStandard:
+		uefiSettings := secProfile.UefiSettings
+		if uefiSettings != nil && (uefiSettings.SecureBootEnabled != nil || uefiSettings.VTpmEnabled != nil) {
+			// vTPM can't be used with "Standard" security type
+			return fmt.Errorf("securityType %q cannot be combined with secureBootEnabled or vTpmEnabled", secType)
+		}
+	case "":
+		return errors.New("securityProfile.securityType must be set when securityProfile is specified")
+	default:
+		return fmt.Errorf("unsupported securityType %q; supported values (case-sensitive): TrustedLaunch, Standard", secType)
+	}
+
 	return nil
 }
 
@@ -1118,6 +1207,13 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 
 	if err := validateSKUCapabilities(ctx, c, sku); err != nil {
 		return fmt.Errorf("failed to validate SKU capabilities: %w", err)
+	}
+
+	if err := validateSecurityProfile(ctx, c, sku); err != nil {
+		return fmt.Errorf("failed to validate security profile: %w", err)
+	}
+	if err := validateDiskControllerType(ctx, c, sku); err != nil {
+		return fmt.Errorf("failed to validate disk controller type: %w", err)
 	}
 
 	_, err = getOSImageReference(c, providerConfig.OperatingSystem)
@@ -1302,13 +1398,7 @@ func supportsDiskSKU(vmSKU compute.ResourceSku, diskSKU compute.StorageAccountTy
 				for _, zone := range zones {
 					found := false
 					for _, details := range *(*vmSKU.LocationInfo)[0].ZoneDetails {
-						matchesZone := false
-						for _, zoneName := range *details.Name {
-							if zone == zoneName {
-								matchesZone = true
-								break
-							}
-						}
+						matchesZone := slices.Contains(*details.Name, zone)
 
 						// we only check this zone details for capabilities if it actually includes the zone we're checking for
 						if matchesZone {
@@ -1360,6 +1450,34 @@ func getHyperVGenerations(sku compute.ResourceSku) string {
 func skuSupportsGen2(sku compute.ResourceSku) bool {
 	generations := getHyperVGenerations(sku)
 	return strings.Contains(generations, "V2")
+}
+
+// skuRequiresNVMe checks if a VM SKU only supports NVMe disk controller using the Azure SKU API.
+// v6 and later generation VMs exclusively support NVMe; the DiskControllerTypes capability
+// value is "NVMe" (no "SCSI") for those SKUs.
+func skuRequiresNVMe(sku compute.ResourceSku) bool {
+	if sku.Capabilities == nil {
+		return false
+	}
+	for _, cap := range *sku.Capabilities {
+		if cap.Name != nil && *cap.Name == "DiskControllerTypes" && cap.Value != nil {
+			v := strings.ToLower(*cap.Value)
+			return strings.Contains(v, "nvme") && !strings.Contains(v, "scsi")
+		}
+	}
+	return false
+}
+
+// vmSizeRequiresNVMe checks if a VM size requires NVMe disk controller using heuristics.
+// Azure v6 and later generation VMs (e.g. Standard_D4s_v6) do not support SCSI disk controllers.
+func vmSizeRequiresNVMe(vmSize string) bool {
+	size := strings.ToLower(vmSize)
+	idx := strings.LastIndex(size, "_v")
+	if idx == -1 {
+		return false
+	}
+	n, err := strconv.Atoi(size[idx+2:])
+	return err == nil && n >= 6
 }
 
 // vmSizeSupportsGen2 checks if a VM size is known to support Generation 2 VMs using heuristics.

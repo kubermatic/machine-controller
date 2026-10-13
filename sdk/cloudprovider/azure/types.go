@@ -21,6 +21,13 @@ import (
 	"k8c.io/machine-controller/sdk/providerconfig"
 )
 
+// SecurityProfile specifies security settings like TrustedLaunch for the VM.
+type SecurityProfile struct {
+	SecurityType      string `json:"securityType,omitempty"`
+	SecureBootEnabled *bool  `json:"secureBootEnabled,omitempty"`
+	VTpmEnabled       *bool  `json:"vTpmEnabled,omitempty"`
+}
+
 // RawConfig is a direct representation of an Azure machine object's configuration.
 type RawConfig struct {
 	SubscriptionID providerconfig.ConfigVarString `json:"subscriptionID,omitempty"`
@@ -45,14 +52,17 @@ type RawConfig struct {
 	EnableAcceleratedNetworking *bool                          `json:"enableAcceleratedNetworking"`
 	EnableBootDiagnostics       *bool                          `json:"enableBootDiagnostics,omitempty"`
 
-	ImageID        providerconfig.ConfigVarString `json:"imageID"`
-	OSDiskSize     int32                          `json:"osDiskSize"`
-	OSDiskSKU      *string                        `json:"osDiskSKU,omitempty"`
-	DataDiskSize   int32                          `json:"dataDiskSize"`
-	DataDiskSKU    *string                        `json:"dataDiskSKU,omitempty"`
-	AssignPublicIP providerconfig.ConfigVarBool   `json:"assignPublicIP"`
-	PublicIPSKU    *string                        `json:"publicIPSKU,omitempty"`
-	Tags           map[string]string              `json:"tags,omitempty"`
+	ImageID            providerconfig.ConfigVarString `json:"imageID"`
+	OSDiskSize         int32                          `json:"osDiskSize"`
+	OSDiskSKU          *string                        `json:"osDiskSKU,omitempty"`
+	DiskControllerType *string                        `json:"diskControllerType,omitempty"`
+	DataDiskSize       int32                          `json:"dataDiskSize"`
+	DataDiskSKU        *string                        `json:"dataDiskSKU,omitempty"`
+	AssignPublicIP     providerconfig.ConfigVarBool   `json:"assignPublicIP"`
+	PublicIPSKU        *string                        `json:"publicIPSKU,omitempty"`
+	Tags               map[string]string              `json:"tags,omitempty"`
+
+	SecurityProfile *SecurityProfile `json:"securityProfile,omitempty"`
 }
 
 // ImagePlan contains azure OS Plan fields for the marketplace images.
