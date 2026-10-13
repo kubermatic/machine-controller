@@ -384,8 +384,32 @@ func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 				return nil, fmt.Errorf("failed updating machine status: %w", err)
 			}
 		case vsphere.ProvisioningStatusFailed:
+			// The provisioning task is done and failed. Clear the
+			// ProvisioningID so the Machine is not wedged polling a dead task:
+			// the next Get() will report the instance as not found and the
+			// controller will provision a new VM.
+			status.ProvisioningID = ""
+			meta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:    ProvisionedType,
+				Status:  metav1.ConditionFalse,
+				Reason:  "ProvisioningError",
+				Message: fmt.Sprintf("vm provisioning had errors: %s", strings.Join(provisioning.Errors, ",")),
+			})
+			if err := updateMachineStatus(machine, status, pd.Update); err != nil {
+				return nil, fmt.Errorf("failed updating machine status: %w", err)
+			}
 			return nil, fmt.Errorf("vm provisioning had errors: %s", strings.Join(provisioning.Errors, ","))
 		case vsphere.ProvisioningStatusCancelled:
+			status.ProvisioningID = ""
+			meta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:    ProvisionedType,
+				Status:  metav1.ConditionFalse,
+				Reason:  "ProvisioningError",
+				Message: fmt.Sprintf("vm provisioning was cancelled: %s", strings.Join(provisioning.Errors, ",")),
+			})
+			if err := updateMachineStatus(machine, status, pd.Update); err != nil {
+				return nil, fmt.Errorf("failed updating machine status: %w", err)
+			}
 			return nil, fmt.Errorf("vm provisioning was cancelled: %s", strings.Join(provisioning.Errors, ","))
 		case vsphere.ProvisioningStatusInProgress:
 			return &anexiaInstance{isCreating: true}, nil
@@ -412,7 +436,7 @@ func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 func (p *provider) tagMachineInEngine(ctx context.Context, sdkClient *anxsdk.Client, provisioning vsphere.ProvisioningProgress, machine *clusterv1alpha1.Machine, kubeClient client.Client) error {
 	const (
 		akeNodepoolLabelKey           = "ake-nodepool"
-		nodepoolEngineIDAnnotationKey = "k8s.anx.io/nodepool-engine-id"
+		nodepoolEngineIDAnnotationKey = "ake.k8s.anx.io/nodepool-engine-id"
 	)
 
 	err := sdkClient.V1().Core().Resources().AssignTag(ctx, provisioning.VMIdentifier, "k8s")

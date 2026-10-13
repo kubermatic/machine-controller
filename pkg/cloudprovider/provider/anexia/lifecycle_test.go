@@ -35,6 +35,7 @@ import (
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -307,12 +308,80 @@ func TestGetCancelledProvisioning(t *testing.T) {
 	p, machine, data := newTestProvider(t, mux)
 	setProviderStatus(t, machine, anxtypes.ProviderStatus{ProvisioningID: testProvisioningID})
 
+	var updated anxtypes.ProviderStatus
+	data.Update = func(m *clusterv1alpha1.Machine, mods ...cloudprovidertypes.MachineModifier) error {
+		for _, mod := range mods {
+			mod(m)
+		}
+		return json.Unmarshal(m.Status.ProviderStatus.Raw, &updated)
+	}
+
 	_, err := p.Get(context.Background(), zap.NewNop().Sugar(), machine, data)
 	if err == nil {
 		t.Fatal("expected an error for a cancelled provisioning task")
 	}
 	if !strings.Contains(err.Error(), "cancelled by operator") {
 		t.Errorf("error should carry the API's reason, got %q", err.Error())
+	}
+
+	// The failed task must not wedge the machine: the ProvisioningID has to be
+	// cleared so the next Get() reports the instance as not found and the
+	// controller provisions a new VM.
+	if updated.ProvisioningID != "" {
+		t.Errorf("expected ProvisioningID to be cleared, got %q", updated.ProvisioningID)
+	}
+	condition := meta.FindStatusCondition(updated.Conditions, ProvisionedType)
+	if condition == nil {
+		t.Fatal("expected a Provisioned condition to be set")
+	}
+	if condition.Status != metav1.ConditionFalse {
+		t.Errorf("expected %s=False, got %s", ProvisionedType, condition.Status)
+	}
+	if condition.Reason != "ProvisioningError" {
+		t.Errorf("expected reason %q, got %q", "ProvisioningError", condition.Reason)
+	}
+}
+
+// A provisioning task that was accepted but then failed must also clear the
+// ProvisioningID so the machine can be re-provisioned instead of being stuck
+// polling the failed task forever.
+func TestGetFailedProvisioningClearsProvisioningID(t *testing.T) {
+	mux := progressHandler(t, testProvisioningID, vsphere.ProvisioningProgress{
+		TaskIdentifier: testProvisioningID,
+		Status:         vsphere.ProvisioningStatusFailed,
+		Errors:         []string{"no capacity"},
+	})
+
+	p, machine, data := newTestProvider(t, mux)
+	setProviderStatus(t, machine, anxtypes.ProviderStatus{ProvisioningID: testProvisioningID})
+
+	var updated anxtypes.ProviderStatus
+	data.Update = func(m *clusterv1alpha1.Machine, mods ...cloudprovidertypes.MachineModifier) error {
+		for _, mod := range mods {
+			mod(m)
+		}
+		return json.Unmarshal(m.Status.ProviderStatus.Raw, &updated)
+	}
+
+	_, err := p.Get(context.Background(), zap.NewNop().Sugar(), machine, data)
+	if err == nil {
+		t.Fatal("expected an error for a failed provisioning task")
+	}
+	if !strings.Contains(err.Error(), "no capacity") {
+		t.Errorf("error should carry the API's reason, got %q", err.Error())
+	}
+	if updated.ProvisioningID != "" {
+		t.Errorf("expected ProvisioningID to be cleared, got %q", updated.ProvisioningID)
+	}
+	condition := meta.FindStatusCondition(updated.Conditions, ProvisionedType)
+	if condition == nil {
+		t.Fatal("expected a Provisioned condition to be set")
+	}
+	if condition.Status != metav1.ConditionFalse {
+		t.Errorf("expected %s=False, got %s", ProvisionedType, condition.Status)
+	}
+	if condition.Reason != "ProvisioningError" {
+		t.Errorf("expected reason %q, got %q", "ProvisioningError", condition.Reason)
 	}
 }
 
