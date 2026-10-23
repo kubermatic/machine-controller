@@ -62,7 +62,7 @@ type resolvedConfig struct {
 	AvailabilityZone string
 }
 
-func (p *provider) resolveTemplateID(ctx context.Context, provisioningClient *vsphere.ProvisioningClient, config anxtypes.RawConfig, locationID string) (string, error) {
+func (p *provider) resolveTemplateID(ctx context.Context, provisioningAPI vsphere.ProvisioningAPI, config anxtypes.RawConfig, locationID string) (string, error) {
 	templateName, err := p.configVarResolver.GetStringValue(config.Template)
 	if err != nil {
 		return "", fmt.Errorf("failed to get 'template': %w", err)
@@ -73,7 +73,7 @@ func (p *provider) resolveTemplateID(ctx context.Context, provisioningClient *vs
 		return "", fmt.Errorf("failed to get 'templateBuild': %w", err)
 	}
 
-	template, err := provisioningClient.FindNamedTemplate(ctx, locationID, templateName, templateBuild)
+	template, err := provisioningAPI.FindNamedTemplate(ctx, locationID, templateName, templateBuild)
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve named template: %w", err)
 	}

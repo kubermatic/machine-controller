@@ -30,7 +30,7 @@ import (
 	"github.com/anexia/go-anxsdk/v1/vsphere"
 	"go.uber.org/zap"
 	controllerutil "k8c.io/machine-controller/pkg/controller/util"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8c.io/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
@@ -433,7 +433,7 @@ func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 	return &instance, nil
 }
 
-func (p *provider) tagMachineInEngine(ctx context.Context, sdkClient *anxsdk.Client, provisioning vsphere.ProvisioningProgress, machine *clusterv1alpha1.Machine, kubeClient client.Client) error {
+func (p *provider) tagMachineInEngine(ctx context.Context, sdkClient *anxsdk.Client, provisioning vsphere.ProvisioningProgress, machine *clusterv1alpha1.Machine, kubeClient ctrlruntimeclient.Client) error {
 	const (
 		akeNodepoolLabelKey           = "ake-nodepool"
 		nodepoolEngineIDAnnotationKey = "ake.k8s.anx.io/nodepool-engine-id"
@@ -456,7 +456,7 @@ func (p *provider) tagMachineInEngine(ctx context.Context, sdkClient *anxsdk.Cli
 
 	// prefer the annotation on the MachineDeployment
 	var md clusterv1alpha1.MachineDeployment
-	err = kubeClient.Get(ctx, client.ObjectKey{Name: refMDName, Namespace: machine.Namespace}, &md)
+	err = kubeClient.Get(ctx, ctrlruntimeclient.ObjectKey{Name: refMDName, Namespace: machine.Namespace}, &md)
 	if err != nil {
 		return fmt.Errorf("failed to load referenced machine deployment: %w", err)
 	}
@@ -529,12 +529,12 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 	return isTaskDone(deleteCtx, provisioningClient, status.DeprovisioningID)
 }
 
-func isTaskDone(ctx context.Context, provisioningClient *vsphere.ProvisioningClient, progressIdentifier string) (bool, error) {
+func isTaskDone(ctx context.Context, provisioningAPI vsphere.ProvisioningAPI, progressIdentifier string) (bool, error) {
 	if progressIdentifier == "" {
 		return true, nil
 	}
 
-	response, err := provisioningClient.GetProvisioningProgress(ctx, progressIdentifier)
+	response, err := provisioningAPI.GetProvisioningProgress(ctx, progressIdentifier)
 	if err != nil {
 		return false, err
 	}

@@ -29,7 +29,7 @@ import (
 	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
 )
 
-func networkInterfacesForProvisioning(ctx context.Context, reconcileContext reconcileContext, log *zap.SugaredLogger, addressClient *ipam.AddressClient) ([]vsphere.ProvisioningRequestNetwork, error) {
+func networkInterfacesForProvisioning(ctx context.Context, reconcileContext reconcileContext, log *zap.SugaredLogger, addressAPI ipam.AddressAPI) ([]vsphere.ProvisioningRequestNetwork, error) {
 	config := reconcileContext.Config
 	status := reconcileContext.Status
 
@@ -61,7 +61,7 @@ func networkInterfacesForProvisioning(ctx context.Context, reconcileContext reco
 				networkStatus.Addresses = make([]anxtypes.NetworkAddressStatus, len(network.Prefixes))
 			}
 
-			reservedIP, err := getIPAddress(ctx, reconcileContext, log, &network, prefix, &networkStatus.Addresses[prefixIndex], addressClient)
+			reservedIP, err := getIPAddress(ctx, reconcileContext, log, &network, prefix, &networkStatus.Addresses[prefixIndex], addressAPI)
 			if err != nil {
 				return nil, newError(common.CreateMachineError, "failed to reserve IP: %v", err)
 			}
@@ -94,7 +94,7 @@ func networkInterfacesForProvisioning(ctx context.Context, reconcileContext reco
 // again.. it's not too expensive of a Mutex.
 var _engsup3404mutex sync.Mutex
 
-func getIPAddress(ctx context.Context, reconcileContext reconcileContext, log *zap.SugaredLogger, network *resolvedNetwork, prefix string, status *anxtypes.NetworkAddressStatus, addressClient *ipam.AddressClient) (string, error) {
+func getIPAddress(ctx context.Context, reconcileContext reconcileContext, log *zap.SugaredLogger, network *resolvedNetwork, prefix string, status *anxtypes.NetworkAddressStatus, addressAPI ipam.AddressAPI) (string, error) {
 	// only use IP if it is still unbound
 	if status.ReservedIP != "" && status.IPState == anxtypes.IPStateUnbound && (!status.IPProvisioningExpires.IsZero() && status.IPProvisioningExpires.After(time.Now())) {
 		log.Infow("Re-using already provisioned IP", "ip", status.ReservedIP)
@@ -112,7 +112,7 @@ func getIPAddress(ctx context.Context, reconcileContext reconcileContext, log *z
 		prefixIdentifier = new(prefix)
 	}
 
-	res, err := addressClient.ReserveRandom(ctx, ipam.AddressReserveRandomRequest{
+	res, err := addressAPI.ReserveRandom(ctx, ipam.AddressReserveRandomRequest{
 		LocationIdentifier: config.LocationID,
 		VlanIdentifier:     network.VlanID,
 		PrefixIdentifier:   prefixIdentifier,
