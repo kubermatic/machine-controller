@@ -14,7 +14,7 @@
 
 SHELL = /bin/bash -eu -o pipefail
 
-GO_VERSION ?= 1.27.2
+GO_VERSION ?= 1.27.3
 
 GOOS ?= $(shell go env GOOS)
 
