@@ -435,8 +435,8 @@ func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 
 func (p *provider) tagMachineInEngine(ctx context.Context, sdkClient *anxsdk.Client, provisioning vsphere.ProvisioningProgress, machine *clusterv1alpha1.Machine, kubeClient ctrlruntimeclient.Client) error {
 	const (
-		akeNodepoolLabelKey           = "ake-nodepool"
-		nodepoolEngineIDAnnotationKey = "ake.k8s.anx.io/nodepool-engine-id"
+		akeNodepoolLabelKey      = "ake-nodepool"
+		nodepoolEngineIDLabelKey = "ake.k8s.anx.io/nodepool-engine-id"
 	)
 
 	err := sdkClient.V1().Core().Resources().AssignTag(ctx, provisioning.VMIdentifier, "k8s")
@@ -461,7 +461,7 @@ func (p *provider) tagMachineInEngine(ctx context.Context, sdkClient *anxsdk.Cli
 		return fmt.Errorf("failed to load referenced machine deployment: %w", err)
 	}
 
-	npID, found := md.Annotations[nodepoolEngineIDAnnotationKey]
+	npID, found := md.Labels[nodepoolEngineIDLabelKey]
 	if !found {
 		// fallback to the deprecated way
 		npID, found = machine.Labels[akeNodepoolLabelKey]
