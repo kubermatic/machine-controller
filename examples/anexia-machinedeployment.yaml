@@ -48,6 +48,10 @@ spec:
               - size: 60
                 performanceType: ENT6
 
+            # You may have this old disk config attribute in your config - please migrate to the disks attribute.
+            # For now it is still recognized though.
+            #diskSize: 60
+
             # Each entry in this array will create a network interface in each
             # Machine, connected to the given VLAN.
             networks:
@@ -72,9 +76,6 @@ spec:
                 prefixes:
                   - "<< ANEXIA_PREFIX_ID >>"
 
-            # You may have this old disk config attribute in your config - please migrate to the disks attribute.
-            # For now it is still recognized though.
-            #diskSize: 60
           # Flatcar is the only supported operating system
           operatingSystem: "flatcar"
           operatingSystemSpec:
