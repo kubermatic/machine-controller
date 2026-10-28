@@ -276,24 +276,24 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, machine
 		errs = append(errs, errors.New("cpu count is missing"))
 	}
 
-	if config.CPUPerformanceType == "" {
-		errs = append(errs, errors.New("cpu performance type is missing"))
+	if _, parseErr := vsphere.ParseCPUPerformanceType(config.CPUPerformanceType); parseErr != nil {
+		errs = append(errs, fmt.Errorf("cpu performance type is invalid: %w", parseErr))
 	}
 
 	if config.DiskSize == 0 {
 		errs = append(errs, errors.New("disk size is missing"))
 	}
 
-	if config.DiskPerformanceType == "" {
-		errs = append(errs, errors.New("disk performance type is missing"))
+	if _, parseErr := vsphere.ParseDiskType(config.DiskPerformanceType); parseErr != nil {
+		errs = append(errs, fmt.Errorf("disk performance type is invalid: %w", parseErr))
 	}
 
 	for i, disk := range config.Disks {
 		if disk.Size == 0 {
 			errs = append(errs, fmt.Errorf("disk size for disk %d is missing", i))
 		}
-		if disk.PerformanceType == "" {
-			errs = append(errs, fmt.Errorf("disk performance type for disk %d is missing", i))
+		if _, parseErr := vsphere.ParseDiskType(disk.PerformanceType); parseErr != nil {
+			errs = append(errs, fmt.Errorf("disk performance type for disk %d is invalid: %w", i, parseErr))
 		}
 	}
 

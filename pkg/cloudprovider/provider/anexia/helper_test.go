@@ -108,7 +108,7 @@ func hookableConfig(hook func(*anxtypes.RawConfig)) anxtypes.RawConfig {
 		Memory: 2,
 
 		DiskSize:            5,
-		DiskPerformanceType: "performance",
+		DiskPerformanceType: "ENT2",
 
 		Disks: []anxtypes.RawDisk{
 			{Size: 5, PerformanceType: newConfigVarString("ENT6")},

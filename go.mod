@@ -13,7 +13,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/OpenNebula/one/src/oca/go/src/goca v0.0.0-20240905143811-b2ab5b7c9c14
 	github.com/aliyun/alibaba-cloud-sdk-go v1.63.15
-	github.com/anexia/go-anxsdk v0.0.0-20261023164934-035e185eb8a0
+	github.com/anexia/go-anxsdk v0.0.0-20261028085142-5ddd5360ae23
 	github.com/aws/aws-sdk-go-v2 v1.30.5
 	github.com/aws/aws-sdk-go-v2/config v1.27.33
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.32

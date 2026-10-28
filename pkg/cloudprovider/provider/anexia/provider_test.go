@@ -550,14 +550,14 @@ func TestValidate(t *testing.T) {
 			Error:  errors.New("disk size is missing"),
 		},
 		{
-			Name:   "no disk performance type",
+			Name:   "invalid disk performance type",
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.DiskPerformanceType = "" }),
-			Error:  errors.New("disk performance type is missing"),
+			Error:  vsphere.ErrInvalidDiskType,
 		},
 		{
-			Name:   "no cpu performance type",
-			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.CPUPerformanceType = "" }),
-			Error:  errors.New("cpu performance type is missing"),
+			Name:   "wrong cpu performance type",
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.CPUPerformanceType = "superfast" }),
+			Error:  vsphere.ErrInvalidCPUPerformanceType,
 		},
 		{
 			Name:   "no disk size for additional disk disk",
@@ -567,7 +567,7 @@ func TestValidate(t *testing.T) {
 		{
 			Name:   "no disk performance type for additional disk disk",
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Disks[0].PerformanceType.Value = "" }),
-			Error:  errors.New("disk performance type for disk 0 is missing"),
+			Error:  vsphere.ErrInvalidDiskType,
 		},
 		{
 			Name:   "no memory",
