@@ -132,6 +132,8 @@ func getIPAddress(ctx context.Context, reconcileContext reconcileContext, log *z
 	status.IPState = anxtypes.IPStateUnbound
 	status.IPProvisioningExpires = time.Now().Add(anxtypes.IPProvisioningExpires)
 
+	log.Infow("Successfully created IP", "ip", ip)
+
 	return ip, nil
 }
 
