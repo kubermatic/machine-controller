@@ -323,9 +323,25 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 	}
 
 	if config.Cluster != "" {
-		_, err = session.Finder.ClusterComputeResource(ctx, config.Cluster)
+		cluster, err := session.Finder.ClusterComputeResource(ctx, config.Cluster)
 		if err != nil {
 			return fmt.Errorf("failed to get cluster %q, %w", config.Cluster, err)
+		}
+
+		// VM anti-affinity rules and VM groups are applied to the configured cluster,
+		// so the VM must be placed into a resource pool of that cluster.
+		if config.ResourcePool != "" {
+			resourcePool, err := session.Finder.ResourcePool(ctx, config.ResourcePool)
+			if err != nil {
+				return fmt.Errorf("failed to get resource pool %q: %w", config.ResourcePool, err)
+			}
+			owner, err := resourcePool.Owner(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to get owner of resource pool %q: %w", config.ResourcePool, err)
+			}
+			if owner.Reference() != cluster.Reference() {
+				return fmt.Errorf("resource pool %q does not belong to cluster %q", config.ResourcePool, config.Cluster)
+			}
 		}
 	}
 
