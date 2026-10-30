@@ -174,6 +174,7 @@ const (
 	ImageGCLowThresholdPercent        = "ImageGCLowThresholdPercent"
 	ImageMinimumGCAge                 = "ImageMinimumGCAge"
 	ImageMaximumGCAge                 = "ImageMaximumGCAge"
+	JournaldSystemMaxUse              = "SystemMaxUse"
 )
 
 const (
@@ -181,6 +182,7 @@ const (
 	KubeletFeatureGatesAnnotationPrefixV1 = "v1.kubelet-featuregates.machine-controller.kubermatic.io"
 	KubeletFlagsGroupAnnotationPrefixV1   = "v1.kubelet-flags.machine-controller.kubermatic.io"
 	KubeletConfigAnnotationPrefixV1       = "v1.kubelet-config.machine-controller.kubermatic.io"
+	JournaldConfigAnnotationPrefixV1      = "v1.journald-config.machine-controller.kubermatic.io"
 )
 
 // SetKubeletFeatureGates marshal and save featureGates into metaobject annotations with
