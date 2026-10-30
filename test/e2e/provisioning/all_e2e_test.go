@@ -1082,19 +1082,23 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 func TestAnexiaProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
+	// ANEXIA_TOKEN is not substituted into the manifest - the machine-controller
+	// reads it from its own environment. It is still required here so the test
+	// fails fast instead of waiting for Machines that can never be provisioned.
 	token := os.Getenv("ANEXIA_TOKEN")
 	vlanID := os.Getenv("ANEXIA_VLAN_ID")
+	prefixID := os.Getenv("ANEXIA_PREFIX_ID")
 	templateID := os.Getenv("ANEXIA_TEMPLATE_ID")
 	locationID := os.Getenv("ANEXIA_LOCATION_ID")
 
-	if token == "" || vlanID == "" || templateID == "" || locationID == "" {
-		t.Fatal("Unable to run test suite, all of ANEXIA_TOKEN, ANEXIA_VLAN_ID, ANEXIA_TEMPLATE_ID, and ANEXIA_LOCATION_ID must be set!")
+	if token == "" || vlanID == "" || prefixID == "" || templateID == "" || locationID == "" {
+		t.Fatal("Unable to run test suite, all of ANEXIA_TOKEN, ANEXIA_VLAN_ID, ANEXIA_PREFIX_ID, ANEXIA_TEMPLATE_ID, and ANEXIA_LOCATION_ID must be set!")
 	}
 
 	selector := OsSelector("flatcar")
 	params := []string{
-		fmt.Sprintf("<< ANEXIA_TOKEN >>=%s", token),
 		fmt.Sprintf("<< ANEXIA_VLAN_ID >>=%s", vlanID),
+		fmt.Sprintf("<< ANEXIA_PREFIX_ID >>=%s", prefixID),
 		fmt.Sprintf("<< ANEXIA_TEMPLATE_ID >>=%s", templateID),
 		fmt.Sprintf("<< ANEXIA_LOCATION_ID >>=%s", locationID),
 	}

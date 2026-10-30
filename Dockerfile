@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG GO_VERSION=1.25.6
+ARG GO_VERSION=1.26.10
 FROM docker.io/golang:${GO_VERSION} AS builder
 WORKDIR /go/src/k8c.io/machine-controller
 COPY . .
 RUN make all
 
-FROM alpine:3.19
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates cdrkit
 

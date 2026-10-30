@@ -1,6 +1,8 @@
-apiVersion: "cluster.k8s.io/v1alpha1"
+apiVersion: cluster.k8s.io/v1alpha1
 kind: MachineDeployment
 metadata:
+  annotations:
+    k8c.io/operating-system-profile: osp-flatcar-cloud-init
   name: anexia-machinedeployment
   namespace: kube-system
 spec:
@@ -21,37 +23,44 @@ spec:
       providerSpec:
         value:
           cloudProvider: anexia
-          sshPublicKeys:
-            - "<< YOUR_PUBLIC_KEY >>"
           cloudProviderSpec:
-            # If empty, can be set via ANXCLOUD_TOKEN env var
-            token:
-              secretKeyRef:
-                namespace: kube-system
-                name: machine-controller-anexia
-                key: token
+            # from 1 to 16 cores
+            cpus: 4
 
-            # Currently only the "Flatcar Linux Stable" template is supported.
+            # anything supported by the Anexia Engine
+            cpuPerformanceType: performance
+
+            # Currently only the "Flatcar Linux Stable UEFI" template is supported.
             # Use templateBuild to specify a build. If empty => latest
             # Alternatively use templateID for a specific template.
             template: "<< ANEXIA_TEMPLATE_NAME >>"
             locationID: "<< ANEXIA_LOCATION_ID >>"
             cpus: 2
-            memory: 2048
 
-            # this defaults to "performance", but you can set anything
-            # supported by the Anexia Engine here - or not set this attribute
-            # at all
-            cpuPerformanceType: standard
+            # from 1024 to 65536 MB
+            memory: 4096
 
+            # from 20 to 500 GB, this is for the main disk
+            diskSize: 20
+
+            # anything supported by the Anexia Engine, this is for the main disk
+            diskPerformanceType: ENT6
+
+            # specify additional disks here
             disks:
-              - size: 60
+              - size: 200 # from 20 to 500 GB
+                # anything supported by the Anexia Engine
                 performanceType: ENT6
+
+            # location ID from the Anexia Engine
+            locationID: "<< ANEXIA_LOCATION_ID >>"
 
             # Each entry in this array will create a network interface in each
             # Machine, connected to the given VLAN.
             networks:
               - vlan: "<< ANEXIA_VLAN_ID >>"
+                # (optional) BandwidthLimit, can be 100, 1000 or 10000 MBit/s or empty.
+                bandwidthLimit: 1000
 
                 # If prefixes are given, we reserve an IP address for each of
                 # them - if you give one IPv4 and one IPv6 prefix, your
@@ -72,15 +81,18 @@ spec:
                 prefixes:
                   - "<< ANEXIA_PREFIX_ID >>"
 
-            # You may have this old disk config attribute in your config - please migrate to the disks attribute.
-            # For now it is still recognized though.
-            #diskSize: 60
-          # Flatcar is the only supported operating system
-          operatingSystem: "flatcar"
+            # Currently only the "Flatcar Linux Stable UEFI" template is supported.
+            template: Flatcar Linux Stable UEFI
+          # flatcar is the only supported operating system right now
+          operatingSystem: flatcar
           operatingSystemSpec:
+            disableAutoUpdate: false
+            disableLocksmithD: true
+            disableUpdateEngine: false
             # Force cloud-init instead of ignition. Anexia supports cloud-init only.
-            provisioningUtility: "cloud-init"
-            distUpgradeOnBoot: false
-            disableAutoUpdate: true
+            provisioningUtility: cloud-init
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
       versions:
-        kubelet: 1.33.4
+        kubelet: 1.35.0
+

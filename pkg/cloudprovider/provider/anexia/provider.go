@@ -24,20 +24,18 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
-	"go.anx.io/go-anxcloud/pkg/api"
-	anxclient "go.anx.io/go-anxcloud/pkg/client"
-	"go.anx.io/go-anxcloud/pkg/vsphere"
-	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/progress"
-	anxvm "go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
+	"github.com/anexia/go-anxsdk"
+	anxsdkcommon "github.com/anexia/go-anxsdk/v1/common"
+	"github.com/anexia/go-anxsdk/v1/vsphere"
 	"go.uber.org/zap"
+	controllerutil "k8c.io/machine-controller/pkg/controller/util"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8c.io/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
-	cloudproviderutil "k8c.io/machine-controller/pkg/cloudprovider/util"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
@@ -47,11 +45,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
-	kerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 const (
-	ProvisionedType = "Provisioned"
+	ProvisioningType = "Provisioning"
+	ProvisionedType  = "Provisioned"
+
+	invalidCredentialsMessage = "Request was rejected due to invalid credentials"
+
+	// defaultCPUPerformanceType matches go-anxsdk NewDefinition default, used
+	// when no cpuPerformanceType is configured.
+	defaultCPUPerformanceType = vsphere.CPUPerformanceTypePerformance
 )
 
 type provider struct {
@@ -59,7 +63,10 @@ type provider struct {
 }
 
 func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance instance.Instance, retErr error) {
-	status := getProviderStatus(log, machine)
+	status, err := getProviderStatus(log, machine)
+	if err != nil {
+		return nil, err
+	}
 	log.Debugw("Machine status", "status", status)
 
 	// ensure conditions are present on machine
@@ -70,148 +77,145 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		return nil, fmt.Errorf("failed to get provider config: %w", err)
 	}
 
-	ctx = createReconcileContext(ctx, reconcileContext{
+	reconcileCtx := reconcileContext{
 		Status:         &status,
 		UserData:       userdata,
 		Config:         *config,
 		ProviderData:   data,
 		ProviderConfig: providerCfg,
 		Machine:        machine,
-	})
-
-	_, client, err := getClient(config.Token, &machine.Name)
-	if err != nil {
-		return nil, err
 	}
+
+	sdkClient := getSDKClient(&machine.Name)
 
 	// make sure status is reflected in Machine Object
 	defer func() {
 		// if error occurs during updating the machine object don't override the original error
-		retErr = kerrors.NewAggregate([]error{retErr, updateMachineStatus(machine, status, data.Update)})
+		retErr = errors.Join(retErr, updateMachineStatus(machine, status, data.Update))
 	}()
 
 	// provision machine
-	err = provisionVM(ctx, log, client)
+	err = provisionVM(ctx, reconcileCtx, log, sdkClient)
 	if err != nil {
-		return nil, anexiaErrorToTerminalError(err, "failed waiting for vm provisioning")
+		return nil, wrapAnexiaError(err, "failed waiting for vm provisioning")
 	}
 	return p.Get(ctx, log, machine, data)
 }
 
-func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.Client) error {
-	reconcileContext := getReconcileContext(ctx)
-	vmAPI := vsphere.NewAPI(client)
-
+func provisionVM(ctx context.Context, reconcileContext reconcileContext, log *zap.SugaredLogger, sdkClient *anxsdk.Client) error {
 	ctx, cancel := context.WithTimeout(ctx, anxtypes.CreateRequestTimeout)
 	defer cancel()
 
 	status := reconcileContext.Status
 	if status.ProvisioningID == "" {
-		log.Info("Machine does not contain a provisioningID yet. Starting to provision")
+		log.Info("Machine does not contain a provisioningID. Starting to provision")
 
 		config := reconcileContext.Config
-		networkInterfaces, err := networkInterfacesForProvisioning(ctx, log, client)
+		networkInterfaces, err := networkInterfacesForProvisioning(ctx, reconcileContext, log, sdkClient.V1().Ipam().Addresses())
 		if err != nil {
 			return fmt.Errorf("error generating network config for machine: %w", err)
 		}
 
-		vm := vmAPI.Provisioning().VM().NewDefinition(
-			config.LocationID,
-			"templates",
-			config.TemplateID,
-			reconcileContext.Machine.Name,
-			config.CPUs,
-			config.Memory,
-			config.Disks[0].Size,
-			networkInterfaces,
-		)
-
-		vm.DiskType = config.Disks[0].PerformanceType
-
-		if config.CPUPerformanceType != "" {
-			vm.CPUPerformanceType = config.CPUPerformanceType
+		request := vsphere.ProvisioningRequest{
+			Hostname:           reconcileContext.Machine.Name,
+			MemoryMB:           new(config.Memory),
+			CPUs:               new(config.CPUs),
+			DiskGB:             new(config.DiskSize),
+			DiskType:           new(vsphere.DiskType(config.DiskPerformanceType)),
+			CPUPerformanceType: new(defaultCPUPerformanceType),
+			Network:            networkInterfaces,
 		}
 
-		for _, disk := range config.Disks[1:] {
-			vm.AdditionalDisks = append(vm.AdditionalDisks, anxvm.AdditionalDisk{
-				SizeGBs: disk.Size,
-				Type:    disk.PerformanceType,
+		if config.CPUPerformanceType != "" {
+			request.CPUPerformanceType = new(vsphere.CPUPerformanceType(config.CPUPerformanceType))
+		}
+
+		if config.AvailabilityZone != "" {
+			request.AvailabilityZone = new(config.AvailabilityZone)
+		}
+
+		for _, disk := range config.Disks {
+			request.AdditionalDisks = append(request.AdditionalDisks, vsphere.ProvisioningRequestAdditionalDisk{
+				GB:   disk.Size,
+				Type: disk.PerformanceType,
 			})
 		}
 
-		vm.Script = base64.StdEncoding.EncodeToString([]byte(reconcileContext.UserData))
+		request.Script = new(base64.StdEncoding.EncodeToString([]byte(reconcileContext.UserData)))
 
 		providerCfg := reconcileContext.ProviderConfig
 		if providerCfg.Network != nil {
 			for index, dnsServer := range providerCfg.Network.DNS.Servers {
 				switch index {
 				case 0:
-					vm.DNS1 = dnsServer
+					request.DNS1 = new(dnsServer)
 				case 1:
-					vm.DNS2 = dnsServer
+					request.DNS2 = new(dnsServer)
 				case 2:
-					vm.DNS3 = dnsServer
+					request.DNS3 = new(dnsServer)
 				case 3:
-					vm.DNS4 = dnsServer
+					request.DNS4 = new(dnsServer)
 				}
 			}
 		}
 
-		// We generate a fresh SSH key but will never actually use it - we just want a valid public key to disable password authentication for our fresh VM.
-		sshKey, err := ssh.NewKey()
-		if err != nil {
-			return newError(common.CreateMachineError, "failed to generate ssh key: %v", err)
+		if len(config.SSHPublicKeys) > 0 {
+			// use provided SSH public key(s) if specified
+			request.SSH = new(strings.Join(config.SSHPublicKeys, "\n"))
+		} else {
+			// We generate a fresh SSH key but will never actually use it - we just want a valid public key to disable password authentication for our fresh VM.
+			sshKey, err := ssh.NewKey()
+			if err != nil {
+				return newError(common.CreateMachineError, "failed to generate ssh key: %v", err)
+			}
+			request.SSH = new(sshKey.PublicKey)
 		}
-		vm.SSH = sshKey.PublicKey
 
-		provisionResponse, err := vmAPI.Provisioning().VM().Provision(ctx, vm, false)
+		provisionResponse, provisionErr := sdkClient.V1().VSphere().Provisioning().ProvisionTemplate(ctx, config.LocationID, config.TemplateID, request)
+		if provisionErr != nil {
+			meta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:    ProvisionedType,
+				Status:  metav1.ConditionFalse,
+				Reason:  "ProvisioningError",
+				Message: fmt.Sprintf("instance provisioning failed: %v", provisionErr.Error()),
+			})
+			// errors.Join (not kerrors.NewAggregate) so that errors.As still
+			// finds the TerminalError - aggregate implements Is but not As.
+			return errors.Join(
+				newError(common.CreateMachineError, "instance provisioning failed: %v", provisionErr),
+				updateMachineStatus(reconcileContext.Machine, *status, reconcileContext.ProviderData.Update),
+			)
+		}
+
 		meta.SetStatusCondition(&status.Conditions, metav1.Condition{
 			Type:    ProvisionedType,
 			Status:  metav1.ConditionFalse,
-			Reason:  "Provisioning",
-			Message: "provisioning request was sent",
+			Reason:  ProvisioningType,
+			Message: "Provisioning request was sent",
 		})
-		if err != nil {
-			return newError(common.CreateMachineError, "instance provisioning failed: %v", err)
-		}
 
 		// we successfully sent a VM provisioning request to the API, we consider the IP as 'Bound' now
 		networkStatusMarkIPsBound(status)
 
-		status.ProvisioningID = provisionResponse.Identifier
+		status.ProvisioningID = provisionResponse.TaskIdentifier
 		err = updateMachineStatus(reconcileContext.Machine, *status, reconcileContext.ProviderData.Update)
 		if err != nil {
 			return err
 		}
 	}
 
-	log.Info("Using provisionID from machine to await completion")
+	// We do not wait for the provisioning task to finish here - Get() polls the
+	// task and flips this condition to True once the API reports success.
+	log.Infow("Provisioning request accepted, waiting for completion", "provisioningID", status.ProvisioningID)
 
 	meta.SetStatusCondition(&status.Conditions, metav1.Condition{
 		Type:    ProvisionedType,
-		Status:  metav1.ConditionTrue,
-		Reason:  "Provisioned",
-		Message: "Machine has been successfully created",
+		Status:  metav1.ConditionFalse,
+		Reason:  ProvisioningType,
+		Message: "Provisioning request accepted, waiting for completion",
 	})
 
 	return updateMachineStatus(reconcileContext.Machine, *status, reconcileContext.ProviderData.Update)
-}
-
-func isAlreadyProvisioning(ctx context.Context) bool {
-	status := getReconcileContext(ctx).Status
-	condition := meta.FindStatusCondition(status.Conditions, ProvisionedType)
-	lastChange := condition.LastTransitionTime.Time
-	const reasonInProvisioning = "InProvisioning"
-	if condition.Reason == reasonInProvisioning && time.Since(lastChange) > 5*time.Minute {
-		meta.SetStatusCondition(&status.Conditions, metav1.Condition{
-			Type:    ProvisionedType,
-			Reason:  "ReInitialising",
-			Message: "Could not find ongoing VM provisioning",
-			Status:  metav1.ConditionFalse,
-		})
-	}
-
-	return condition.Status == metav1.ConditionFalse && condition.Reason == reasonInProvisioning
 }
 
 func ensureConditions(status *anxtypes.ProviderStatus) {
@@ -245,6 +249,8 @@ func (p *provider) getConfig(ctx context.Context, log *zap.SugaredLogger, provSp
 		return nil, nil, fmt.Errorf("error resolving config: %w", err)
 	}
 
+	resolvedConfig.SSHPublicKeys = pconfig.SSHPublicKeys
+
 	return resolvedConfig, pconfig, nil
 }
 
@@ -265,67 +271,73 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, machine
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	if config.Token == "" {
-		return errors.New("token not set")
-	}
-
+	errs := make([]error, 0)
 	if config.CPUs == 0 {
-		return errors.New("cpu count is missing")
+		errs = append(errs, errors.New("cpu count is missing"))
 	}
 
-	if len(config.Disks) == 0 {
-		return errors.New("no disks configured")
+	if _, parseErr := vsphere.ParseCPUPerformanceType(config.CPUPerformanceType); parseErr != nil {
+		errs = append(errs, fmt.Errorf("cpu performance type is invalid: %w", parseErr))
 	}
 
-	for _, disk := range config.Disks {
+	if config.DiskSize == 0 {
+		errs = append(errs, errors.New("disk size is missing"))
+	}
+
+	if _, parseErr := vsphere.ParseDiskType(config.DiskPerformanceType); parseErr != nil {
+		errs = append(errs, fmt.Errorf("disk performance type is invalid: %w", parseErr))
+	}
+
+	for i, disk := range config.Disks {
 		if disk.Size == 0 {
-			return errors.New("disk size is missing")
+			errs = append(errs, fmt.Errorf("disk size for disk %d is missing", i))
+		}
+		if _, parseErr := vsphere.ParseDiskType(disk.PerformanceType); parseErr != nil {
+			errs = append(errs, fmt.Errorf("disk performance type for disk %d is invalid: %w", i, parseErr))
 		}
 	}
 
 	if config.Memory == 0 {
-		return errors.New("memory size is missing")
+		errs = append(errs, errors.New("memory size is missing"))
 	}
 
 	if config.LocationID == "" {
-		return errors.New("location id is missing")
+		errs = append(errs, errors.New("location id is missing"))
 	}
 
 	if config.TemplateID == "" {
-		return errors.New("no valid template configured")
+		errs = append(errs, errors.New("no valid template configured"))
 	}
 
 	if len(config.Networks) == 0 {
-		return errors.New("no networks configured")
-	}
-
-	atLeastOneAddressSourceConfigured := false
-	for _, network := range config.Networks {
-		if len(network.Prefixes) > 0 {
-			atLeastOneAddressSourceConfigured = true
-			break
+		errs = append(errs, errors.New("no networks configured"))
+	} else {
+		atLeastOneAddressSourceConfigured := false
+		for _, network := range config.Networks {
+			if len(network.Prefixes) > 0 {
+				atLeastOneAddressSourceConfigured = true
+				break
+			}
+		}
+		if !atLeastOneAddressSourceConfigured {
+			errs = append(errs, errors.New("none of the configured networks define an address source, cannot create Machines without any IP"))
 		}
 	}
-	if !atLeastOneAddressSourceConfigured {
-		return errors.New("none of the configured networks define an address source, cannot create Machines without any IP")
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	return nil
 }
 
 func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, pd *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	config, _, err := p.getConfig(ctx, log, machine.Spec.ProviderSpec)
-	if err != nil {
-		return nil, newError(common.InvalidConfigurationMachineError, "failed to retrieve config: %v", err)
-	}
+	sdkClient := getSDKClient(&machine.Name)
 
-	_, cli, err := getClient(config.Token, &machine.Name)
+	status, err := getProviderStatus(log, machine)
 	if err != nil {
-		return nil, newError(common.InvalidConfigurationMachineError, "failed to create Anexia client: %v", err)
+		return nil, err
 	}
-	vsphereAPI := vsphere.NewAPI(cli)
-
-	status := getProviderStatus(log, machine)
 
 	if status.InstanceID == "" && status.ProvisioningID == "" {
 		return nil, cloudprovidererrors.ErrInstanceNotFound
@@ -336,22 +348,73 @@ func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 		return &anexiaInstance{isDeleting: true}, nil
 	}
 
-	if status.InstanceID == "" {
-		progress, err := vsphereAPI.Provisioning().Progress().Get(ctx, status.ProvisioningID)
+	// possible out-of-band delete of the worker node in the anexia engine
+	// CCM deletes the node but here the InstanceID stays
+	if status.InstanceID == "" || status.ProvisioningID != "" {
+		provisioning, err := sdkClient.V1().VSphere().Provisioning().GetProvisioningProgress(ctx, status.ProvisioningID)
 		if err != nil {
-			return nil, anexiaErrorToTerminalError(err, "failed to get provisioning progress")
+			return nil, wrapAnexiaError(err, "failed to get provisioning progress")
 		}
-		if len(progress.Errors) > 0 {
-			return nil, fmt.Errorf("vm provisioning had errors: %s", strings.Join(progress.Errors, ","))
-		}
-		if progress.Progress < 100 || progress.VMIdentifier == "" {
+
+		switch provisioning.Status {
+		// First, check whether the request is successful. We have to do this ahead of the error checking,
+		// because the errors field does not seem to get cleared if the same provisioning task was successful
+		// in the next run.
+		//
+		// See also: VSD-1473
+		case vsphere.ProvisioningStatusSuccess:
+			// first tag the machine, then assign
+			tagErr := p.tagMachineInEngine(ctx, sdkClient, provisioning, machine, pd.Client)
+			if tagErr != nil {
+				return nil, tagErr
+			}
+
+			status.InstanceID = provisioning.VMIdentifier
+
+			// clear ProvisioningID after successfully provisioned
+			// if an out-of-band delete happens the ProvisioningID has to be empty in order to create a new machine inside Create() instead of waiting endlessly
+			status.ProvisioningID = ""
+			meta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:    ProvisionedType,
+				Status:  metav1.ConditionTrue,
+				Reason:  "Provisioned",
+				Message: "Machine has been successfully provisioned",
+			})
+			if err := updateMachineStatus(machine, status, pd.Update); err != nil {
+				return nil, fmt.Errorf("failed updating machine status: %w", err)
+			}
+		case vsphere.ProvisioningStatusFailed:
+			// The provisioning task is done and failed. Clear the
+			// ProvisioningID so the Machine is not wedged polling a dead task:
+			// the next Get() will report the instance as not found and the
+			// controller will provision a new VM.
+			status.ProvisioningID = ""
+			meta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:    ProvisionedType,
+				Status:  metav1.ConditionFalse,
+				Reason:  "ProvisioningError",
+				Message: fmt.Sprintf("vm provisioning had errors: %s", strings.Join(provisioning.Errors, ",")),
+			})
+			if err := updateMachineStatus(machine, status, pd.Update); err != nil {
+				return nil, fmt.Errorf("failed updating machine status: %w", err)
+			}
+			return nil, fmt.Errorf("vm provisioning had errors: %s", strings.Join(provisioning.Errors, ","))
+		case vsphere.ProvisioningStatusCancelled:
+			status.ProvisioningID = ""
+			meta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:    ProvisionedType,
+				Status:  metav1.ConditionFalse,
+				Reason:  "ProvisioningError",
+				Message: fmt.Sprintf("vm provisioning was cancelled: %s", strings.Join(provisioning.Errors, ",")),
+			})
+			if err := updateMachineStatus(machine, status, pd.Update); err != nil {
+				return nil, fmt.Errorf("failed updating machine status: %w", err)
+			}
+			return nil, fmt.Errorf("vm provisioning was cancelled: %s", strings.Join(provisioning.Errors, ","))
+		case vsphere.ProvisioningStatusInProgress:
 			return &anexiaInstance{isCreating: true}, nil
-		}
-
-		status.InstanceID = progress.VMIdentifier
-
-		if err := updateMachineStatus(machine, status, pd.Update); err != nil {
-			return nil, fmt.Errorf("failed updating machine status: %w", err)
+		default:
+			return nil, fmt.Errorf("unexpected provisioning status %q for task %q", provisioning.Status, status.ProvisioningID)
 		}
 	}
 
@@ -361,13 +424,58 @@ func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 	timeoutCtx, cancel := context.WithTimeout(ctx, anxtypes.GetRequestTimeout)
 	defer cancel()
 
-	info, err := vsphereAPI.Info().Get(timeoutCtx, status.InstanceID)
+	info, err := sdkClient.V1().VSphere().Info().Get(timeoutCtx, status.InstanceID)
 	if err != nil {
-		return nil, anexiaErrorToTerminalError(err, "failed getting machine info")
+		return nil, wrapAnexiaError(err, "failed getting machine info")
 	}
-	instance.info = &info
+	instance.info = info
 
 	return &instance, nil
+}
+
+func (p *provider) tagMachineInEngine(ctx context.Context, sdkClient *anxsdk.Client, provisioning vsphere.ProvisioningProgress, machine *clusterv1alpha1.Machine, kubeClient ctrlruntimeclient.Client) error {
+	const (
+		akeNodepoolLabelKey      = "ake-nodepool"
+		nodepoolEngineIDLabelKey = "ake.k8s.anx.io/nodepool-engine-id"
+	)
+
+	err := sdkClient.V1().Core().Resources().AssignTag(ctx, provisioning.VMIdentifier, "k8s")
+	if err != nil && !anxsdkcommon.IsErrorWithStatusCode(err, http.StatusUnprocessableEntity) {
+		return fmt.Errorf("failed to tag VM in engine: %w", err)
+	}
+	err = sdkClient.V1().Core().Resources().AssignTag(ctx, provisioning.VMIdentifier, "k8s-worker")
+	if err != nil && !anxsdkcommon.IsErrorWithStatusCode(err, http.StatusUnprocessableEntity) {
+		return fmt.Errorf("failed to tag VM in engine: %w", err)
+	}
+
+	// resolve machine deployment
+	refMDName, _, err := controllerutil.GetMachineDeploymentNameAndRevisionForMachine(ctx, machine, kubeClient)
+	if err != nil {
+		return fmt.Errorf("failed to get referenced machine deployment name: %w", err)
+	}
+
+	// prefer the annotation on the MachineDeployment
+	var md clusterv1alpha1.MachineDeployment
+	err = kubeClient.Get(ctx, ctrlruntimeclient.ObjectKey{Name: refMDName, Namespace: machine.Namespace}, &md)
+	if err != nil {
+		return fmt.Errorf("failed to load referenced machine deployment: %w", err)
+	}
+
+	npID, found := md.Labels[nodepoolEngineIDLabelKey]
+	if !found {
+		// fallback to the deprecated way
+		npID, found = machine.Labels[akeNodepoolLabelKey]
+	}
+
+	if found {
+		// tag the vm with the found
+		err = sdkClient.V1().Core().Resources().AssignTag(ctx, provisioning.VMIdentifier, "k8s-nodepool:"+npID)
+		if err != nil && !anxsdkcommon.IsErrorWithStatusCode(err, http.StatusUnprocessableEntity) {
+			return fmt.Errorf("failed to tag VM in engine: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (isDeleted bool, retErr error) {
@@ -382,71 +490,67 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		return false, nil
 	}
 
-	status := getProviderStatus(log, machine)
+	status, err := getProviderStatus(log, machine)
+	if err != nil {
+		return false, err
+	}
+
 	// make sure status is reflected in Machine Object
 	defer func() {
 		// if error occurs during updating the machine object don't override the original error
-		retErr = kerrors.NewAggregate([]error{retErr, updateMachineStatus(machine, status, data.Update)})
+		retErr = errors.Join(retErr, updateMachineStatus(machine, status, data.Update))
 	}()
 
 	ensureConditions(&status)
-	config, _, err := p.getConfig(ctx, log, machine.Spec.ProviderSpec)
-	if err != nil {
-		return false, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
-	}
 
-	_, cli, err := getClient(config.Token, &machine.Name)
-	if err != nil {
-		return false, newError(common.InvalidConfigurationMachineError, "failed to create Anexia client: %v", err)
-	}
-
-	vsphereAPI := vsphere.NewAPI(cli)
+	provisioningClient := getSDKClient(&machine.Name).V1().VSphere().Provisioning()
 
 	deleteCtx, cancel := context.WithTimeout(ctx, anxtypes.DeleteRequestTimeout)
 	defer cancel()
 
 	// first check whether there is an provisioning ongoing
 	if status.DeprovisioningID == "" {
-		response, err := vsphereAPI.Provisioning().VM().Deprovision(deleteCtx, status.InstanceID, false)
+		// Nothing was ever provisioned, so there is nothing to deprovision.
+		if status.InstanceID == "" {
+			return true, nil
+		}
+
+		response, err := provisioningClient.Deprovision(deleteCtx, status.InstanceID, false)
 		if err != nil {
-			var respErr *anxclient.ResponseError
-
-			// Only error if the error was not "not found"
-			if !errors.As(err, &respErr) || respErr.ErrorData.Code != http.StatusNotFound {
-				return false, newError(common.DeleteMachineError, "failed to delete machine: %v", err)
-			}
-
-			// good thinking checking for a "not found" error, but go-anxcloud does only
-			// return >= 500 && < 600 errors (:
-			// since that's the legacy client in go-anxcloud and the new one is not yet available,
-			// this will not be fixed there but we have a nice workaround here:
-
-			if response.Identifier == "" {
+			// The VM is already gone, so we are done.
+			if anxsdkcommon.IsNotFoundError(err) {
 				return true, nil
 			}
+			return false, newError(common.DeleteMachineError, "failed to delete machine: %v", err)
 		}
 		status.DeprovisioningID = response.Identifier
 	}
 
-	return isTaskDone(deleteCtx, cli, status.DeprovisioningID)
+	return isTaskDone(deleteCtx, provisioningClient, status.DeprovisioningID)
 }
 
-func isTaskDone(ctx context.Context, cli anxclient.Client, progressIdentifier string) (bool, error) {
-	response, err := progress.NewAPI(cli).Get(ctx, progressIdentifier)
+func isTaskDone(ctx context.Context, provisioningAPI vsphere.ProvisioningAPI, progressIdentifier string) (bool, error) {
+	if progressIdentifier == "" {
+		return true, nil
+	}
+
+	response, err := provisioningAPI.GetProvisioningProgress(ctx, progressIdentifier)
 	if err != nil {
 		return false, err
 	}
 
-	if len(response.Errors) != 0 {
+	switch response.Status {
+	case vsphere.ProvisioningStatusSuccess:
+		return true, nil
+	case vsphere.ProvisioningStatusInProgress:
+		return false, nil
+	case vsphere.ProvisioningStatusCancelled,
+		vsphere.ProvisioningStatusFailed:
 		taskErrors, _ := json.Marshal(response.Errors)
 		return true, fmt.Errorf("task failed with: %s", taskErrors)
+	default:
+		return false, fmt.Errorf("unexpected provisioning status %q for task %q", response.Status, progressIdentifier)
 	}
-
-	if response.Progress == 100 {
-		return true, nil
-	}
-
-	return false, nil
 }
 
 func (p *provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, _ *clusterv1alpha1.Machine, _ k8stypes.UID) error {
@@ -461,50 +565,27 @@ func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 
-func getClient(token string, machineName *string) (api.API, anxclient.Client, error) {
-	logPrefix := "[Anexia API]"
-
-	if machineName != nil {
-		logPrefix = fmt.Sprintf("[Anexia API for Machine %q]", *machineName)
-	}
-
-	httpClient := cloudproviderutil.HTTPClientConfig{
-		Timeout:   120 * time.Second,
-		LogPrefix: logPrefix,
-	}.New()
-
-	legacyClientOptions := []anxclient.Option{
-		anxclient.TokenFromString(token),
-		anxclient.HTTPClient(&httpClient),
-	}
-
-	a, err := api.NewAPI(api.WithClientOptions(legacyClientOptions...))
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating generic API client: %w", err)
-	}
-
-	legacyClient, err := anxclient.New(legacyClientOptions...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating legacy client: %w", err)
-	}
-
-	return a, legacyClient, nil
-}
-
-func getProviderStatus(log *zap.SugaredLogger, machine *clusterv1alpha1.Machine) anxtypes.ProviderStatus {
+// getProviderStatus decodes the Anexia ProviderStatus from the Machine object.
+//
+// A decode failure must not be swallowed: this status is the only place where
+// the instance and reserved IPs of a Machine are recorded (nothing is tagged
+// with the Machine UID on the Anexia side and MigrateUID is a no-op), so
+// treating an unreadable status as "empty" would make the controller provision
+// a second VM and orphan the existing one together with its reserved IPs.
+func getProviderStatus(log *zap.SugaredLogger, machine *clusterv1alpha1.Machine) (anxtypes.ProviderStatus, error) {
 	var providerStatus anxtypes.ProviderStatus
 	status := machine.Status.ProviderStatus
 	if status != nil && status.Raw != nil {
 		if err := json.Unmarshal(status.Raw, &providerStatus); err != nil {
-			log.Error("Failed to parse status from machine object; status was discarded for machine")
-			return anxtypes.ProviderStatus{}
+			log.Errorw("Failed to parse status from machine object", "error", err)
+			return anxtypes.ProviderStatus{}, fmt.Errorf("failed to parse provider status from machine object: %w", err)
 		}
 	}
-	return providerStatus
+	return providerStatus, nil
 }
 
 // newError creates a terminal error matching to the provider interface.
-func newError(reason common.MachineStatusError, msg string, args ...interface{}) error {
+func newError(reason common.MachineStatusError, msg string, args ...any) error {
 	return cloudprovidererrors.TerminalError{
 		Reason:  reason,
 		Message: fmt.Sprintf(msg, args...),
@@ -531,20 +612,18 @@ func updateMachineStatus(machine *clusterv1alpha1.Machine, status anxtypes.Provi
 	return nil
 }
 
-func anexiaErrorToTerminalError(err error, msg string) error {
-	var httpError api.HTTPError
-	if errors.As(err, &httpError) && (httpError.StatusCode() == http.StatusForbidden || httpError.StatusCode() == http.StatusUnauthorized) {
-		return cloudprovidererrors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: "Request was rejected due to invalid credentials",
+func wrapAnexiaError(err error, msg string) error {
+	var sdkError *anxsdkcommon.APIError
+	if errors.As(err, &sdkError) {
+		if sdkError.StatusCode == http.StatusForbidden || sdkError.StatusCode == http.StatusUnauthorized {
+			return cloudprovidererrors.TerminalError{
+				Reason:  common.InvalidConfigurationMachineError,
+				Message: invalidCredentialsMessage,
+			}
 		}
-	}
 
-	var responseError *anxclient.ResponseError
-	if errors.As(err, &responseError) && (responseError.ErrorData.Code == http.StatusForbidden || responseError.ErrorData.Code == http.StatusUnauthorized) {
-		return cloudprovidererrors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: "Request was rejected due to invalid credentials",
+		if sdkError.StatusCode == http.StatusNotFound {
+			return cloudprovidererrors.ErrInstanceNotFound
 		}
 	}
 

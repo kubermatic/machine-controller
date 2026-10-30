@@ -62,6 +62,17 @@ if [ ! -f machine-controller-deployed ]; then
   sed -i 's/log-format=json/log-format=console/g' examples/machine-controller.yaml
 
   kubectl apply -f examples/machine-controller.yaml
+
+  # The Anexia provider reads its API token from the environment instead of the
+  # cloudProviderSpec, so it has to be injected into the Deployment.
+  if [ -n "${ANEXIA_TOKEN:-}" ]; then
+    kubectl -n kube-system create secret generic machine-controller-anexia \
+      --from-literal=ANEXIA_TOKEN="$ANEXIA_TOKEN" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    kubectl -n kube-system patch deployment machine-controller --type=json -p \
+      '[{"op":"add","path":"/spec/template/spec/containers/0/envFrom","value":[{"secretRef":{"name":"machine-controller-anexia"}}]}]'
+  fi
+
   touch machine-controller-deployed
 
   protokol --kubeconfig "$KUBECONFIG" --flat --output "$ARTIFACTS/logs" --namespace kube-system 'machine-controller-*' > /dev/null 2>&1 &

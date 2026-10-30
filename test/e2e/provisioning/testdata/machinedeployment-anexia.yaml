@@ -25,14 +25,21 @@ spec:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: anexia
+          # The API token is not part of the cloudProviderSpec, the
+          # machine-controller reads it from the ANEXIA_TOKEN environment
+          # variable.
           cloudProviderSpec:
-            token: "<< ANEXIA_TOKEN >>"
-            vlanID: "<< ANEXIA_VLAN_ID >>"
             templateID: "<< ANEXIA_TEMPLATE_ID >>"
             locationID: "<< ANEXIA_LOCATION_ID >>"
             cpus: 2
+            cpuPerformanceType: performance
             memory: 2048
             diskSize: 60
+            diskPerformanceType: ENT6
+            networks:
+              - vlan: "<< ANEXIA_VLAN_ID >>"
+                prefixes:
+                  - "<< ANEXIA_PREFIX_ID >>"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             provisioningUtility: "cloud-init"
