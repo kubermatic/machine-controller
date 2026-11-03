@@ -63,8 +63,8 @@ github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdko
 github.com/ajstarks/svgo v0.0.0-20180226025133-644b8db467af/go.mod h1:K08gAheRH3/J6wwsYMMT4xOr94bZjxIelGM0+d/wbFw=
 github.com/aliyun/alibaba-cloud-sdk-go v1.63.15 h1:r2uwBUQhLhcPzaWz9tRJqc8MjYwHb+oF2+Q6467BF14=
 github.com/aliyun/alibaba-cloud-sdk-go v1.63.15/go.mod h1:SOSDHfe1kX91v3W5QiBsWSLqeLxImobbMX1mxrFHsVQ=
-github.com/anexia/go-anxsdk v0.0.0-20261028085142-5ddd5360ae23 h1:mGHwkuo4LkC5i/U6XG0cMRpwX0nBZQm+zBFD7hcIHQc=
-github.com/anexia/go-anxsdk v0.0.0-20261028085142-5ddd5360ae23/go.mod h1:JyS0QGfe0UTGbj/a32mXzz4gaU/CHbOTVvP7yRJjEe8=
+github.com/anexia/go-anxsdk v0.0.0-20261103135810-73efe82de00d h1:eJuRCXHA7A2/oTa/6Y1DPBwvIil/edk10OEcQfzMhnU=
+github.com/anexia/go-anxsdk v0.0.0-20261103135810-73efe82de00d/go.mod h1:JyS0QGfe0UTGbj/a32mXzz4gaU/CHbOTVvP7yRJjEe8=
 github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de h1:FxWPpzIjnTlhPwqqXc4/vE0f7GvRjuAsbW+HOIe8KnA=
 github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de/go.mod h1:DCaWoUhZrYW9p1lxo/cm8EmUOOzAPSEZNGF2DK1dJgw=
 github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a/go.mod h1:lB+ZfQJz7igIIfQNfa7Ml4HSf2uFQQRzpGGRXenZAgY=
