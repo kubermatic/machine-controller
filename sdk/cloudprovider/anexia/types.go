@@ -17,10 +17,9 @@ limitations under the License.
 package anexia
 
 import (
-	"errors"
+	"encoding/json"
 	"time"
 
-	"k8c.io/machine-controller/sdk/jsonutil"
 	"k8c.io/machine-controller/sdk/providerconfig"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,22 +36,19 @@ const (
 	IPStateUnbound        = "Unbound"
 	IPProvisioningExpires = 1800 * time.Second
 
-	VmxNet3NIC       = "vmxnet3"
-	MachinePoweredOn = "poweredOn"
-)
-
-var (
-	// ErrConfigDiskSizeAndDisks is returned when the config has both DiskSize and Disks set, which is unsupported.
-	ErrConfigDiskSizeAndDisks = errors.New("both the deprecated DiskSize and new Disks attribute are set")
-
-	// ErrConfigVlanIDAndNetworks is returned when the config has both VlanID and Networks set, which is unsupported.
-	ErrConfigVlanIDAndNetworks = errors.New("both the deprecated VlanID and new Networks attribute are set")
+	VirtioNIC = "virtio"
 )
 
 // RawDisk specifies a single disk, with some values maybe being fetched from secrets.
 type RawDisk struct {
-	Size            int                            `json:"size"`
+	// Size (in Gibibyte) specifies the size of the disk.
+	Size int `json:"size"`
+	// PerformanceType specifies the performance of the disk.
 	PerformanceType providerconfig.ConfigVarString `json:"performanceType"`
+	// Name as human readable identifier for the disk
+	Name string `json:"name"`
+	// Identifier of the disk to maintain engine sync
+	Identifier string `json:"identifier,omitempty"`
 }
 
 // RawNetwork specifies a single network interface.
@@ -64,32 +60,48 @@ type RawNetwork struct {
 	//
 	// Empty list means that no IPs will be reserved, but the interface will still be added.
 	PrefixIDs []providerconfig.ConfigVarString `json:"prefixes"`
+
+	// Bandwidth limit in MBit/s on the network interface. Allowed values are: 100, 1000, 10000.
+	//
+	// If unset, the default value from the Anexia Engine is used, which is usually 1000.
+	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
+
+	// Identifier of the Network to maintain engine sync
+	Identifier string `json:"identifier,omitempty"`
 }
 
 // RawConfig contains all the configuration values for VMs to create, with some values maybe being fetched from secrets.
 type RawConfig struct {
-	Token      providerconfig.ConfigVarString `json:"token,omitempty"`
+	// LocationID specifies the datacenter location.
 	LocationID providerconfig.ConfigVarString `json:"locationID"`
 
-	TemplateID    providerconfig.ConfigVarString `json:"templateID"`
-	Template      providerconfig.ConfigVarString `json:"template"`
+	// TemplateID specifies the template exactly, however most cases should use Template and TemplateBuild instead.
+	TemplateID providerconfig.ConfigVarString `json:"templateID"`
+	// Template specifies the template name.
+	Template providerconfig.ConfigVarString `json:"template"`
+	// TemplateBuild specifies the template build.
 	TemplateBuild providerconfig.ConfigVarString `json:"templateBuild"`
 
-	CPUs               int    `json:"cpus"`
+	// CPUs specify the number of CPUs of the machine
+	CPUs int `json:"cpus"`
+	// CPUPerformanceType specifies the performance of the used CPU.
 	CPUPerformanceType string `json:"cpuPerformanceType"`
-	Memory             int    `json:"memory"`
+	// Memory (in Mebibyte) specifies the main memory size.
+	Memory int `json:"memory"`
 
-	// Deprecated, use Disks instead.
+	// DiskSize (in Gibibytes) for the main disk.
 	DiskSize int `json:"diskSize"`
+	// DiskPerformanceType specifies the performance of the main disk.
+	DiskPerformanceType string `json:"diskPerformanceType"`
 
+	// Disks specifies the additional disks.
 	Disks []RawDisk `json:"disks"`
-
-	// Deprecated, use Networks instead.
-	VlanID providerconfig.ConfigVarString `json:"vlanID"`
 
 	// Configuration of the network interfaces. At least one entry with at
 	// least one Prefix is required.
 	Networks []RawNetwork `json:"networks"`
+
+	AvailabilityZone string `json:"availability_zone,omitempty"`
 }
 
 type NetworkAddressStatus struct {
@@ -116,5 +128,5 @@ type ProviderStatus struct {
 func GetConfig(pconfig providerconfig.Config) (*RawConfig, error) {
 	rawConfig := &RawConfig{}
 
-	return rawConfig, jsonutil.StrictUnmarshal(pconfig.CloudProviderSpec.Raw, rawConfig)
+	return rawConfig, json.Unmarshal(pconfig.CloudProviderSpec.Raw, rawConfig)
 }

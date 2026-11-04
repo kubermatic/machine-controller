@@ -19,18 +19,16 @@ package anexia
 import (
 	"net"
 
-	"go.anx.io/go-anxcloud/pkg/vsphere/info"
+	"github.com/anexia/go-anxsdk/v1/vsphere"
 
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
-
 	corev1 "k8s.io/api/core/v1"
 )
 
 type anexiaInstance struct {
 	isCreating        bool
 	isDeleting        bool
-	info              *info.Info
+	info              *vsphere.InfoGetResponse
 	reservedAddresses []string
 }
 
@@ -68,10 +66,10 @@ func (ai *anexiaInstance) Addresses() map[string]corev1.NodeAddressType {
 
 	if ai.info != nil {
 		for _, network := range ai.info.Network {
-			for _, ip := range network.IPv4 {
+			for _, ip := range network.IPsv4 {
 				addresses[ip] = corev1.NodeExternalIP
 			}
-			for _, ip := range network.IPv6 {
+			for _, ip := range network.IPsv6 {
 				addresses[ip] = corev1.NodeExternalIP
 			}
 		}
@@ -98,7 +96,7 @@ func (ai *anexiaInstance) Status() instance.Status {
 	}
 
 	if ai.info != nil {
-		if ai.info.Status == anxtypes.MachinePoweredOn {
+		if ai.info.Status == vsphere.PowerStatePoweredOn {
 			return instance.StatusRunning
 		}
 	}
