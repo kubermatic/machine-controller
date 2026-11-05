@@ -29,13 +29,12 @@ import (
 	anxsdkcommon "github.com/anexia/go-anxsdk/v1/common"
 	"github.com/anexia/go-anxsdk/v1/vsphere"
 	"go.uber.org/zap"
-	controllerutil "k8c.io/machine-controller/pkg/controller/util"
-	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8c.io/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
 	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
+	controllerutil "k8c.io/machine-controller/pkg/controller/util"
 	"k8c.io/machine-controller/sdk/apis/cluster/common"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
@@ -45,6 +44,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (

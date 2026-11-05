@@ -20,13 +20,14 @@ import (
 	"testing"
 
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	machinecontroller "k8c.io/machine-controller/pkg/controller/machine"
 	"k8c.io/machine-controller/pkg/controller/util"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 // TestSetNewMachineSetAnnotationsCopiesEvictionTimeoutOverride covers the

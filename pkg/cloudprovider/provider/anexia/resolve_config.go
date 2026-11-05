@@ -81,7 +81,7 @@ func (p *provider) resolveTemplateID(ctx context.Context, provisioningAPI vspher
 	return template.ID, nil
 }
 
-func (p *provider) resolveNetworkConfig(log *zap.SugaredLogger, config anxtypes.RawConfig) (*[]resolvedNetwork, error) {
+func (p *provider) resolveNetworkConfig(_ *zap.SugaredLogger, config anxtypes.RawConfig) (*[]resolvedNetwork, error) {
 	ret := make([]resolvedNetwork, len(config.Networks))
 	for netIndex, net := range config.Networks {
 		vlanID, err := p.configVarResolver.GetStringValue(net.VlanID)
@@ -150,6 +150,10 @@ func (p *provider) resolveConfig(ctx context.Context, log *zap.SugaredLogger, co
 		DiskPerformanceType: config.DiskPerformanceType,
 		Memory:              config.Memory,
 		AvailabilityZone:    config.AvailabilityZone,
+	}
+
+	if ret.DiskPerformanceType == "" {
+		ret.DiskPerformanceType = string(vsphere.DiskTypeENT6)
 	}
 
 	ret.LocationID, err = p.configVarResolver.GetStringValue(config.LocationID)

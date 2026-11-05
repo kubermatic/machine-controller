@@ -72,6 +72,9 @@ type RawNetwork struct {
 
 // RawConfig contains all the configuration values for VMs to create, with some values maybe being fetched from secrets.
 type RawConfig struct {
+	// Deprecated: Token should be supplied via environment variables
+	Token providerconfig.ConfigVarString `json:"token,omitempty"`
+
 	// LocationID specifies the datacenter location.
 	LocationID providerconfig.ConfigVarString `json:"locationID"`
 
@@ -96,6 +99,9 @@ type RawConfig struct {
 
 	// Disks specifies the additional disks.
 	Disks []RawDisk `json:"disks"`
+
+	// Deprecated, use Networks instead.
+	VlanID providerconfig.ConfigVarString `json:"vlanID"`
 
 	// Configuration of the network interfaces. At least one entry with at
 	// least one Prefix is required.

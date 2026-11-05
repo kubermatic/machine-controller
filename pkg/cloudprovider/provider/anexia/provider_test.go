@@ -551,7 +551,7 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			Name:   "invalid disk performance type",
-			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.DiskPerformanceType = "" }),
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.DiskPerformanceType = "speed" }),
 			Error:  vsphere.ErrInvalidDiskType,
 		},
 		{
