@@ -79,6 +79,7 @@ spec:
             # securityType is case-sensitive. Valid values: TrustedLaunch, Standard.
             # TrustedLaunch requires a Gen2 VM size. Use with Azure Compute Gallery images
             # that have SecurityType set to TrustedLaunch.
+            # With TrustedLaunch, secureBootEnabled and vTpmEnabled default to true.
             # securityProfile:
             #   securityType: TrustedLaunch
             #   secureBootEnabled: true
