@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/anexia/go-anxsdk/v1/vsphere"
 	"github.com/gophercloud/gophercloud/testhelper"
 
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
@@ -31,7 +32,24 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-type jsonObject = map[string]interface{}
+// Fixture values shared across the test files in this package.
+const (
+	testMachineDeploymentName = "TestMachineDeployment"
+	testMachineSetName        = "TestMachineSet"
+	testMachineName           = "TestMachine"
+	testTaskID                = "TASK-ID"
+	testInstanceID            = "INSTANCE-ID"
+	testProvisioningID        = "PROVISIONING-ID"
+	testIPIdentifier          = "IP-ID"
+	testPrefixID              = "0987654"
+
+	testPublicIPv4  = "8.8.8.8"
+	testPublicIPv6  = "2001:db8::2"
+	testPrivateIPv4 = "10.0.0.2"
+	testPrivateIPv6 = "fda0:23::2"
+)
+
+type jsonObject = map[string]any
 
 type ProvisionVMTestCase struct {
 	ReconcileContext reconcileContext
@@ -39,11 +57,13 @@ type ProvisionVMTestCase struct {
 }
 
 type ConfigTestCase struct {
+	Name   string
 	Config anxtypes.RawConfig
 	Error  error
 }
 
 type ValidateCallTestCase struct {
+	Name          string
 	Spec          clusterv1alpha1.MachineSpec
 	ExpectedError error
 }
@@ -66,6 +86,7 @@ func getSpecsForValidationTest(t *testing.T, configCases []ConfigTestCase) []Val
 				},
 			},
 			ExpectedError: configCase.Error,
+			Name:          configCase.Name,
 		})
 	}
 	return testCases
@@ -82,7 +103,12 @@ func hookableConfig(hook func(*anxtypes.RawConfig)) anxtypes.RawConfig {
 	config := anxtypes.RawConfig{
 		CPUs: 1,
 
+		CPUPerformanceType: "performance",
+
 		Memory: 2,
+
+		DiskSize:            5,
+		DiskPerformanceType: "ENT2",
 
 		Disks: []anxtypes.RawDisk{
 			{Size: 5, PerformanceType: newConfigVarString("ENT6")},
@@ -92,7 +118,6 @@ func hookableConfig(hook func(*anxtypes.RawConfig)) anxtypes.RawConfig {
 			{VlanID: newConfigVarString("test-vlan"), PrefixIDs: []providerconfigtypes.ConfigVarString{newConfigVarString("test-prefix")}},
 		},
 
-		Token:      newConfigVarString("test-token"),
 		LocationID: newConfigVarString("test-location"),
 		TemplateID: newConfigVarString("test-template-id"),
 	}
@@ -113,15 +138,10 @@ func hookableReconcileContext(locationID string, templateID string, hook func(*r
 		Status:   &anxtypes.ProviderStatus{},
 		UserData: "",
 		Config: resolvedConfig{
-			LocationID: locationID,
-			TemplateID: templateID,
-			Disks: []resolvedDisk{
-				{
-					RawDisk: anxtypes.RawDisk{
-						Size: 5,
-					},
-				},
-			},
+			LocationID:          locationID,
+			TemplateID:          templateID,
+			DiskSize:            5,
+			DiskPerformanceType: string(vsphere.DiskTypeENT4),
 			Networks: []resolvedNetwork{
 				{
 					VlanID: "VLAN-ID",
@@ -130,9 +150,12 @@ func hookableReconcileContext(locationID string, templateID string, hook func(*r
 					},
 				},
 			},
-			RawConfig: anxtypes.RawConfig{
-				CPUs:   5,
-				Memory: 5,
+			CPUs:               5,
+			CPUPerformanceType: string(vsphere.CPUPerformanceTypeEnterprise),
+			Memory:             5,
+			SSHPublicKeys: []string{
+				"ssh-ed25519 AAAAC3Nza test1",
+				"ssh-rsa AAAAB3NzaC1yc test2",
 			},
 		},
 		ProviderData: &cloudprovidertypes.ProviderData{
@@ -145,7 +168,6 @@ func hookableReconcileContext(locationID string, templateID string, hook func(*r
 				DNS: providerconfigtypes.DNSConfig{
 					Servers: []string{
 						"1.1.1.1",
-						"",
 						"192.168.0.1",
 						"192.168.0.2",
 						"192.168.0.3",
