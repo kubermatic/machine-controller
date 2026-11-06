@@ -87,4 +87,4 @@ spec:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
       versions:
-        kubelet: 1.35.0
+        kubelet: 1.36.4

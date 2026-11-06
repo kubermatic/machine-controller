@@ -56,6 +56,10 @@ const (
 	// defaultCPUPerformanceType matches go-anxsdk NewDefinition default, used
 	// when no cpuPerformanceType is configured.
 	defaultCPUPerformanceType = vsphere.CPUPerformanceTypePerformance
+
+	// defaultDiskType is the default disk performance type
+	// when no diskPerformanceType is configured
+	defaultDiskType = vsphere.DiskTypeENT6
 )
 
 type provider struct {
@@ -121,13 +125,17 @@ func provisionVM(ctx context.Context, reconcileContext reconcileContext, log *za
 			MemoryMB:           new(config.Memory),
 			CPUs:               new(config.CPUs),
 			DiskGB:             new(config.DiskSize),
-			DiskType:           new(vsphere.DiskType(config.DiskPerformanceType)),
+			DiskType:           new(defaultDiskType),
 			CPUPerformanceType: new(defaultCPUPerformanceType),
 			Network:            networkInterfaces,
 		}
 
 		if config.CPUPerformanceType != "" {
 			request.CPUPerformanceType = new(vsphere.CPUPerformanceType(config.CPUPerformanceType))
+		}
+
+		if config.DiskPerformanceType != "" {
+			request.DiskType = new(vsphere.DiskType(config.DiskPerformanceType))
 		}
 
 		if config.AvailabilityZone != "" {
@@ -276,16 +284,20 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, machine
 		errs = append(errs, errors.New("cpu count is missing"))
 	}
 
-	if _, parseErr := vsphere.ParseCPUPerformanceType(config.CPUPerformanceType); parseErr != nil {
-		errs = append(errs, fmt.Errorf("cpu performance type is invalid: %w", parseErr))
+	if config.CPUPerformanceType != "" {
+		if _, parseErr := vsphere.ParseCPUPerformanceType(config.CPUPerformanceType); parseErr != nil {
+			errs = append(errs, fmt.Errorf("cpu performance type is invalid: %w", parseErr))
+		}
 	}
 
 	if config.DiskSize == 0 {
 		errs = append(errs, errors.New("disk size is missing"))
 	}
 
-	if _, parseErr := vsphere.ParseDiskType(config.DiskPerformanceType); parseErr != nil {
-		errs = append(errs, fmt.Errorf("disk performance type is invalid: %w", parseErr))
+	if config.DiskPerformanceType != "" {
+		if _, parseErr := vsphere.ParseDiskType(config.DiskPerformanceType); parseErr != nil {
+			errs = append(errs, fmt.Errorf("disk performance type is invalid: %w", parseErr))
+		}
 	}
 
 	for i, disk := range config.Disks {
