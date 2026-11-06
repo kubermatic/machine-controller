@@ -1074,10 +1074,20 @@ func buildSecurityProfile(raw *azuretypes.SecurityProfile) *compute.SecurityProf
 		sp.SecurityType = compute.SecurityTypes(raw.SecurityType)
 	}
 
-	if raw.SecureBootEnabled != nil || raw.VTpmEnabled != nil {
+	secureBoot, vTpm := raw.SecureBootEnabled, raw.VTpmEnabled
+	if sp.SecurityType == compute.SecurityTypesTrustedLaunch {
+		if secureBoot == nil {
+			secureBoot = ptr.To(true)
+		}
+		if vTpm == nil {
+			vTpm = ptr.To(true)
+		}
+	}
+
+	if secureBoot != nil || vTpm != nil {
 		sp.UefiSettings = &compute.UefiSettings{
-			SecureBootEnabled: raw.SecureBootEnabled,
-			VTpmEnabled:       raw.VTpmEnabled,
+			SecureBootEnabled: secureBoot,
+			VTpmEnabled:       vTpm,
 		}
 	}
 
