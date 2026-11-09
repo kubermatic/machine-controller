@@ -201,7 +201,7 @@ func getSecurityGroup(client *gophercloud.ProviderClient, region, name string) (
 	return nil, errNotFound
 }
 
-func getNetworks(netClient *gophercloud.ServiceClient) ([]osnetworks.Network, error) {
+func getAllNetworks(netClient *gophercloud.ServiceClient) ([]osnetworks.Network, error) {
 	return listNetworks(netClient, osnetworks.ListOpts{})
 }
 
@@ -236,12 +236,13 @@ func looksLikeID(s string) bool {
 // getNetwork looks up a network by ID (if the value looks like one) and then by name,
 // filtering server-side instead of listing all networks, which is slow in larger projects.
 func getNetwork(netClient *gophercloud.ServiceClient, nameOrID string) (*osnetworks.Network, error) {
-	// Empty filter values are not sent to the API, so an empty nameOrID lists all
-	// networks once and matches an unnamed one, as before.
-	lookups := []osnetworks.ListOpts{{Name: nameOrID}}
+	lookups := make([]osnetworks.ListOpts, 2)
+	// Query by ID first if the value looks like one
 	if looksLikeID(nameOrID) {
-		lookups = append([]osnetworks.ListOpts{{ID: nameOrID}}, lookups...)
+		lookups = append(lookups, osnetworks.ListOpts{ID: nameOrID})
 	}
+	// Empty filter values are not sent to the API, so an empty nameOrID lists all
+	lookups = append(lookups, osnetworks.ListOpts{Name: nameOrID})
 
 	for _, opts := range lookups {
 		networks, err := listNetworks(netClient, opts)
@@ -436,7 +437,7 @@ func disablePortSecurity(netClient *gophercloud.ServiceClient, instanceID, netwo
 }
 
 func getDefaultNetwork(netClient *gophercloud.ServiceClient) (*osnetworks.Network, error) {
-	networks, err := getNetworks(netClient)
+	networks, err := getAllNetworks(netClient)
 	if err != nil {
 		return nil, err
 	}
