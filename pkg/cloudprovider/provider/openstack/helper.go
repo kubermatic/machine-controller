@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gophercloud/gophercloud"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	osavailabilityzones "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones"
@@ -174,8 +175,11 @@ func getSecurityGroup(client *gophercloud.ProviderClient, region, name string) (
 		return nil, err
 	}
 
+	// Filter server-side by name: listing all security groups (including their rules)
+	// can return several megabytes in larger projects, which makes validation slow
+	// enough to exceed the admission webhook timeout.
 	var allGroups []ossecuritygroups.SecGroup
-	pager := ossecuritygroups.List(netClient, ossecuritygroups.ListOpts{})
+	pager := ossecuritygroups.List(netClient, ossecuritygroups.ListOpts{Name: name})
 	err = pager.EachPage(func(page pagination.Page) (bool, error) {
 		groups, err := ossecuritygroups.ExtractGroups(page)
 		if err != nil {
@@ -198,8 +202,12 @@ func getSecurityGroup(client *gophercloud.ProviderClient, region, name string) (
 }
 
 func getNetworks(netClient *gophercloud.ServiceClient) ([]osnetworks.Network, error) {
+	return listNetworks(netClient, osnetworks.ListOpts{})
+}
+
+func listNetworks(netClient *gophercloud.ServiceClient, listOpts osnetworks.ListOpts) ([]osnetworks.Network, error) {
 	var allNetworks []osnetworks.Network
-	pager := osnetworks.List(netClient, osnetworks.ListOpts{})
+	pager := osnetworks.List(netClient, listOpts)
 	err := pager.EachPage(func(page pagination.Page) (bool, error) {
 		networks, err := osnetworks.ExtractNetworks(page)
 		if err != nil {
@@ -215,15 +223,35 @@ func getNetworks(netClient *gophercloud.ServiceClient) ([]osnetworks.Network, er
 	return allNetworks, nil
 }
 
+// looksLikeID reports whether s has the canonical UUID format Neutron uses for IDs.
+// Values that don't can only be names, so looking them up by ID can be skipped.
+func looksLikeID(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+	_, err := uuid.Parse(s)
+	return err == nil
+}
+
+// getNetwork looks up a network by ID (if the value looks like one) and then by name,
+// filtering server-side instead of listing all networks, which is slow in larger projects.
 func getNetwork(netClient *gophercloud.ServiceClient, nameOrID string) (*osnetworks.Network, error) {
-	allNetworks, err := getNetworks(netClient)
-	if err != nil {
-		return nil, err
+	// Empty filter values are not sent to the API, so an empty nameOrID lists all
+	// networks once and matches an unnamed one, as before.
+	lookups := []osnetworks.ListOpts{{Name: nameOrID}}
+	if looksLikeID(nameOrID) {
+		lookups = append([]osnetworks.ListOpts{{ID: nameOrID}}, lookups...)
 	}
 
-	for _, n := range allNetworks {
-		if n.Name == nameOrID || n.ID == nameOrID {
-			return &n, nil
+	for _, opts := range lookups {
+		networks, err := listNetworks(netClient, opts)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range networks {
+			if n.ID == nameOrID || n.Name == nameOrID {
+				return &n, nil
+			}
 		}
 	}
 
@@ -235,6 +263,10 @@ func getSubnets(netClient *gophercloud.ServiceClient, networkID string) ([]ossub
 	if networkID != "" {
 		listOpts = ossubnets.ListOpts{NetworkID: networkID}
 	}
+	return listSubnets(netClient, listOpts)
+}
+
+func listSubnets(netClient *gophercloud.ServiceClient, listOpts ossubnets.ListOpts) ([]ossubnets.Subnet, error) {
 	var allSubnets []ossubnets.Subnet
 	pager := ossubnets.List(netClient, listOpts)
 	err := pager.EachPage(func(page pagination.Page) (bool, error) {
@@ -251,14 +283,26 @@ func getSubnets(netClient *gophercloud.ServiceClient, networkID string) ([]ossub
 	return allSubnets, nil
 }
 
+// getSubnet looks up a subnet by ID (if the value looks like one) and then by name,
+// filtering server-side. Listing all subnets can take more than ten seconds in larger
+// projects, which makes validation exceed the admission webhook timeout.
 func getSubnet(netClient *gophercloud.ServiceClient, nameOrID string) (*ossubnets.Subnet, error) {
-	allSubnets, err := getSubnets(netClient, "")
-	if err != nil {
-		return nil, err
+	// Empty filter values are not sent to the API, so an empty nameOrID lists all
+	// subnets once and matches an unnamed one, as before.
+	lookups := []ossubnets.ListOpts{{Name: nameOrID}}
+	if looksLikeID(nameOrID) {
+		lookups = append([]ossubnets.ListOpts{{ID: nameOrID}}, lookups...)
 	}
-	for _, s := range allSubnets {
-		if s.Name == nameOrID || s.ID == nameOrID {
-			return &s, nil
+
+	for _, opts := range lookups {
+		subnets, err := listSubnets(netClient, opts)
+		if err != nil {
+			return nil, err
+		}
+		for _, s := range subnets {
+			if s.ID == nameOrID || s.Name == nameOrID {
+				return &s, nil
+			}
 		}
 	}
 
