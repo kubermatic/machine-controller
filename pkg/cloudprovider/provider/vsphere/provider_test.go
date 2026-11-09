@@ -37,6 +37,7 @@ import (
 type vsphereProviderSpecConf struct {
 	Datastore        *string
 	DatastoreCluster *string
+	ResourcePool     *string
 	User             string
 	Password         string
 	URL              string
@@ -59,7 +60,11 @@ func (v vsphereProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"datastoreCluster": "{{ .DatastoreCluster }}",
 		{{- end }}
 		"folder": "/",
+		{{- if .ResourcePool }}
+		"resourcePool": "{{ .ResourcePool }}",
+		{{- else }}
 		"resourcePool": "/DC0/host/DC0_C0/Resources",
+		{{- end }}
 		"memoryMB": 2000,
 		"password": "{{ .Password }}",
 		"templateVMName": "DC0_H0_VM0",
@@ -140,6 +145,15 @@ func TestValidate(t *testing.T) {
 			args: vsphereProviderSpecConf{
 				Datastore:        ptr.To("DC0_POD10"),
 				DatastoreCluster: ptr.To("DC0_POD0"),
+			},
+			getConfigErr: nil,
+			wantErr:      true,
+		},
+		{
+			name: "ResourcePool in a different cluster",
+			args: vsphereProviderSpecConf{
+				Datastore:    new("LocalDS_0"),
+				ResourcePool: new("/DC0/host/DC0_C1/Resources"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
