@@ -421,10 +421,25 @@ func TestBuildSecurityProfile(t *testing.T) {
 			expected: &compute.SecurityProfile{},
 		},
 		{
-			name: "only securityType set",
+			name: "TrustedLaunch defaults secure boot and vTPM to true",
 			raw:  &azuretypes.SecurityProfile{SecurityType: "TrustedLaunch"},
 			expected: &compute.SecurityProfile{
 				SecurityType: compute.SecurityTypes("TrustedLaunch"),
+				UefiSettings: &compute.UefiSettings{
+					SecureBootEnabled: ptr.To(true),
+					VTpmEnabled:       ptr.To(true),
+				},
+			},
+		},
+		{
+			name: "TrustedLaunch keeps an explicit false",
+			raw:  &azuretypes.SecurityProfile{SecurityType: "TrustedLaunch", SecureBootEnabled: ptr.To(false)},
+			expected: &compute.SecurityProfile{
+				SecurityType: compute.SecurityTypes("TrustedLaunch"),
+				UefiSettings: &compute.UefiSettings{
+					SecureBootEnabled: ptr.To(false),
+					VTpmEnabled:       ptr.To(true),
+				},
 			},
 		},
 		{
