@@ -19,10 +19,10 @@ package machineset
 import (
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	machinecontroller "k8c.io/machine-controller/pkg/controller/machine"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestCreateMachineCopiesEvictionTimeoutOverride(t *testing.T) {

@@ -17,17 +17,11 @@ limitations under the License.
 package anexia
 
 import (
-	"context"
-
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	clusterv1alpha1 "k8c.io/machine-controller/sdk/apis/cluster/v1alpha1"
 	anxtypes "k8c.io/machine-controller/sdk/cloudprovider/anexia"
 	providerconfigtypes "k8c.io/machine-controller/sdk/providerconfig"
 )
-
-type contextKey byte
-
-const machineReconcileContextKey contextKey = 0
 
 type reconcileContext struct {
 	Machine        *clusterv1alpha1.Machine
@@ -36,17 +30,4 @@ type reconcileContext struct {
 	Config         resolvedConfig
 	ProviderData   *cloudprovidertypes.ProviderData
 	ProviderConfig *providerconfigtypes.Config
-}
-
-func createReconcileContext(ctx context.Context, cc reconcileContext) context.Context {
-	return context.WithValue(ctx, machineReconcileContextKey, cc)
-}
-
-func getReconcileContext(ctx context.Context) reconcileContext {
-	rawContext := ctx.Value(machineReconcileContextKey)
-	if recContext, ok := rawContext.(reconcileContext); ok {
-		return recContext
-	}
-
-	return reconcileContext{}
 }
