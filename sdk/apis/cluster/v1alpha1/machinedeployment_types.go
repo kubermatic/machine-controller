@@ -170,7 +170,14 @@ type MachineDeploymentStatus struct {
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName=md
 // +kubebuilder:subresource:status
-// +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas,selectorpath=.status.labelSelector
+// +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas
+// +kubebuilder:printcolumn:name="Replicas",type="integer",JSONPath=".spec.replicas",description="Desired number of replicas"
+// +kubebuilder:printcolumn:name="Available-Replicas",type="integer",JSONPath=".status.availableReplicas",description="Number of available replicas"
+// +kubebuilder:printcolumn:name="Provider",type="string",JSONPath=".spec.template.spec.providerSpec.value.cloudProvider",description="Cloud provider the machines are created on"
+// +kubebuilder:printcolumn:name="OS",type="string",JSONPath=".spec.template.spec.providerSpec.value.operatingSystem",description="Operating system of the machines"
+// +kubebuilder:printcolumn:name="Kubelet",type="string",JSONPath=".spec.template.spec.versions.kubelet",description="Kubelet version of the machines"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Deleted",type="date",JSONPath=".metadata.deletionTimestamp",priority=1
 type MachineDeployment struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

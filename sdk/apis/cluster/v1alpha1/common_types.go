@@ -49,8 +49,7 @@ type ProviderSpecSource struct {
 
 // MachineClassRef is a reference to the MachineClass object. Controllers should find the right MachineClass using this reference.
 type MachineClassRef struct {
-	// +optional
-	*corev1.ObjectReference `json:",inline"`
+	corev1.ObjectReference `json:",inline"`
 
 	// Provider is the name of the cloud-provider which MachineClass is intended for.
 	// +optional
