@@ -20,8 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v9"
 	"github.com/google/go-cmp/cmp"
 
 	azuretypes "k8c.io/machine-controller/sdk/cloudprovider/azure"
@@ -102,44 +101,44 @@ func TestVMSizeSupportsGen2(t *testing.T) {
 	}
 }
 
-func skuWithHyperVGenerations(generations string) compute.ResourceSku {
-	return compute.ResourceSku{
-		Capabilities: &[]compute.ResourceSkuCapabilities{
-			{Name: to.StringPtr("HyperVGenerations"), Value: to.StringPtr(generations)},
+func skuWithHyperVGenerations(generations string) armcompute.ResourceSKU {
+	return armcompute.ResourceSKU{
+		Capabilities: []*armcompute.ResourceSKUCapabilities{
+			{Name: ptr.To("HyperVGenerations"), Value: ptr.To(generations)},
 		},
 	}
 }
 
-func gen2SKU() compute.ResourceSku     { return skuWithHyperVGenerations("V1,V2") }
-func gen2OnlySKU() compute.ResourceSku { return skuWithHyperVGenerations("V2") }
-func gen1OnlySKU() compute.ResourceSku { return skuWithHyperVGenerations("V1") }
-func skuWithoutGenCap() compute.ResourceSku {
-	return compute.ResourceSku{
-		Capabilities: &[]compute.ResourceSkuCapabilities{
-			{Name: to.StringPtr("vCPUs"), Value: to.StringPtr("2")},
+func gen2SKU() armcompute.ResourceSKU     { return skuWithHyperVGenerations("V1,V2") }
+func gen2OnlySKU() armcompute.ResourceSKU { return skuWithHyperVGenerations("V2") }
+func gen1OnlySKU() armcompute.ResourceSKU { return skuWithHyperVGenerations("V1") }
+func skuWithoutGenCap() armcompute.ResourceSKU {
+	return armcompute.ResourceSKU{
+		Capabilities: []*armcompute.ResourceSKUCapabilities{
+			{Name: ptr.To("vCPUs"), Value: ptr.To("2")},
 		},
 	}
 }
 
-func skuWithDiskControllerTypes(value string) compute.ResourceSku {
-	return compute.ResourceSku{
-		Capabilities: &[]compute.ResourceSkuCapabilities{
-			{Name: to.StringPtr("DiskControllerTypes"), Value: to.StringPtr(value)},
+func skuWithDiskControllerTypes(value string) armcompute.ResourceSKU {
+	return armcompute.ResourceSKU{
+		Capabilities: []*armcompute.ResourceSKUCapabilities{
+			{Name: ptr.To("DiskControllerTypes"), Value: ptr.To(value)},
 		},
 	}
 }
 
-func nvmeOnlySKU() compute.ResourceSku { return skuWithDiskControllerTypes("NVMe") }
-func scsiAndNvmeSKU() compute.ResourceSku {
+func nvmeOnlySKU() armcompute.ResourceSKU { return skuWithDiskControllerTypes("NVMe") }
+func scsiAndNvmeSKU() armcompute.ResourceSKU {
 	return skuWithDiskControllerTypes("SCSI,NVMe")
 }
-func scsiOnlySKU() compute.ResourceSku { return skuWithDiskControllerTypes("SCSI") }
+func scsiOnlySKU() armcompute.ResourceSKU { return skuWithDiskControllerTypes("SCSI") }
 
 func TestValidateSecurityProfile(t *testing.T) {
 	tests := []struct {
 		name        string
 		config      *config
-		sku         compute.ResourceSku
+		sku         armcompute.ResourceSKU
 		expectError bool
 	}{
 		{
@@ -152,7 +151,7 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "empty SecurityProfile (zero value) fails with empty securityType error",
 			config: &config{
 				VMSize:          testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{},
+				SecurityProfile: &armcompute.SecurityProfile{},
 			},
 			sku:         gen2SKU(),
 			expectError: true,
@@ -161,8 +160,8 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "UEFI settings without securityType fails",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					UefiSettings: &compute.UefiSettings{
+				SecurityProfile: &armcompute.SecurityProfile{
+					UefiSettings: &armcompute.UefiSettings{
 						SecureBootEnabled: ptr.To(true),
 					},
 				},
@@ -174,8 +173,8 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "invalid securityType ConfidentialVM fails",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypesConfidentialVM,
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesConfidentialVM),
 				},
 			},
 			sku:         gen2SKU(),
@@ -185,8 +184,8 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "garbage securityType fails",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypes("Nonsense"),
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypes("Nonsense")),
 				},
 			},
 			sku:         gen2SKU(),
@@ -196,8 +195,8 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "lowercase trustedlaunch fails (case-sensitive)",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypes("trustedlaunch"),
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypes("trustedlaunch")),
 				},
 			},
 			sku:         gen2SKU(),
@@ -207,8 +206,8 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "lowercase standard fails (case-sensitive)",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypes("standard"),
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypes("standard")),
 				},
 			},
 			sku:         gen2SKU(),
@@ -218,8 +217,8 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "TrustedLaunch on non-Gen2 SKU fails",
 			config: &config{
 				VMSize: testVMSizeGen1,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypesTrustedLaunch,
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesTrustedLaunch),
 				},
 			},
 			sku:         gen1OnlySKU(),
@@ -229,8 +228,8 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "TrustedLaunch on SKU without HyperVGenerations capability fails",
 			config: &config{
 				VMSize: testVMSizeGen1,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypesTrustedLaunch,
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesTrustedLaunch),
 				},
 			},
 			sku:         skuWithoutGenCap(),
@@ -240,8 +239,8 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "TrustedLaunch on Gen2-only SKU passes",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypesTrustedLaunch,
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesTrustedLaunch),
 				},
 			},
 			sku:         gen2OnlySKU(),
@@ -251,8 +250,8 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "TrustedLaunch on Gen2 SKU with no UefiSettings passes (Azure applies defaults)",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypesTrustedLaunch,
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesTrustedLaunch),
 				},
 			},
 			sku:         gen2SKU(),
@@ -262,9 +261,9 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "TrustedLaunch with only secureBootEnabled set passes",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypesTrustedLaunch,
-					UefiSettings: &compute.UefiSettings{
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesTrustedLaunch),
+					UefiSettings: &armcompute.UefiSettings{
 						SecureBootEnabled: ptr.To(true),
 					},
 				},
@@ -276,9 +275,9 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "TrustedLaunch with only vTpmEnabled set passes",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypesTrustedLaunch,
-					UefiSettings: &compute.UefiSettings{
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesTrustedLaunch),
+					UefiSettings: &armcompute.UefiSettings{
 						VTpmEnabled: ptr.To(true),
 					},
 				},
@@ -290,9 +289,9 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "TrustedLaunch with secureBoot and vTpm both false passes",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypesTrustedLaunch,
-					UefiSettings: &compute.UefiSettings{
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesTrustedLaunch),
+					UefiSettings: &armcompute.UefiSettings{
 						SecureBootEnabled: ptr.To(false),
 						VTpmEnabled:       ptr.To(false),
 					},
@@ -305,9 +304,9 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "TrustedLaunch with both UEFI settings true passes",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: compute.SecurityTypesTrustedLaunch,
-					UefiSettings: &compute.UefiSettings{
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesTrustedLaunch),
+					UefiSettings: &armcompute.UefiSettings{
 						SecureBootEnabled: ptr.To(true),
 						VTpmEnabled:       ptr.To(true),
 					},
@@ -320,8 +319,8 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "Standard on Gen2 SKU passes",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: securityTypeStandard,
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesStandard),
 				},
 			},
 			sku:         gen2SKU(),
@@ -331,8 +330,8 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "Standard on Gen1 SKU passes",
 			config: &config{
 				VMSize: testVMSizeGen1,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: securityTypeStandard,
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesStandard),
 				},
 			},
 			sku:         gen1OnlySKU(),
@@ -342,9 +341,9 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "Standard with empty UefiSettings (both nil) passes",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: securityTypeStandard,
-					UefiSettings: &compute.UefiSettings{},
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesStandard),
+					UefiSettings: &armcompute.UefiSettings{},
 				},
 			},
 			sku:         gen2SKU(),
@@ -354,9 +353,9 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "Standard with secureBootEnabled fails",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: securityTypeStandard,
-					UefiSettings: &compute.UefiSettings{
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesStandard),
+					UefiSettings: &armcompute.UefiSettings{
 						SecureBootEnabled: ptr.To(true),
 					},
 				},
@@ -368,9 +367,9 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "Standard with vTpmEnabled fails",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: securityTypeStandard,
-					UefiSettings: &compute.UefiSettings{
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesStandard),
+					UefiSettings: &armcompute.UefiSettings{
 						VTpmEnabled: ptr.To(true),
 					},
 				},
@@ -382,9 +381,9 @@ func TestValidateSecurityProfile(t *testing.T) {
 			name: "Standard with secureBootEnabled false fails (any non-nil pointer)",
 			config: &config{
 				VMSize: testVMSizeGen2,
-				SecurityProfile: &compute.SecurityProfile{
-					SecurityType: securityTypeStandard,
-					UefiSettings: &compute.UefiSettings{
+				SecurityProfile: &armcompute.SecurityProfile{
+					SecurityType: ptr.To(armcompute.SecurityTypesStandard),
+					UefiSettings: &armcompute.UefiSettings{
 						SecureBootEnabled: ptr.To(false),
 					},
 				},
@@ -408,7 +407,7 @@ func TestBuildSecurityProfile(t *testing.T) {
 	tests := []struct {
 		name     string
 		raw      *azuretypes.SecurityProfile
-		expected *compute.SecurityProfile
+		expected *armcompute.SecurityProfile
 	}{
 		{
 			name:     "nil raw returns nil",
@@ -418,20 +417,20 @@ func TestBuildSecurityProfile(t *testing.T) {
 		{
 			name:     "empty raw returns empty SecurityProfile (caught by validator)",
 			raw:      &azuretypes.SecurityProfile{},
-			expected: &compute.SecurityProfile{},
+			expected: &armcompute.SecurityProfile{},
 		},
 		{
 			name: "only securityType set",
 			raw:  &azuretypes.SecurityProfile{SecurityType: "TrustedLaunch"},
-			expected: &compute.SecurityProfile{
-				SecurityType: compute.SecurityTypes("TrustedLaunch"),
+			expected: &armcompute.SecurityProfile{
+				SecurityType: ptr.To(armcompute.SecurityTypes("TrustedLaunch")),
 			},
 		},
 		{
 			name: "only secureBootEnabled set (no securityType) constructs UefiSettings, validator rejects later",
 			raw:  &azuretypes.SecurityProfile{SecureBootEnabled: ptr.To(true)},
-			expected: &compute.SecurityProfile{
-				UefiSettings: &compute.UefiSettings{
+			expected: &armcompute.SecurityProfile{
+				UefiSettings: &armcompute.UefiSettings{
 					SecureBootEnabled: ptr.To(true),
 				},
 			},
@@ -439,8 +438,8 @@ func TestBuildSecurityProfile(t *testing.T) {
 		{
 			name: "only vTpmEnabled set constructs UefiSettings",
 			raw:  &azuretypes.SecurityProfile{VTpmEnabled: ptr.To(true)},
-			expected: &compute.SecurityProfile{
-				UefiSettings: &compute.UefiSettings{
+			expected: &armcompute.SecurityProfile{
+				UefiSettings: &armcompute.UefiSettings{
 					VTpmEnabled: ptr.To(true),
 				},
 			},
@@ -451,8 +450,8 @@ func TestBuildSecurityProfile(t *testing.T) {
 				SecureBootEnabled: ptr.To(true),
 				VTpmEnabled:       ptr.To(false),
 			},
-			expected: &compute.SecurityProfile{
-				UefiSettings: &compute.UefiSettings{
+			expected: &armcompute.SecurityProfile{
+				UefiSettings: &armcompute.UefiSettings{
 					SecureBootEnabled: ptr.To(true),
 					VTpmEnabled:       ptr.To(false),
 				},
@@ -465,9 +464,9 @@ func TestBuildSecurityProfile(t *testing.T) {
 				SecureBootEnabled: ptr.To(true),
 				VTpmEnabled:       ptr.To(true),
 			},
-			expected: &compute.SecurityProfile{
-				SecurityType: compute.SecurityTypes("TrustedLaunch"),
-				UefiSettings: &compute.UefiSettings{
+			expected: &armcompute.SecurityProfile{
+				SecurityType: ptr.To(armcompute.SecurityTypes("TrustedLaunch")),
+				UefiSettings: &armcompute.UefiSettings{
 					SecureBootEnabled: ptr.To(true),
 					VTpmEnabled:       ptr.To(true),
 				},
@@ -480,9 +479,9 @@ func TestBuildSecurityProfile(t *testing.T) {
 				SecureBootEnabled: ptr.To(false),
 				VTpmEnabled:       ptr.To(false),
 			},
-			expected: &compute.SecurityProfile{
-				SecurityType: securityTypeStandard,
-				UefiSettings: &compute.UefiSettings{
+			expected: &armcompute.SecurityProfile{
+				SecurityType: ptr.To(armcompute.SecurityTypesStandard),
+				UefiSettings: &armcompute.UefiSettings{
 					SecureBootEnabled: ptr.To(false),
 					VTpmEnabled:       ptr.To(false),
 				},
@@ -559,7 +558,7 @@ func TestVMSizeRequiresNVMe(t *testing.T) {
 func TestSkuRequiresNVMe(t *testing.T) {
 	tests := []struct {
 		name     string
-		sku      compute.ResourceSku
+		sku      armcompute.ResourceSKU
 		expected bool
 	}{
 		{
@@ -589,7 +588,7 @@ func TestSkuRequiresNVMe(t *testing.T) {
 		},
 		{
 			name:     "SKU with nil Capabilities does not require NVMe",
-			sku:      compute.ResourceSku{},
+			sku:      armcompute.ResourceSKU{},
 			expected: false,
 		},
 	}
@@ -608,7 +607,7 @@ func TestValidateDiskControllerType(t *testing.T) {
 	tests := []struct {
 		name        string
 		config      *config
-		sku         compute.ResourceSku
+		sku         armcompute.ResourceSKU
 		expectError bool
 	}{
 		{
@@ -621,7 +620,7 @@ func TestValidateDiskControllerType(t *testing.T) {
 			name: "explicit NVMe on NVMe-only SKU passes",
 			config: &config{
 				VMSize:             "Standard_D4s_v6",
-				DiskControllerType: ptr.To(compute.NVMe),
+				DiskControllerType: ptr.To(armcompute.DiskControllerTypesNVMe),
 			},
 			sku:         nvmeOnlySKU(),
 			expectError: false,
@@ -630,7 +629,7 @@ func TestValidateDiskControllerType(t *testing.T) {
 			name: "explicit SCSI on NVMe-only SKU fails",
 			config: &config{
 				VMSize:             "Standard_D4s_v6",
-				DiskControllerType: ptr.To(compute.SCSI),
+				DiskControllerType: ptr.To(armcompute.DiskControllerTypesSCSI),
 			},
 			sku:         nvmeOnlySKU(),
 			expectError: true,
@@ -639,7 +638,7 @@ func TestValidateDiskControllerType(t *testing.T) {
 			name: "explicit SCSI on SKU supporting both SCSI and NVMe passes",
 			config: &config{
 				VMSize:             testVMSizeGen2,
-				DiskControllerType: ptr.To(compute.SCSI),
+				DiskControllerType: ptr.To(armcompute.DiskControllerTypesSCSI),
 			},
 			sku:         scsiAndNvmeSKU(),
 			expectError: false,
@@ -648,7 +647,7 @@ func TestValidateDiskControllerType(t *testing.T) {
 			name: "explicit SCSI on SCSI-only SKU passes",
 			config: &config{
 				VMSize:             testVMSizeGen1,
-				DiskControllerType: ptr.To(compute.SCSI),
+				DiskControllerType: ptr.To(armcompute.DiskControllerTypesSCSI),
 			},
 			sku:         scsiOnlySKU(),
 			expectError: false,
@@ -657,7 +656,7 @@ func TestValidateDiskControllerType(t *testing.T) {
 			name: "explicit SCSI on SKU without DiskControllerTypes capability passes",
 			config: &config{
 				VMSize:             testVMSizeGen1,
-				DiskControllerType: ptr.To(compute.SCSI),
+				DiskControllerType: ptr.To(armcompute.DiskControllerTypesSCSI),
 			},
 			sku:         skuWithoutGenCap(),
 			expectError: false,
@@ -666,7 +665,7 @@ func TestValidateDiskControllerType(t *testing.T) {
 			name: "invalid diskControllerType value fails",
 			config: &config{
 				VMSize:             testVMSizeGen2,
-				DiskControllerType: ptr.To(compute.DiskControllerTypes("Nonsense")),
+				DiskControllerType: ptr.To(armcompute.DiskControllerTypes("Nonsense")),
 			},
 			sku:         gen2SKU(),
 			expectError: true,
@@ -675,7 +674,7 @@ func TestValidateDiskControllerType(t *testing.T) {
 			name: "lowercase nvme fails (case-sensitive)",
 			config: &config{
 				VMSize:             testVMSizeGen2,
-				DiskControllerType: ptr.To(compute.DiskControllerTypes("nvme")),
+				DiskControllerType: ptr.To(armcompute.DiskControllerTypes("nvme")),
 			},
 			sku:         gen2SKU(),
 			expectError: true,

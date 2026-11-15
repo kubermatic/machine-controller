@@ -19,94 +19,65 @@ package azure
 import (
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/network/mgmt/network"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v9"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v10"
 )
 
-func getIPClient(c *config) (*network.PublicIPAddressesClient, error) {
-	var err error
-	ipClient := network.NewPublicIPAddressesClient(c.SubscriptionID)
-	ipClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
+func getCredential(c *config) (azcore.TokenCredential, error) {
+	cred, err := azidentity.NewClientSecretCredential(c.TenantID, c.ClientID, c.ClientSecret, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create authorizer: %w", err)
+		return nil, fmt.Errorf("failed to create client secret credential: %w", err)
 	}
 
-	return &ipClient, nil
+	return cred, nil
 }
 
-func getIPConfigClient(c *config) (*network.InterfaceIPConfigurationsClient, error) {
-	var err error
-	ipConfigClient := network.NewInterfaceIPConfigurationsClient(c.SubscriptionID)
-	ipConfigClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
+// newClient creates a new Azure SDK client of type T using the
+// credentials and subscription found in the given config.
+func newClient[T any](c *config, constructor func(string, azcore.TokenCredential, *arm.ClientOptions) (*T, error)) (*T, error) {
+	cred, err := getCredential(c)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create authorizer: %w", err)
+		return nil, err
 	}
 
-	return &ipConfigClient, nil
+	return constructor(c.SubscriptionID, cred, nil)
 }
 
-func getSubnetsClient(c *config) (*network.SubnetsClient, error) {
-	var err error
-	subnetClient := network.NewSubnetsClient(c.SubscriptionID)
-	subnetClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create authorizer: %w", err)
-	}
-
-	return &subnetClient, nil
+func getIPClient(c *config) (*armnetwork.PublicIPAddressesClient, error) {
+	return newClient(c, armnetwork.NewPublicIPAddressesClient)
 }
 
-func getVirtualNetworksClient(c *config) (*network.VirtualNetworksClient, error) {
-	var err error
-	virtualNetworksClient := network.NewVirtualNetworksClient(c.SubscriptionID)
-	virtualNetworksClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create authorizer: %w", err)
-	}
-	return &virtualNetworksClient, nil
+func getIPConfigClient(c *config) (*armnetwork.InterfaceIPConfigurationsClient, error) {
+	return newClient(c, armnetwork.NewInterfaceIPConfigurationsClient)
 }
 
-func getVMClient(c *config) (*compute.VirtualMachinesClient, error) {
-	var err error
-	vmClient := compute.NewVirtualMachinesClient(c.SubscriptionID)
-	vmClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create authorizer: %w", err)
-	}
-
-	return &vmClient, nil
+func getSubnetsClient(c *config) (*armnetwork.SubnetsClient, error) {
+	return newClient(c, armnetwork.NewSubnetsClient)
 }
 
-func getSKUClient(c *config) (*compute.ResourceSkusClient, error) {
-	var err error
-	skuClient := compute.NewResourceSkusClient(c.SubscriptionID)
-	skuClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create authorizer: %w", err)
-	}
-
-	return &skuClient, nil
+func getVirtualNetworksClient(c *config) (*armnetwork.VirtualNetworksClient, error) {
+	return newClient(c, armnetwork.NewVirtualNetworksClient)
 }
 
-func getInterfacesClient(c *config) (*network.InterfacesClient, error) {
-	var err error
-	ifClient := network.NewInterfacesClient(c.SubscriptionID)
-	ifClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create authorizer: %w", err)
-	}
-
-	return &ifClient, err
+func getSecurityGroupsClient(c *config) (*armnetwork.SecurityGroupsClient, error) {
+	return newClient(c, armnetwork.NewSecurityGroupsClient)
 }
 
-func getDisksClient(c *config) (*compute.DisksClient, error) {
-	var err error
-	disksClient := compute.NewDisksClient(c.SubscriptionID)
-	disksClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create authorizer: %w", err)
-	}
+func getInterfacesClient(c *config) (*armnetwork.InterfacesClient, error) {
+	return newClient(c, armnetwork.NewInterfacesClient)
+}
 
-	return &disksClient, err
+func getVMClient(c *config) (*armcompute.VirtualMachinesClient, error) {
+	return newClient(c, armcompute.NewVirtualMachinesClient)
+}
+
+func getSKUClient(c *config) (*armcompute.ResourceSKUsClient, error) {
+	return newClient(c, armcompute.NewResourceSKUsClient)
+}
+
+func getDisksClient(c *config) (*armcompute.DisksClient, error) {
+	return newClient(c, armcompute.NewDisksClient)
 }
