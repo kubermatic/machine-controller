@@ -20,7 +20,7 @@ RUN make all
 
 FROM alpine:3.23
 
-RUN apk add --no-cache ca-certificates cdrkit
+RUN apk upgrade --no-cache && apk add --no-cache ca-certificates cdrkit
 
 COPY --from=builder \
     /go/src/k8c.io/machine-controller/machine-controller \
