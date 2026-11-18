@@ -1278,37 +1278,45 @@ func defaultVMInstanceType(ctx context.Context, client ctrlruntimeclient.Client,
 		return nil, nil
 	}
 
-	// Try v1beta1 namespace-scoped VirtualMachineInstancetype first (preferred stable API)
-	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name, Namespace: namespace}, &kubevirtinstancetypev1beta1.VirtualMachineInstancetype{}); err == nil {
+	name := instanceTypeMatcher.Name
+	lookupNamespaced, lookupCluster := true, true
+	// Honor an explicitly selected kind, otherwise prefer the namespaced instance type.
+	switch strings.ToLower(instanceTypeMatcher.Kind) {
+	case "virtualmachineinstancetype", "virtualmachineinstancetypes":
+		lookupCluster = false
+	case "virtualmachineclusterinstancetype", "virtualmachineclusterinstancetypes":
+		lookupNamespaced = false
+	}
+
+	if lookupNamespaced && instanceTypeExists(ctx, client, types.NamespacedName{Name: name, Namespace: namespace},
+		&kubevirtinstancetypev1beta1.VirtualMachineInstancetype{}, &kubevirtinstancetypev1alpha1.VirtualMachineInstancetype{}) {
 		return &kubevirtcorev1.InstancetypeMatcher{
-			Name: instanceTypeMatcher.Name,
+			Name: name,
 			Kind: "VirtualMachineInstancetype",
 		}, nil
 	}
 
-	// Try v1beta1 cluster-scoped VirtualMachineClusterInstancetype
-	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name}, &kubevirtinstancetypev1beta1.VirtualMachineClusterInstancetype{}); err == nil {
+	if lookupCluster && instanceTypeExists(ctx, client, types.NamespacedName{Name: name},
+		&kubevirtinstancetypev1beta1.VirtualMachineClusterInstancetype{}, &kubevirtinstancetypev1alpha1.VirtualMachineClusterInstancetype{}) {
 		return &kubevirtcorev1.InstancetypeMatcher{
-			Name: instanceTypeMatcher.Name,
+			Name: name,
 			Kind: "VirtualMachineClusterInstancetype",
 		}, nil
 	}
 
-	// Fall back to v1alpha1 namespace-scoped VirtualMachineInstancetype
-	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name, Namespace: namespace}, &kubevirtinstancetypev1alpha1.VirtualMachineInstancetype{}); err == nil {
-		return &kubevirtcorev1.InstancetypeMatcher{
-			Name: instanceTypeMatcher.Name,
-			Kind: "VirtualMachineInstancetype",
-		}, nil
+	if instanceTypeMatcher.Kind != "" {
+		return nil, fmt.Errorf("no %s found with name %q", instanceTypeMatcher.Kind, name)
 	}
+	return nil, fmt.Errorf("no VirtualMachineInstancetype or VirtualMachineClusterInstancetype found with name %q", name)
+}
 
-	// Fall back to v1alpha1 cluster-scoped VirtualMachineClusterInstancetype
-	if err := client.Get(ctx, types.NamespacedName{Name: instanceTypeMatcher.Name}, &kubevirtinstancetypev1alpha1.VirtualMachineClusterInstancetype{}); err == nil {
-		return &kubevirtcorev1.InstancetypeMatcher{
-			Name: instanceTypeMatcher.Name,
-			Kind: "VirtualMachineClusterInstancetype",
-		}, nil
+// instanceTypeExists reports whether any of the given objects can be fetched by key. The objects
+// are tried in order, so the stable API version should come first.
+func instanceTypeExists(ctx context.Context, client ctrlruntimeclient.Client, key types.NamespacedName, objs ...ctrlruntimeclient.Object) bool {
+	for _, obj := range objs {
+		if err := client.Get(ctx, key, obj); err == nil {
+			return true
+		}
 	}
-
-	return nil, fmt.Errorf("no VirtualMachineInstancetype or VirtualMachineClusterInstancetype found with name %q", instanceTypeMatcher.Name)
+	return false
 }
