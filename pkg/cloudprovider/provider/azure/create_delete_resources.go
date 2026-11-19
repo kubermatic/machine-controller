@@ -18,8 +18,13 @@ package azure
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
+	"sync"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v9"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v10"
 	"go.uber.org/zap"
@@ -52,6 +57,60 @@ func toStringPtrSlice(s []string) []*string {
 	return result
 }
 
+// isNotFound returns true if the given error is an Azure API error with HTTP status 404.
+func isNotFound(err error) bool {
+	var respErr *azcore.ResponseError
+	return errors.As(err, &respErr) && respErr.StatusCode == http.StatusNotFound
+}
+
+// deleteResource deletes a single resource using the given BeginDelete function and waits for the
+// deletion to finish. A resource that no longer exists is treated as successfully deleted.
+func deleteResource[T, O any](
+	ctx context.Context,
+	beginDelete func(context.Context, string, string, *O) (*runtime.Poller[T], error),
+	resourceGroup, kind, name string,
+) error {
+	poller, err := beginDelete(ctx, resourceGroup, name, nil)
+	if err == nil {
+		_, err = poller.PollUntilDone(ctx, nil)
+	}
+
+	if err != nil && !isNotFound(err) {
+		return fmt.Errorf("failed to delete %s %q: %w", kind, name, err)
+	}
+
+	return nil
+}
+
+// deleteResourcesInParallel deletes all given resources concurrently using the given BeginDelete function
+// and waits for all deletions to finish. Errors are collected and returned joined together.
+func deleteResourcesInParallel[T, O any](
+	ctx context.Context,
+	beginDelete func(context.Context, string, string, *O) (*runtime.Poller[T], error),
+	resourceGroup, kind string,
+	names []string,
+) error {
+	var (
+		wg     sync.WaitGroup
+		errsMu sync.Mutex
+		errs   []error
+	)
+
+	for _, name := range names {
+		wg.Go(func() {
+			if err := deleteResource(ctx, beginDelete, resourceGroup, kind, name); err != nil {
+				errsMu.Lock()
+				errs = append(errs, err)
+				errsMu.Unlock()
+			}
+		})
+	}
+
+	wg.Wait()
+
+	return errors.Join(errs...)
+}
+
 // deleteInterfacesByMachineUID will remove all network interfaces tagged with the specific machine's UID.
 // The machine has to be deleted or disassociated with the interfaces beforehand, since Azure won't allow
 // us to remove interfaces connected to a VM.
@@ -61,30 +120,22 @@ func deleteInterfacesByMachineUID(ctx context.Context, c *config, machineUID typ
 		return fmt.Errorf("failed to create interfaces client: %w", err)
 	}
 
-	pager := ifClient.NewListPager(c.ResourceGroup, nil)
-	for pager.More() {
+	var ifacesToDelete []string
+
+	for pager := ifClient.NewListPager(c.ResourceGroup, nil); pager.More(); {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to list interfaces in resource group %q: %w", c.ResourceGroup, err)
 		}
 
 		for _, iface := range page.Value {
-			if iface == nil || iface.Name == nil || !hasMachineUIDTag(iface.Tags, machineUID) {
-				continue
-			}
-
-			poller, err := ifClient.BeginDelete(ctx, c.ResourceGroup, *iface.Name, nil)
-			if err != nil {
-				return err
-			}
-
-			if _, err = poller.PollUntilDone(ctx, nil); err != nil {
-				return err
+			if iface != nil && iface.Name != nil && hasMachineUIDTag(iface.Tags, machineUID) {
+				ifacesToDelete = append(ifacesToDelete, *iface.Name)
 			}
 		}
 	}
 
-	return nil
+	return deleteResourcesInParallel(ctx, ifClient.BeginDelete, c.ResourceGroup, "network interface", ifacesToDelete)
 }
 
 // deleteIPAddressesByMachineUID will remove public IP addresses tagged with the specific machine's UID.
@@ -96,30 +147,22 @@ func deleteIPAddressesByMachineUID(ctx context.Context, c *config, machineUID ty
 		return fmt.Errorf("failed to create IP addresses client: %w", err)
 	}
 
-	pager := ipClient.NewListPager(c.ResourceGroup, nil)
-	for pager.More() {
+	var ipsToDelete []string
+
+	for pager := ipClient.NewListPager(c.ResourceGroup, nil); pager.More(); {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to list public IP addresses in resource group %q: %w", c.ResourceGroup, err)
 		}
 
 		for _, ip := range page.Value {
-			if ip == nil || ip.Name == nil || !hasMachineUIDTag(ip.Tags, machineUID) {
-				continue
-			}
-
-			poller, err := ipClient.BeginDelete(ctx, c.ResourceGroup, *ip.Name, nil)
-			if err != nil {
-				return err
-			}
-
-			if _, err = poller.PollUntilDone(ctx, nil); err != nil {
-				return err
+			if ip != nil && ip.Name != nil && hasMachineUIDTag(ip.Tags, machineUID) {
+				ipsToDelete = append(ipsToDelete, *ip.Name)
 			}
 		}
 	}
 
-	return nil
+	return deleteResourcesInParallel(ctx, ipClient.BeginDelete, c.ResourceGroup, "public IP address", ipsToDelete)
 }
 
 func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID) error {
@@ -128,30 +171,22 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 		return err
 	}
 
-	pager := vmClient.NewListPager(c.ResourceGroup, nil)
-	for pager.More() {
+	var vmsToDelete []string
+
+	for pager := vmClient.NewListPager(c.ResourceGroup, nil); pager.More(); {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to list virtual machines in resource group %q: %w", c.ResourceGroup, err)
 		}
 
 		for _, vm := range page.Value {
-			if vm == nil || vm.Name == nil || !hasMachineUIDTag(vm.Tags, machineUID) {
-				continue
-			}
-
-			poller, err := vmClient.BeginDelete(ctx, c.ResourceGroup, *vm.Name, nil)
-			if err != nil {
-				return err
-			}
-
-			if _, err = poller.PollUntilDone(ctx, nil); err != nil {
-				return err
+			if vm != nil && vm.Name != nil && hasMachineUIDTag(vm.Tags, machineUID) {
+				vmsToDelete = append(vmsToDelete, *vm.Name)
 			}
 		}
 	}
 
-	return nil
+	return deleteResourcesInParallel(ctx, vmClient.BeginDelete, c.ResourceGroup, "VM", vmsToDelete)
 }
 
 func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UID) error {
@@ -165,18 +200,12 @@ func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UI
 		return err
 	}
 
+	disksToDelete := make([]string, 0, len(matchingDisks))
 	for _, disk := range matchingDisks {
-		poller, err := disksClient.BeginDelete(ctx, c.ResourceGroup, *disk.Name, nil)
-		if err != nil {
-			return fmt.Errorf("failed to delete disk %s: %w", *disk.Name, err)
-		}
-
-		if _, err = poller.PollUntilDone(ctx, nil); err != nil {
-			return fmt.Errorf("failed to wait for deletion of disk %s: %w", *disk.Name, err)
-		}
+		disksToDelete = append(disksToDelete, *disk.Name)
 	}
 
-	return nil
+	return deleteResourcesInParallel(ctx, disksClient.BeginDelete, c.ResourceGroup, "disk", disksToDelete)
 }
 
 func getDisksByMachineUID(ctx context.Context, disksClient *armcompute.DisksClient, uid types.UID) ([]*armcompute.Disk, error) {
