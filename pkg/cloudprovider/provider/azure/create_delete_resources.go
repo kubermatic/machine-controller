@@ -195,7 +195,7 @@ func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UI
 		return fmt.Errorf("failed to get disks client: %w", err)
 	}
 
-	matchingDisks, err := getDisksByMachineUID(ctx, disksClient, machineUID)
+	matchingDisks, err := getDisksByMachineUID(ctx, disksClient, c.ResourceGroup, machineUID)
 	if err != nil {
 		return err
 	}
@@ -208,10 +208,10 @@ func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UI
 	return deleteResourcesInParallel(ctx, disksClient.BeginDelete, c.ResourceGroup, "disk", disksToDelete)
 }
 
-func getDisksByMachineUID(ctx context.Context, disksClient *armcompute.DisksClient, uid types.UID) ([]*armcompute.Disk, error) {
+func getDisksByMachineUID(ctx context.Context, disksClient *armcompute.DisksClient, resourceGroup string, uid types.UID) ([]*armcompute.Disk, error) {
 	var matchingDisks []*armcompute.Disk
 
-	pager := disksClient.NewListPager(nil)
+	pager := disksClient.NewListByResourceGroupPager(resourceGroup, nil)
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
