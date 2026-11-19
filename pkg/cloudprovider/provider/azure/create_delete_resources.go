@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"sync"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
@@ -82,31 +81,21 @@ func deleteResource[T, O any](
 	return nil
 }
 
-// deleteResourcesInParallel deletes all given resources concurrently using the given BeginDelete function
-// and waits for all deletions to finish. Errors are collected and returned joined together.
-func deleteResourcesInParallel[T, O any](
+// deleteResources deletes all given resources using the given BeginDelete function and waits for all deletions to
+// finish. Errors are collected and returned joined together.
+func deleteResources[T, O any](
 	ctx context.Context,
 	beginDelete func(context.Context, string, string, *O) (*runtime.Poller[T], error),
 	resourceGroup, kind string,
 	names []string,
 ) error {
-	var (
-		wg     sync.WaitGroup
-		errsMu sync.Mutex
-		errs   []error
-	)
+	var errs []error
 
 	for _, name := range names {
-		wg.Go(func() {
-			if err := deleteResource(ctx, beginDelete, resourceGroup, kind, name); err != nil {
-				errsMu.Lock()
-				errs = append(errs, err)
-				errsMu.Unlock()
-			}
-		})
+		if err := deleteResource(ctx, beginDelete, resourceGroup, kind, name); err != nil {
+			errs = append(errs, err)
+		}
 	}
-
-	wg.Wait()
 
 	return errors.Join(errs...)
 }
@@ -135,7 +124,7 @@ func deleteInterfacesByMachineUID(ctx context.Context, c *config, machineUID typ
 		}
 	}
 
-	return deleteResourcesInParallel(ctx, ifClient.BeginDelete, c.ResourceGroup, "network interface", ifacesToDelete)
+	return deleteResources(ctx, ifClient.BeginDelete, c.ResourceGroup, "network interface", ifacesToDelete)
 }
 
 // deleteIPAddressesByMachineUID will remove public IP addresses tagged with the specific machine's UID.
@@ -162,7 +151,7 @@ func deleteIPAddressesByMachineUID(ctx context.Context, c *config, machineUID ty
 		}
 	}
 
-	return deleteResourcesInParallel(ctx, ipClient.BeginDelete, c.ResourceGroup, "public IP address", ipsToDelete)
+	return deleteResources(ctx, ipClient.BeginDelete, c.ResourceGroup, "public IP address", ipsToDelete)
 }
 
 func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID) error {
@@ -186,7 +175,7 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 		}
 	}
 
-	return deleteResourcesInParallel(ctx, vmClient.BeginDelete, c.ResourceGroup, "VM", vmsToDelete)
+	return deleteResources(ctx, vmClient.BeginDelete, c.ResourceGroup, "VM", vmsToDelete)
 }
 
 func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UID) error {
@@ -205,7 +194,7 @@ func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UI
 		disksToDelete = append(disksToDelete, *disk.Name)
 	}
 
-	return deleteResourcesInParallel(ctx, disksClient.BeginDelete, c.ResourceGroup, "disk", disksToDelete)
+	return deleteResources(ctx, disksClient.BeginDelete, c.ResourceGroup, "disk", disksToDelete)
 }
 
 func getDisksByMachineUID(ctx context.Context, disksClient *armcompute.DisksClient, resourceGroup string, uid types.UID) ([]*armcompute.Disk, error) {
