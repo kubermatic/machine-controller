@@ -30,9 +30,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/network/mgmt/network"
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v9"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v10"
 	gocache "github.com/patrickmn/go-cache"
 	"go.uber.org/zap"
 
@@ -57,10 +56,6 @@ const (
 	CapabilityUltraSSD              = "UltraSSDAvailable"
 	CapabilityValueTrue             = "True"
 	capabilityAcceleratedNetworking = "AcceleratedNetworkingEnabled"
-
-	// the legacy Track-1 SDK only exports SecurityTypesTrustedLaunch and SecurityTypesConfidentialVM.
-	// compute.SecurityTypes is a string alias so casting the literal is safe.
-	securityTypeStandard = compute.SecurityTypes("Standard")
 
 	machineUIDTag = "Machine-UID"
 
@@ -101,25 +96,25 @@ type config struct {
 	SecurityGroupName     string
 	ImageID               string
 	Zones                 []string
-	ImagePlan             *compute.Plan
-	ImageReference        *compute.ImageReference
+	ImagePlan             *armcompute.Plan
+	ImageReference        *armcompute.ImageReference
 
 	OSDiskSize         int32
-	OSDiskSKU          *compute.StorageAccountTypes
+	OSDiskSKU          *armcompute.StorageAccountTypes
 	DataDiskSize       int32
-	DataDiskSKU        *compute.StorageAccountTypes
-	DiskControllerType *compute.DiskControllerTypes
+	DataDiskSKU        *armcompute.StorageAccountTypes
+	DiskControllerType *armcompute.DiskControllerTypes
 
 	AssignPublicIP              bool
-	PublicIPSKU                 *network.PublicIPAddressSkuName
+	PublicIPSKU                 *armnetwork.PublicIPAddressSKUName
 	EnableAcceleratedNetworking *bool
 	EnableBootDiagnostics       bool
 	Tags                        map[string]string
-	SecurityProfile             *compute.SecurityProfile
+	SecurityProfile             *armcompute.SecurityProfile
 }
 
 type azureVM struct {
-	vm          *compute.VirtualMachine
+	vm          *armcompute.VirtualMachine
 	ipAddresses map[string]corev1.NodeAddressType
 	status      instance.Status
 }
@@ -150,35 +145,35 @@ func (vm *azureVM) Status() instance.Status {
 
 const SKUGen2Ubuntu = "server"
 
-var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
+var imageReferences = map[providerconfig.OperatingSystem]armcompute.ImageReference{
 	providerconfig.OperatingSystemUbuntu: {
-		Publisher: to.StringPtr("Canonical"),
-		Offer:     to.StringPtr("ubuntu-24_04-lts"),
-		Sku:       to.StringPtr("server-gen1"),
-		Version:   to.StringPtr("latest"),
+		Publisher: ptr.To("Canonical"),
+		Offer:     ptr.To("ubuntu-24_04-lts"),
+		SKU:       ptr.To("server-gen1"),
+		Version:   ptr.To("latest"),
 	},
 	providerconfig.OperatingSystemRHEL: {
-		Publisher: to.StringPtr("RedHat"),
-		Offer:     to.StringPtr("rhel-byos"),
-		Sku:       to.StringPtr("rhel-lvm95"),
-		Version:   to.StringPtr("9.5.2024112215"),
+		Publisher: ptr.To("RedHat"),
+		Offer:     ptr.To("rhel-byos"),
+		SKU:       ptr.To("rhel-lvm95"),
+		Version:   ptr.To("9.5.2024112215"),
 	},
 	providerconfig.OperatingSystemFlatcar: {
-		Publisher: to.StringPtr("kinvolk"),
+		Publisher: ptr.To("kinvolk"),
 		// flatcar-container-linux-corevm-amd64 doesn't require a plan. For more info: https://www.flatcar.org/docs/latest/installing/cloud/azure/#corevm
-		Offer:   to.StringPtr("flatcar-container-linux-corevm-amd64"),
-		Sku:     to.StringPtr("stable"),
-		Version: to.StringPtr("4459.2.3"),
+		Offer:   ptr.To("flatcar-container-linux-corevm-amd64"),
+		SKU:     ptr.To("stable"),
+		Version: ptr.To("4459.2.3"),
 	},
 	providerconfig.OperatingSystemRockyLinux: {
-		Publisher: to.StringPtr("resf"),
-		Offer:     to.StringPtr("rockylinux-x86_64"),
-		Sku:       to.StringPtr("9-base"),
-		Version:   to.StringPtr("9.6.20250531"),
+		Publisher: ptr.To("resf"),
+		Offer:     ptr.To("rockylinux-x86_64"),
+		SKU:       ptr.To("9-base"),
+		Version:   ptr.To("9.6.20250531"),
 	},
 }
 
-var osPlans = map[providerconfig.OperatingSystem]*compute.Plan{
+var osPlans = map[providerconfig.OperatingSystem]*armcompute.Plan{
 	providerconfig.OperatingSystemRHEL: {
 		Name:      ptr.To("rhel-lvm95"),
 		Publisher: ptr.To("redhat"),
@@ -191,17 +186,17 @@ var osPlans = map[providerconfig.OperatingSystem]*compute.Plan{
 	},
 }
 
-var osDiskSKUs = map[compute.StorageAccountTypes]string{
-	compute.StorageAccountTypesStandardLRS:    "", // Standard_LRS
-	compute.StorageAccountTypesStandardSSDLRS: "", // StandardSSD_LRS
-	compute.StorageAccountTypesPremiumLRS:     "", // Premium_LRS
+var osDiskSKUs = map[armcompute.StorageAccountTypes]string{
+	armcompute.StorageAccountTypesStandardLRS:    "", // Standard_LRS
+	armcompute.StorageAccountTypesStandardSSDLRS: "", // StandardSSD_LRS
+	armcompute.StorageAccountTypesPremiumLRS:     "", // Premium_LRS
 }
 
-var dataDiskSKUs = map[compute.StorageAccountTypes]string{
-	compute.StorageAccountTypesStandardLRS:    "", // Standard_LRS
-	compute.StorageAccountTypesStandardSSDLRS: "", // StandardSSD_LRS
-	compute.StorageAccountTypesPremiumLRS:     "", // Premium_LRS
-	compute.StorageAccountTypesUltraSSDLRS:    "", // UltraSSD_LRS
+var dataDiskSKUs = map[armcompute.StorageAccountTypes]string{
+	armcompute.StorageAccountTypesStandardLRS:    "", // Standard_LRS
+	armcompute.StorageAccountTypesStandardSSDLRS: "", // StandardSSD_LRS
+	armcompute.StorageAccountTypesPremiumLRS:     "", // Premium_LRS
+	armcompute.StorageAccountTypesUltraSSDLRS:    "", // UltraSSD_LRS
 }
 
 var (
@@ -211,17 +206,17 @@ var (
 	cache     = gocache.New(10*time.Minute, 10*time.Minute)
 )
 
-func getOSImageReference(c *config, os providerconfig.OperatingSystem) (*compute.ImageReference, error) {
+func getOSImageReference(c *config, os providerconfig.OperatingSystem) (*armcompute.ImageReference, error) {
 	if c.ImageID != "" {
-		return &compute.ImageReference{
-			ID: to.StringPtr(c.ImageID),
+		return &armcompute.ImageReference{
+			ID: ptr.To(c.ImageID),
 		}, nil
 	}
 
 	if c.ImageReference != nil {
-		return &compute.ImageReference{
+		return &armcompute.ImageReference{
 			Version:   c.ImageReference.Version,
-			Sku:       c.ImageReference.Sku,
+			SKU:       c.ImageReference.SKU,
 			Offer:     c.ImageReference.Offer,
 			Publisher: c.ImageReference.Publisher,
 		}, nil
@@ -347,12 +342,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	}
 
 	if rawCfg.DiskControllerType != nil {
-		dct := compute.DiskControllerTypes(*rawCfg.DiskControllerType)
+		dct := armcompute.DiskControllerTypes(*rawCfg.DiskControllerType)
 		c.DiskControllerType = &dct
 	}
 
 	if rawCfg.ImagePlan != nil && rawCfg.ImagePlan.Name != "" {
-		c.ImagePlan = &compute.Plan{
+		c.ImagePlan = &armcompute.Plan{
 			Name:      ptr.To(rawCfg.ImagePlan.Name),
 			Publisher: ptr.To(rawCfg.ImagePlan.Publisher),
 			Product:   ptr.To(rawCfg.ImagePlan.Product),
@@ -360,10 +355,10 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	}
 
 	if rawCfg.ImageReference != nil {
-		c.ImageReference = &compute.ImageReference{
+		c.ImageReference = &armcompute.ImageReference{
 			Publisher: ptr.To(rawCfg.ImageReference.Publisher),
 			Offer:     ptr.To(rawCfg.ImageReference.Offer),
-			Sku:       ptr.To(rawCfg.ImageReference.Sku),
+			SKU:       ptr.To(rawCfg.ImageReference.Sku),
 			Version:   ptr.To(rawCfg.ImageReference.Version),
 		}
 	}
@@ -382,33 +377,33 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	return &c, pConfig, nil
 }
 
-func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm *compute.VirtualMachine, ipFamily net.IPFamily) (map[string]corev1.NodeAddressType, error) {
+func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm *armcompute.VirtualMachine, ipFamily net.IPFamily) (map[string]corev1.NodeAddressType, error) {
 	var (
 		ipAddresses = map[string]corev1.NodeAddressType{}
 		err         error
 	)
 
-	if vm.VirtualMachineProperties == nil {
+	if vm.Properties == nil {
 		return nil, fmt.Errorf("machine is missing properties")
 	}
 
-	if vm.NetworkProfile == nil {
+	if vm.Properties.NetworkProfile == nil {
 		return nil, fmt.Errorf("machine has no network profile")
 	}
 
-	if vm.NetworkProfile.NetworkInterfaces == nil {
+	if vm.Properties.NetworkProfile.NetworkInterfaces == nil {
 		return nil, fmt.Errorf("machine has no network interfaces data")
 	}
 
-	for n, iface := range *vm.NetworkProfile.NetworkInterfaces {
-		if iface.ID == nil || len(*iface.ID) == 0 {
+	for n, iface := range vm.Properties.NetworkProfile.NetworkInterfaces {
+		if iface == nil || iface.ID == nil || len(*iface.ID) == 0 {
 			return nil, fmt.Errorf("interface %d has no ID", n)
 		}
 
 		splitIfaceID := strings.Split(*iface.ID, "/")
 		ifaceName := splitIfaceID[len(splitIfaceID)-1]
 		ipAddresses, err = getNICIPAddresses(ctx, log, c, ipFamily, ifaceName)
-		if err != nil || vm.NetworkProfile.NetworkInterfaces == nil {
+		if err != nil {
 			return nil, fmt.Errorf("failed to get addresses for interface %q: %w", ifaceName, err)
 		}
 	}
@@ -422,18 +417,22 @@ func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, i
 		return nil, fmt.Errorf("failed to create interfaces client: %w", err)
 	}
 
-	netIf, err := ifClient.Get(ctx, c.ResourceGroup, ifaceName, "")
+	netIf, err := ifClient.Get(ctx, c.ResourceGroup, ifaceName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get interface %q: %w", ifaceName, err)
 	}
 
 	ipAddresses := map[string]corev1.NodeAddressType{}
 
-	if netIf.IPConfigurations == nil {
+	if netIf.Properties == nil || netIf.Properties.IPConfigurations == nil {
 		return ipAddresses, nil
 	}
 
-	for _, conf := range *netIf.IPConfigurations {
+	for _, conf := range netIf.Properties.IPConfigurations {
+		if conf == nil {
+			continue
+		}
+
 		var name string
 		if conf.Name != nil {
 			name = *conf.Name
@@ -483,18 +482,18 @@ func getIPAddressStrings(ctx context.Context, c *config, addrName string) ([]str
 		return nil, fmt.Errorf("failed to create IP address client: %w", err)
 	}
 
-	ip, err := ipClient.Get(ctx, c.ResourceGroup, addrName, "")
+	ip, err := ipClient.Get(ctx, c.ResourceGroup, addrName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get IP %q: %w", addrName, err)
 	}
 
-	if ip.IPConfiguration == nil {
+	if ip.Properties == nil || ip.Properties.IPConfiguration == nil {
 		return nil, fmt.Errorf("IP %q has nil IPConfiguration", addrName)
 	}
 
 	var ipAddresses []string
-	if ip.IPAddress != nil {
-		ipAddresses = append(ipAddresses, *ip.IPAddress)
+	if ip.Properties.IPAddress != nil {
+		ipAddresses = append(ipAddresses, *ip.Properties.IPAddress)
 	}
 
 	return ipAddresses, nil
@@ -507,7 +506,7 @@ func getInternalIPAddresses(ctx context.Context, c *config, inetface, ipconfigNa
 		return nil, fmt.Errorf("failed to create IP config client: %w", err)
 	}
 
-	internalIP, err := ipConfigClient.Get(ctx, c.ResourceGroup, inetface, ipconfigName)
+	internalIP, err := ipConfigClient.Get(ctx, c.ResourceGroup, inetface, ipconfigName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get IP config %q: %w", inetface, err)
 	}
@@ -515,8 +514,8 @@ func getInternalIPAddresses(ctx context.Context, c *config, inetface, ipconfigNa
 	if internalIP.ID == nil {
 		return nil, fmt.Errorf("private IP %q has nil IPConfiguration", inetface)
 	}
-	if internalIP.PrivateIPAddress != nil {
-		ipAddresses = append(ipAddresses, *internalIP.PrivateIPAddress)
+	if internalIP.Properties != nil && internalIP.Properties.PrivateIPAddress != nil {
+		ipAddresses = append(ipAddresses, *internalIP.Properties.PrivateIPAddress)
 	}
 	return ipAddresses, nil
 }
@@ -547,7 +546,7 @@ func (p *provider) AddDefaults(log *zap.SugaredLogger, spec clusterv1alpha1.Mach
 
 		if rawConfig.ImageReference.Sku == "" {
 			config, _, err := p.getConfig(spec.ProviderSpec)
-			sku := *imageReferences[providerconfig.OperatingSystemUbuntu].Sku
+			sku := *imageReferences[providerconfig.OperatingSystemUbuntu].SKU
 
 			if err != nil {
 				log.Warnw("Failed to get Azure config for SKU lookup, defaulting sku heuristically", "error", err)
@@ -597,49 +596,49 @@ func (p *provider) AddDefaults(log *zap.SugaredLogger, spec clusterv1alpha1.Mach
 	return spec, nil
 }
 
-func getStorageProfile(config *config, providerCfg *providerconfig.Config) (*compute.StorageProfile, error) {
+func getStorageProfile(config *config, providerCfg *providerconfig.Config) (*armcompute.StorageProfile, error) {
 	osRef, err := getOSImageReference(config, providerCfg.OperatingSystem)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get OSImageReference: %w", err)
 	}
 	// initial default storage profile, this will use the VMSize default storage profile
-	sp := &compute.StorageProfile{
+	sp := &armcompute.StorageProfile{
 		ImageReference: osRef,
 	}
 	if config.OSDiskSize != 0 {
-		sp.OsDisk = &compute.OSDisk{
+		sp.OSDisk = &armcompute.OSDisk{
 			DiskSizeGB:   ptr.To(config.OSDiskSize),
-			CreateOption: compute.DiskCreateOptionTypesFromImage,
+			CreateOption: ptr.To(armcompute.DiskCreateOptionTypesFromImage),
 		}
 
 		if config.OSDiskSKU != nil {
-			sp.OsDisk.ManagedDisk = &compute.ManagedDiskParameters{
-				StorageAccountType: *config.OSDiskSKU,
+			sp.OSDisk.ManagedDisk = &armcompute.ManagedDiskParameters{
+				StorageAccountType: config.OSDiskSKU,
 			}
 		}
 	}
 
 	if config.DataDiskSize != 0 {
-		sp.DataDisks = &[]compute.DataDisk{
+		sp.DataDisks = []*armcompute.DataDisk{
 			{
 				// this should be in range 0-63 and should be unique per datadisk, since we have only one datadisk, this should be fine
-				Lun:          new(int32),
+				Lun:          ptr.To[int32](0),
 				DiskSizeGB:   ptr.To(config.DataDiskSize),
-				CreateOption: compute.DiskCreateOptionTypesEmpty,
+				CreateOption: ptr.To(armcompute.DiskCreateOptionTypesEmpty),
 			},
 		}
 
 		if config.DataDiskSKU != nil {
-			(*sp.DataDisks)[0].ManagedDisk = &compute.ManagedDiskParameters{
-				StorageAccountType: *config.DataDiskSKU,
+			sp.DataDisks[0].ManagedDisk = &armcompute.ManagedDiskParameters{
+				StorageAccountType: config.DataDiskSKU,
 			}
 		}
 	}
 
 	if config.DiskControllerType != nil {
-		sp.DiskControllerType = *config.DiskControllerType
+		sp.DiskControllerType = config.DiskControllerType
 	} else if vmSizeRequiresNVMe(config.VMSize) {
-		sp.DiskControllerType = compute.NVMe
+		sp.DiskControllerType = ptr.To(armcompute.DiskControllerTypesNVMe)
 	}
 
 	return sp, nil
@@ -666,7 +665,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	}
 
 	ipFamily := providerCfg.Network.GetIPFamily()
-	sku := network.PublicIPAddressSkuNameBasic
+	sku := armnetwork.PublicIPAddressSKUNameBasic
 
 	if config.PublicIPSKU != nil {
 		sku = *config.PublicIPSKU
@@ -678,10 +677,10 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		// It is not clear from the documentation, but you get the
 		// errors if you try mixing skus or try to create IPv6 public IP with
 		// basic sku.
-		sku = network.PublicIPAddressSkuNameStandard
+		sku = armnetwork.PublicIPAddressSKUNameStandard
 	}
 
-	var publicIP, publicIPv6 *network.PublicIPAddress
+	var publicIP, publicIPv6 *armnetwork.PublicIPAddress
 	if config.AssignPublicIP {
 		if err = data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 			if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerPublicIP) {
@@ -690,13 +689,13 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		}); err != nil {
 			return nil, err
 		}
-		publicIP, err = createOrUpdatePublicIPAddress(ctx, log, publicIPName(ifaceName(machine)), network.IPv4, sku, network.Static, machine.UID, config)
+		publicIP, err = createOrUpdatePublicIPAddress(ctx, log, publicIPName(ifaceName(machine)), armnetwork.IPVersionIPv4, sku, armnetwork.IPAllocationMethodStatic, machine.UID, config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create public IP: %w", err)
 		}
 
 		if ipFamily.IsDualstack() {
-			publicIPv6, err = createOrUpdatePublicIPAddress(ctx, log, publicIPv6Name(ifaceName(machine)), network.IPv6, sku, network.Static, machine.UID, config)
+			publicIPv6, err = createOrUpdatePublicIPAddress(ctx, log, publicIPv6Name(ifaceName(machine)), armnetwork.IPVersionIPv6, sku, armnetwork.IPAllocationMethodStatic, machine.UID, config)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create public IP: %w", err)
 			}
@@ -718,9 +717,9 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 
 	tags := make(map[string]*string, len(config.Tags)+1)
 	for k, v := range config.Tags {
-		tags[k] = to.StringPtr(v)
+		tags[k] = ptr.To(v)
 	}
-	tags[machineUIDTag] = to.StringPtr(string(machine.UID))
+	tags[machineUIDTag] = ptr.To(string(machine.UID))
 
 	osPlane := osPlans[providerCfg.OperatingSystem]
 	if config.ImagePlan != nil {
@@ -733,58 +732,58 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		return nil, fmt.Errorf("failed to get StorageProfile: %w", err)
 	}
 
-	vmSpec := compute.VirtualMachine{
+	vmSpec := armcompute.VirtualMachine{
 		Location: &config.Location,
 		Plan:     osPlane,
-		VirtualMachineProperties: &compute.VirtualMachineProperties{
-			HardwareProfile: &compute.HardwareProfile{VMSize: compute.VirtualMachineSizeTypes(config.VMSize)},
-			NetworkProfile: &compute.NetworkProfile{
-				NetworkInterfaces: &[]compute.NetworkInterfaceReference{
+		Properties: &armcompute.VirtualMachineProperties{
+			HardwareProfile: &armcompute.HardwareProfile{VMSize: ptr.To(armcompute.VirtualMachineSizeTypes(config.VMSize))},
+			NetworkProfile: &armcompute.NetworkProfile{
+				NetworkInterfaces: []*armcompute.NetworkInterfaceReference{
 					{
-						ID:                                  iface.ID,
-						NetworkInterfaceReferenceProperties: &compute.NetworkInterfaceReferenceProperties{Primary: to.BoolPtr(true)},
+						ID:         iface.ID,
+						Properties: &armcompute.NetworkInterfaceReferenceProperties{Primary: ptr.To(true)},
 					},
 				},
 			},
-			OsProfile: &compute.OSProfile{
-				AdminUsername: to.StringPtr(adminUserName),
+			OSProfile: &armcompute.OSProfile{
+				AdminUsername: ptr.To(adminUserName),
 				ComputerName:  &machine.Name,
-				LinuxConfiguration: &compute.LinuxConfiguration{
-					DisablePasswordAuthentication: to.BoolPtr(true),
-					SSH: &compute.SSHConfiguration{
-						PublicKeys: &[]compute.SSHPublicKey{
+				LinuxConfiguration: &armcompute.LinuxConfiguration{
+					DisablePasswordAuthentication: ptr.To(true),
+					SSH: &armcompute.SSHConfiguration{
+						PublicKeys: []*armcompute.SSHPublicKey{
 							{
-								Path:    to.StringPtr(fmt.Sprintf("/home/%s/.ssh/authorized_keys", adminUserName)),
+								Path:    ptr.To(fmt.Sprintf("/home/%s/.ssh/authorized_keys", adminUserName)),
 								KeyData: &key.PublicKey,
 							},
 						},
 					},
 				},
-				CustomData: to.StringPtr(base64.StdEncoding.EncodeToString([]byte(userdata))),
+				CustomData: ptr.To(base64.StdEncoding.EncodeToString([]byte(userdata))),
 			},
 			StorageProfile: storageProfile,
 		},
 		Tags:  tags,
-		Zones: &config.Zones,
+		Zones: toStringPtrSlice(config.Zones),
 	}
 
 	if config.AssignAvailabilitySet == nil && config.AvailabilitySet != "" ||
 		config.AssignAvailabilitySet != nil && *config.AssignAvailabilitySet && config.AvailabilitySet != "" {
 		// Azure expects the full path to the resource
 		asURI := fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/availabilitySets/%s", config.SubscriptionID, config.ResourceGroup, config.AvailabilitySet)
-		vmSpec.AvailabilitySet = &compute.SubResource{ID: to.StringPtr(asURI)}
+		vmSpec.Properties.AvailabilitySet = &armcompute.SubResource{ID: ptr.To(asURI)}
 	}
 
 	if config.EnableBootDiagnostics {
-		vmSpec.DiagnosticsProfile = &compute.DiagnosticsProfile{
-			BootDiagnostics: &compute.BootDiagnostics{
+		vmSpec.Properties.DiagnosticsProfile = &armcompute.DiagnosticsProfile{
+			BootDiagnostics: &armcompute.BootDiagnostics{
 				Enabled: ptr.To(config.EnableBootDiagnostics),
 			},
 		}
 	}
 
 	if config.SecurityProfile != nil {
-		vmSpec.SecurityProfile = config.SecurityProfile
+		vmSpec.Properties.SecurityProfile = config.SecurityProfile
 	}
 
 	log.Info("Creating machine")
@@ -799,26 +798,21 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		return nil, err
 	}
 
-	future, err := vmClient.CreateOrUpdate(ctx, config.ResourceGroup, machine.Name, vmSpec)
+	poller, err := vmClient.BeginCreateOrUpdate(ctx, config.ResourceGroup, machine.Name, vmSpec, nil)
 	if err != nil {
 		return nil, fmt.Errorf("trying to create a VM: %w", err)
 	}
 
-	err = future.WaitForCompletionRef(ctx, vmClient.Client)
-	if err != nil {
+	if _, err = poller.PollUntilDone(ctx, nil); err != nil {
 		return nil, fmt.Errorf("waiting for operation returned: %w", err)
 	}
 
-	vm, err := future.Result(*vmClient)
-	if err != nil {
-		return nil, fmt.Errorf("decoding result: %w", err)
-	}
-
 	// get the actual VM object filled in with additional data
-	vm, err = vmClient.Get(ctx, config.ResourceGroup, machine.Name, "")
+	vmResp, err := vmClient.Get(ctx, config.ResourceGroup, machine.Name, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve updated data for VM %q: %w", machine.Name, err)
 	}
+	vm := vmResp.VirtualMachine
 
 	ipAddresses, err := getVMIPAddresses(ctx, log, config, &vm, ipFamily)
 	if err != nil {
@@ -891,29 +885,23 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 	return true, nil
 }
 
-func getVMByUID(ctx context.Context, c *config, uid types.UID) (*compute.VirtualMachine, error) {
+func getVMByUID(ctx context.Context, c *config, uid types.UID) (*armcompute.VirtualMachine, error) {
 	vmClient, err := getVMClient(c)
 	if err != nil {
 		return nil, err
 	}
 
-	list, err := vmClient.List(ctx, c.ResourceGroup, "")
-	if err != nil {
-		return nil, err
-	}
-
-	var allServers []compute.VirtualMachine
-
-	for list.NotDone() {
-		allServers = append(allServers, list.Values()...)
-		if err := list.Next(); err != nil {
-			return nil, fmt.Errorf("failed to iterate the result list: %w", err)
+	pager := vmClient.NewListPager(c.ResourceGroup, nil)
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list virtual machines in resource group %q: %w", c.ResourceGroup, err)
 		}
-	}
 
-	for _, vm := range allServers {
-		if vm.Tags != nil && vm.Tags[machineUIDTag] != nil && *vm.Tags[machineUIDTag] == string(uid) {
-			return &vm, nil
+		for _, vm := range page.Value {
+			if vm != nil && hasMachineUIDTag(vm.Tags, uid) {
+				return vm, nil
+			}
 		}
 	}
 
@@ -926,19 +914,19 @@ func getVMStatus(ctx context.Context, log *zap.SugaredLogger, c *config, vmName 
 		return instance.StatusUnknown, err
 	}
 
-	iv, err := vmClient.InstanceView(ctx, c.ResourceGroup, vmName)
+	iv, err := vmClient.InstanceView(ctx, c.ResourceGroup, vmName, nil)
 	if err != nil {
 		return instance.StatusUnknown, fmt.Errorf("failed to get instance view for machine %q: %w", vmName, err)
 	}
 
-	if iv.Statuses == nil {
+	if len(iv.Statuses) == 0 {
 		return instance.StatusUnknown, nil
 	}
 
 	// it seems that this field should contain two entries: a provisioning status and a power status
-	if len(*iv.Statuses) < 2 {
-		provisioningStatus := (*iv.Statuses)[0]
-		if provisioningStatus.Code == nil {
+	if len(iv.Statuses) < 2 {
+		provisioningStatus := iv.Statuses[0]
+		if provisioningStatus == nil || provisioningStatus.Code == nil {
 			log.Info("Azure provisioning status has missing code")
 			return instance.StatusUnknown, nil
 		}
@@ -949,15 +937,15 @@ func getVMStatus(ctx context.Context, log *zap.SugaredLogger, c *config, vmName 
 		case "ProvisioningState/deleting":
 			return instance.StatusDeleting, nil
 		default:
-			log.Errorw("Unknown Azure provisioning status", "code", *provisioningStatus.Code, "level", provisioningStatus.Level)
+			log.Errorw("Unknown Azure provisioning status", "code", *provisioningStatus.Code, "level", ptr.Deref(provisioningStatus.Level, ""))
 			return instance.StatusUnknown, nil
 		}
 	}
 
 	// the second field is supposed to be the power status
 	// https://docs.microsoft.com/en-us/azure/virtual-machines/windows/tutorial-manage-vm#vm-power-states
-	powerStatus := (*iv.Statuses)[1]
-	if powerStatus.Code == nil {
+	powerStatus := iv.Statuses[1]
+	if powerStatus == nil || powerStatus.Code == nil {
 		log.Info("Azure power status has missing code")
 		return instance.StatusUnknown, nil
 	}
@@ -970,7 +958,7 @@ func getVMStatus(ctx context.Context, log *zap.SugaredLogger, c *config, vmName 
 	case "PowerState/starting":
 		return instance.StatusCreating, nil
 	default:
-		log.Errorw("Unknown Azure power status", "code", *powerStatus.Code, "level", powerStatus.Level)
+		log.Errorw("Unknown Azure power status", "code", *powerStatus.Code, "level", ptr.Deref(powerStatus.Level, ""))
 		return instance.StatusUnknown, nil
 	}
 }
@@ -1008,7 +996,7 @@ func (p *provider) get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 	return &azureVM{vm: vm, ipAddresses: ipAddresses, status: status}, nil
 }
 
-func validateDiskSKUs(_ context.Context, c *config, sku compute.ResourceSku) error {
+func validateDiskSKUs(_ context.Context, c *config, sku armcompute.ResourceSKU) error {
 	if c.OSDiskSKU != nil || c.DataDiskSKU != nil {
 		if c.OSDiskSKU != nil {
 			if _, ok := osDiskSKUs[*c.OSDiskSKU]; !ok {
@@ -1027,7 +1015,7 @@ func validateDiskSKUs(_ context.Context, c *config, sku compute.ResourceSku) err
 
 			// Ultra SSDs do not support availability sets, see for reference:
 			// https://docs.microsoft.com/en-us/azure/virtual-machines/disks-enable-ultra-ssd#ga-scope-and-limitations
-			if *c.DataDiskSKU == compute.StorageAccountTypesUltraSSDLRS && ((c.AssignAvailabilitySet != nil && *c.AssignAvailabilitySet) || c.AvailabilitySet != "") {
+			if *c.DataDiskSKU == armcompute.StorageAccountTypesUltraSSDLRS && ((c.AssignAvailabilitySet != nil && *c.AssignAvailabilitySet) || c.AvailabilitySet != "") {
 				return fmt.Errorf("data disk SKU '%s' does not support availability sets", *c.DataDiskSKU)
 			}
 
@@ -1040,19 +1028,19 @@ func validateDiskSKUs(_ context.Context, c *config, sku compute.ResourceSku) err
 	return nil
 }
 
-func validateDiskControllerType(_ context.Context, c *config, sku compute.ResourceSku) error {
+func validateDiskControllerType(_ context.Context, c *config, sku armcompute.ResourceSKU) error {
 	if c.DiskControllerType != nil {
-		if !slices.Contains(compute.PossibleDiskControllerTypesValues(), *c.DiskControllerType) {
-			return fmt.Errorf("invalid diskControllerType %q, valid values are: %v", *c.DiskControllerType, compute.PossibleDiskControllerTypesValues())
+		if !slices.Contains(armcompute.PossibleDiskControllerTypesValues(), *c.DiskControllerType) {
+			return fmt.Errorf("invalid diskControllerType %q, valid values are: %v", *c.DiskControllerType, armcompute.PossibleDiskControllerTypesValues())
 		}
-		if *c.DiskControllerType == compute.SCSI && skuRequiresNVMe(sku) {
-			return fmt.Errorf("VM size %q only supports NVMe disk controller, cannot use %q", c.VMSize, compute.SCSI)
+		if *c.DiskControllerType == armcompute.DiskControllerTypesSCSI && skuRequiresNVMe(sku) {
+			return fmt.Errorf("VM size %q only supports NVMe disk controller, cannot use %q", c.VMSize, armcompute.DiskControllerTypesSCSI)
 		}
 	}
 	return nil
 }
 
-func validateSKUCapabilities(_ context.Context, c *config, sku compute.ResourceSku) error {
+func validateSKUCapabilities(_ context.Context, c *config, sku armcompute.ResourceSKU) error {
 	if c.EnableAcceleratedNetworking != nil && *c.EnableAcceleratedNetworking {
 		if !SKUHasCapability(sku, capabilityAcceleratedNetworking) {
 			return fmt.Errorf("VM size %q does not support accelerated networking", c.VMSize)
@@ -1064,18 +1052,18 @@ func validateSKUCapabilities(_ context.Context, c *config, sku compute.ResourceS
 // buildSecurityProfile converts the raw provider-spec SecurityProfile into the
 // Azure SDK shape. Returns nil when no SecurityProfile is configured so the
 // VM CreateOrUpdate call lets Azure apply its subscription defaults.
-func buildSecurityProfile(raw *azuretypes.SecurityProfile) *compute.SecurityProfile {
+func buildSecurityProfile(raw *azuretypes.SecurityProfile) *armcompute.SecurityProfile {
 	if raw == nil {
 		return nil
 	}
 
-	sp := &compute.SecurityProfile{}
+	sp := &armcompute.SecurityProfile{}
 	if raw.SecurityType != "" {
-		sp.SecurityType = compute.SecurityTypes(raw.SecurityType)
+		sp.SecurityType = ptr.To(armcompute.SecurityTypes(raw.SecurityType))
 	}
 
 	if raw.SecureBootEnabled != nil || raw.VTpmEnabled != nil {
-		sp.UefiSettings = &compute.UefiSettings{
+		sp.UefiSettings = &armcompute.UefiSettings{
 			SecureBootEnabled: raw.SecureBootEnabled,
 			VTpmEnabled:       raw.VTpmEnabled,
 		}
@@ -1084,20 +1072,20 @@ func buildSecurityProfile(raw *azuretypes.SecurityProfile) *compute.SecurityProf
 	return sp
 }
 
-func validateSecurityProfile(_ context.Context, c *config, sku compute.ResourceSku) error {
+func validateSecurityProfile(_ context.Context, c *config, sku armcompute.ResourceSKU) error {
 	if c.SecurityProfile == nil {
 		return nil
 	}
 
 	secProfile := c.SecurityProfile
-	secType := secProfile.SecurityType
+	secType := ptr.Deref(secProfile.SecurityType, "")
 
-	switch secProfile.SecurityType {
-	case compute.SecurityTypesTrustedLaunch:
+	switch secType {
+	case armcompute.SecurityTypesTrustedLaunch:
 		if !skuSupportsGen2(sku) {
 			return fmt.Errorf("securityType %q requires a Gen2 VM size, but %q does not support Gen2", secType, c.VMSize)
 		}
-	case securityTypeStandard:
+	case armcompute.SecurityTypesStandard:
 		uefiSettings := secProfile.UefiSettings
 		if uefiSettings != nil && (uefiSettings.SecureBootEnabled != nil || uefiSettings.VTpmEnabled != nil) {
 			// vTPM can't be used with "Standard" security type
@@ -1163,7 +1151,7 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 
 	if c.PublicIPSKU != nil {
 		valid := false
-		for _, sku := range network.PossiblePublicIPAddressSkuNameValues() {
+		for _, sku := range armnetwork.PossiblePublicIPAddressSKUNameValues() {
 			if sku == *c.PublicIPSKU {
 				valid = true
 			}
@@ -1173,8 +1161,8 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 			return fmt.Errorf("unknown public IP address SKU: %s", *c.PublicIPSKU)
 		}
 
-		if providerConfig.Network.GetIPFamily().IsDualstack() && *c.PublicIPSKU == network.PublicIPAddressSkuNameBasic {
-			return fmt.Errorf("cannot use %s public IP address SKU with dualstack", network.PublicIPAddressSkuNameBasic)
+		if providerConfig.Network.GetIPFamily().IsDualstack() && *c.PublicIPSKU == armnetwork.PublicIPAddressSKUNameBasic {
+			return fmt.Errorf("cannot use %s public IP address SKU with dualstack", armnetwork.PublicIPAddressSKUNameBasic)
 		}
 	}
 
@@ -1183,8 +1171,8 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 		return fmt.Errorf("failed to (create) vm client: %w", err)
 	}
 
-	_, err = vmClient.List(ctx, c.ResourceGroup, "")
-	if err != nil {
+	// fetch the first page of VMs to verify the credentials and resource group
+	if _, err := vmClient.NewListPager(c.ResourceGroup, nil).NextPage(ctx); err != nil {
 		return fmt.Errorf("failed to list virtual machines: %w", err)
 	}
 
@@ -1246,19 +1234,19 @@ func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machi
 		return fmt.Errorf("failed to create VM client: %w", err)
 	}
 
-	var publicIP, publicIPv6 *network.PublicIPAddress
-	sku := network.PublicIPAddressSkuNameBasic
+	var publicIP, publicIPv6 *armnetwork.PublicIPAddress
+	sku := armnetwork.PublicIPAddressSKUNameBasic
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIPv6) {
-		sku = network.PublicIPAddressSkuNameStandard
-		_, err = createOrUpdatePublicIPAddress(ctx, log, publicIPv6Name(ifaceName(machine)), network.IPv6, sku, network.Dynamic, newUID, config)
+		sku = armnetwork.PublicIPAddressSKUNameStandard
+		_, err = createOrUpdatePublicIPAddress(ctx, log, publicIPv6Name(ifaceName(machine)), armnetwork.IPVersionIPv6, sku, armnetwork.IPAllocationMethodDynamic, newUID, config)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on public IP: %w", err)
 		}
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
-		_, err = createOrUpdatePublicIPAddress(ctx, log, publicIPName(ifaceName(machine)), network.IPv4, sku, network.Static, newUID, config)
+		_, err = createOrUpdatePublicIPAddress(ctx, log, publicIPName(ifaceName(machine)), armnetwork.IPVersionIPv4, sku, armnetwork.IPAllocationMethodStatic, newUID, config)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on public IP: %w", err)
 		}
@@ -1277,18 +1265,18 @@ func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machi
 			return fmt.Errorf("failed to get disks client: %w", err)
 		}
 
-		disks, err := getDisksByMachineUID(ctx, disksClient, machine.UID)
+		disks, err := getDisksByMachineUID(ctx, disksClient, config.ResourceGroup, machine.UID)
 		if err != nil {
 			return fmt.Errorf("failed to get disks: %w", err)
 		}
 
 		for _, disk := range disks {
-			disk.Tags[machineUIDTag] = to.StringPtr(string(newUID))
-			future, err := disksClient.CreateOrUpdate(ctx, config.ResourceGroup, *disk.Name, disk)
+			disk.Tags[machineUIDTag] = ptr.To(string(newUID))
+			poller, err := disksClient.BeginCreateOrUpdate(ctx, config.ResourceGroup, *disk.Name, *disk, nil)
 			if err != nil {
 				return fmt.Errorf("failed to update UID for disk %s: %w", *disk.Name, err)
 			}
-			if err := future.WaitForCompletionRef(ctx, disksClient.Client); err != nil {
+			if _, err := poller.PollUntilDone(ctx, nil); err != nil {
 				return fmt.Errorf("failed waiting for completion of update UID operation for disk %s: %w", *disk.Name, err)
 			}
 		}
@@ -1296,17 +1284,17 @@ func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machi
 
 	tags := map[string]*string{}
 	for k, v := range config.Tags {
-		tags[k] = to.StringPtr(v)
+		tags[k] = ptr.To(v)
 	}
-	tags[machineUIDTag] = to.StringPtr(string(newUID))
+	tags[machineUIDTag] = ptr.To(string(newUID))
 
-	vmSpec := compute.VirtualMachine{Location: &config.Location, Tags: tags}
-	future, err := vmClient.CreateOrUpdate(ctx, config.ResourceGroup, machine.Name, vmSpec)
+	vmSpec := armcompute.VirtualMachine{Location: &config.Location, Tags: tags}
+	poller, err := vmClient.BeginCreateOrUpdate(ctx, config.ResourceGroup, machine.Name, vmSpec, nil)
 	if err != nil {
 		return fmt.Errorf("failed to update UID of the instance: %w", err)
 	}
 
-	if err := future.WaitForCompletionRef(ctx, vmClient.Client); err != nil {
+	if _, err := poller.PollUntilDone(ctx, nil); err != nil {
 		return fmt.Errorf("error waiting for instance to have the updated UID: %w", err)
 	}
 
@@ -1338,14 +1326,14 @@ func getOSUsername(os providerconfig.OperatingSystem) string {
 	}
 }
 
-func storageTypePtr(storageType string) *compute.StorageAccountTypes {
-	storage := compute.StorageAccountTypes(storageType)
+func storageTypePtr(storageType string) *armcompute.StorageAccountTypes {
+	storage := armcompute.StorageAccountTypes(storageType)
 	return &storage
 }
 
-func ipSkuPtr(ipSKU string) *network.PublicIPAddressSkuName {
+func ipSkuPtr(ipSKU string) *armnetwork.PublicIPAddressSKUName {
 	// the correct Azure API representation is capitalized, so we do that even if the original input was all lowercase
-	sku := network.PublicIPAddressSkuName(upperFirst(ipSKU))
+	sku := armnetwork.PublicIPAddressSKUName(upperFirst(ipSKU))
 	return &sku
 }
 
@@ -1359,17 +1347,17 @@ func upperFirst(str string) string {
 }
 
 // supportsDiskSKU validates some disk SKU types against the chosen VM SKU / VM type.
-func supportsDiskSKU(vmSKU compute.ResourceSku, diskSKU compute.StorageAccountTypes, zones []string) error {
+func supportsDiskSKU(vmSKU armcompute.ResourceSKU, diskSKU armcompute.StorageAccountTypes, zones []string) error {
 	// sanity check to make sure the Azure API did not return something bad
 	if vmSKU.Name == nil || vmSKU.Capabilities == nil {
 		return fmt.Errorf("invalid VM SKU object")
 	}
 
 	switch diskSKU {
-	case compute.StorageAccountTypesPremiumLRS:
+	case armcompute.StorageAccountTypesPremiumLRS:
 		found := false
-		for _, capability := range *vmSKU.Capabilities {
-			if *capability.Name == CapabilityPremiumIO && *capability.Value == CapabilityValueTrue {
+		for _, capability := range vmSKU.Capabilities {
+			if capabilityIsTrue(capability, CapabilityPremiumIO) {
 				found = true
 				break
 			}
@@ -1379,12 +1367,12 @@ func supportsDiskSKU(vmSKU compute.ResourceSku, diskSKU compute.StorageAccountTy
 			return fmt.Errorf("VM SKU '%s' does not support disk SKU '%s'", *vmSKU.Name, diskSKU)
 		}
 
-	case compute.StorageAccountTypesUltraSSDLRS:
-		if vmSKU.LocationInfo == nil || len(*vmSKU.LocationInfo) == 0 || (*vmSKU.LocationInfo)[0].Zones == nil || len(*(*vmSKU.LocationInfo)[0].Zones) == 0 {
+	case armcompute.StorageAccountTypesUltraSSDLRS:
+		if len(vmSKU.LocationInfo) == 0 || vmSKU.LocationInfo[0] == nil || len(vmSKU.LocationInfo[0].Zones) == 0 {
 			// no zone information found, let's check for capability
 			found := false
-			for _, capability := range *vmSKU.Capabilities {
-				if *capability.Name == CapabilityUltraSSD && *capability.Value == CapabilityValueTrue {
+			for _, capability := range vmSKU.Capabilities {
+				if capabilityIsTrue(capability, CapabilityUltraSSD) {
 					found = true
 					break
 				}
@@ -1394,16 +1382,22 @@ func supportsDiskSKU(vmSKU compute.ResourceSku, diskSKU compute.StorageAccountTy
 				return fmt.Errorf("VM SKU '%s' does not support disk SKU '%s'", *vmSKU.Name, diskSKU)
 			}
 		} else {
-			if (*vmSKU.LocationInfo)[0].ZoneDetails != nil {
+			if vmSKU.LocationInfo[0].ZoneDetails != nil {
 				for _, zone := range zones {
 					found := false
-					for _, details := range *(*vmSKU.LocationInfo)[0].ZoneDetails {
-						matchesZone := slices.Contains(*details.Name, zone)
+					for _, details := range vmSKU.LocationInfo[0].ZoneDetails {
+						if details == nil {
+							continue
+						}
+
+						matchesZone := slices.ContainsFunc(details.Name, func(name *string) bool {
+							return name != nil && *name == zone
+						})
 
 						// we only check this zone details for capabilities if it actually includes the zone we're checking for
 						if matchesZone {
-							for _, capability := range *details.Capabilities {
-								if *capability.Name == CapabilityUltraSSD && *capability.Value == CapabilityValueTrue {
+							for _, capability := range details.Capabilities {
+								if capabilityIsTrue(capability, CapabilityUltraSSD) {
 									found = true
 									break
 								}
@@ -1422,12 +1416,17 @@ func supportsDiskSKU(vmSKU compute.ResourceSku, diskSKU compute.StorageAccountTy
 	return nil
 }
 
-func SKUHasCapability(sku compute.ResourceSku, name string) bool {
-	if sku.Capabilities != nil {
-		for _, capability := range *sku.Capabilities {
-			if capability.Name != nil && *capability.Name == name && *capability.Value == CapabilityValueTrue {
-				return true
-			}
+// capabilityIsTrue returns true if the given capability has the given name and is set to "True".
+func capabilityIsTrue(capability *armcompute.ResourceSKUCapabilities, name string) bool {
+	return capability != nil &&
+		capability.Name != nil && *capability.Name == name &&
+		capability.Value != nil && *capability.Value == CapabilityValueTrue
+}
+
+func SKUHasCapability(sku armcompute.ResourceSKU, name string) bool {
+	for _, capability := range sku.Capabilities {
+		if capabilityIsTrue(capability, name) {
+			return true
 		}
 	}
 	return false
@@ -1435,19 +1434,17 @@ func SKUHasCapability(sku compute.ResourceSku, name string) bool {
 
 // getHyperVGenerations returns the supported Hyper-V generations for a VM SKU.
 // Returns a string like "V1,V2" or "V2" or "V1" from the Azure API.
-func getHyperVGenerations(sku compute.ResourceSku) string {
-	if sku.Capabilities != nil {
-		for _, capability := range *sku.Capabilities {
-			if capability.Name != nil && *capability.Name == "HyperVGenerations" && capability.Value != nil {
-				return *capability.Value
-			}
+func getHyperVGenerations(sku armcompute.ResourceSKU) string {
+	for _, capability := range sku.Capabilities {
+		if capability != nil && capability.Name != nil && *capability.Name == "HyperVGenerations" && capability.Value != nil {
+			return *capability.Value
 		}
 	}
 	return ""
 }
 
 // skuSupportsGen2 checks if a VM SKU supports Generation 2 VMs using Azure API.
-func skuSupportsGen2(sku compute.ResourceSku) bool {
+func skuSupportsGen2(sku armcompute.ResourceSKU) bool {
 	generations := getHyperVGenerations(sku)
 	return strings.Contains(generations, "V2")
 }
@@ -1455,12 +1452,9 @@ func skuSupportsGen2(sku compute.ResourceSku) bool {
 // skuRequiresNVMe checks if a VM SKU only supports NVMe disk controller using the Azure SKU API.
 // v6 and later generation VMs exclusively support NVMe; the DiskControllerTypes capability
 // value is "NVMe" (no "SCSI") for those SKUs.
-func skuRequiresNVMe(sku compute.ResourceSku) bool {
-	if sku.Capabilities == nil {
-		return false
-	}
-	for _, cap := range *sku.Capabilities {
-		if cap.Name != nil && *cap.Name == "DiskControllerTypes" && cap.Value != nil {
+func skuRequiresNVMe(sku armcompute.ResourceSKU) bool {
+	for _, cap := range sku.Capabilities {
+		if cap != nil && cap.Name != nil && *cap.Name == "DiskControllerTypes" && cap.Value != nil {
 			v := strings.ToLower(*cap.Value)
 			return strings.Contains(v, "nvme") && !strings.Contains(v, "scsi")
 		}

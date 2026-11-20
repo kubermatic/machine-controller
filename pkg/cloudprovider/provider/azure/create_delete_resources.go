@@ -18,18 +18,87 @@ package azure
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/network/mgmt/network"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v9"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v10"
 	"go.uber.org/zap"
 
 	"k8c.io/machine-controller/sdk/net"
 
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 )
+
+// hasMachineUIDTag returns true if the given resource tags contain the machine UID tag with the given UID.
+func hasMachineUIDTag(tags map[string]*string, machineUID types.UID) bool {
+	v, ok := tags[machineUIDTag]
+	return ok && v != nil && *v == string(machineUID)
+}
+
+// toStringPtrSlice converts a slice of strings into a slice of string pointers,
+// as used by the Azure SDK. Returns nil for an empty input so that the field is
+// omitted from the request.
+func toStringPtrSlice(s []string) []*string {
+	if len(s) == 0 {
+		return nil
+	}
+
+	result := make([]*string, 0, len(s))
+	for _, v := range s {
+		result = append(result, ptr.To(v))
+	}
+
+	return result
+}
+
+// isNotFound returns true if the given error is an Azure API error with HTTP status 404.
+func isNotFound(err error) bool {
+	var respErr *azcore.ResponseError
+	return errors.As(err, &respErr) && respErr.StatusCode == http.StatusNotFound
+}
+
+// deleteResource deletes a single resource using the given BeginDelete function and waits for the
+// deletion to finish. A resource that no longer exists is treated as successfully deleted.
+func deleteResource[T, O any](
+	ctx context.Context,
+	beginDelete func(context.Context, string, string, *O) (*runtime.Poller[T], error),
+	resourceGroup, kind, name string,
+) error {
+	poller, err := beginDelete(ctx, resourceGroup, name, nil)
+	if err == nil {
+		_, err = poller.PollUntilDone(ctx, nil)
+	}
+
+	if err != nil && !isNotFound(err) {
+		return fmt.Errorf("failed to delete %s %q: %w", kind, name, err)
+	}
+
+	return nil
+}
+
+// deleteResources deletes all given resources using the given BeginDelete function and waits for all deletions to
+// finish. Errors are collected and returned joined together.
+func deleteResources[T, O any](
+	ctx context.Context,
+	beginDelete func(context.Context, string, string, *O) (*runtime.Poller[T], error),
+	resourceGroup, kind string,
+	names []string,
+) error {
+	var errs []error
+
+	for _, name := range names {
+		if err := deleteResource(ctx, beginDelete, resourceGroup, kind, name); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errors.Join(errs...)
+}
 
 // deleteInterfacesByMachineUID will remove all network interfaces tagged with the specific machine's UID.
 // The machine has to be deleted or disassociated with the interfaces beforehand, since Azure won't allow
@@ -40,34 +109,22 @@ func deleteInterfacesByMachineUID(ctx context.Context, c *config, machineUID typ
 		return fmt.Errorf("failed to create interfaces client: %w", err)
 	}
 
-	list, err := ifClient.List(ctx, c.ResourceGroup)
-	if err != nil {
-		return fmt.Errorf("failed to list interfaces in resource group %q", c.ResourceGroup)
-	}
+	var ifacesToDelete []string
 
-	var allInterfaces []network.Interface
-
-	for list.NotDone() {
-		allInterfaces = append(allInterfaces, list.Values()...)
-		if err = list.NextWithContext(ctx); err != nil {
-			return fmt.Errorf("failed to iterate the result list: %w", err)
+	for pager := ifClient.NewListPager(c.ResourceGroup, nil); pager.More(); {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list interfaces in resource group %q: %w", c.ResourceGroup, err)
 		}
-	}
 
-	for _, iface := range allInterfaces {
-		if iface.Tags != nil && iface.Tags[machineUIDTag] != nil && *iface.Tags[machineUIDTag] == string(machineUID) {
-			future, err := ifClient.Delete(ctx, c.ResourceGroup, *iface.Name)
-			if err != nil {
-				return err
-			}
-
-			if err = future.WaitForCompletionRef(ctx, ifClient.Client); err != nil {
-				return err
+		for _, iface := range page.Value {
+			if iface != nil && iface.Name != nil && hasMachineUIDTag(iface.Tags, machineUID) {
+				ifacesToDelete = append(ifacesToDelete, *iface.Name)
 			}
 		}
 	}
 
-	return nil
+	return deleteResources(ctx, ifClient.BeginDelete, c.ResourceGroup, "network interface", ifacesToDelete)
 }
 
 // deleteIPAddressesByMachineUID will remove public IP addresses tagged with the specific machine's UID.
@@ -79,34 +136,22 @@ func deleteIPAddressesByMachineUID(ctx context.Context, c *config, machineUID ty
 		return fmt.Errorf("failed to create IP addresses client: %w", err)
 	}
 
-	list, err := ipClient.List(ctx, c.ResourceGroup)
-	if err != nil {
-		return fmt.Errorf("failed to list public IP addresses in resource group %q", c.ResourceGroup)
-	}
+	var ipsToDelete []string
 
-	var allIPs []network.PublicIPAddress
-
-	for list.NotDone() {
-		allIPs = append(allIPs, list.Values()...)
-		if err = list.Next(); err != nil {
-			return fmt.Errorf("failed to iterate the result list: %w", err)
+	for pager := ipClient.NewListPager(c.ResourceGroup, nil); pager.More(); {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list public IP addresses in resource group %q: %w", c.ResourceGroup, err)
 		}
-	}
 
-	for _, ip := range allIPs {
-		if ip.Tags != nil && ip.Tags[machineUIDTag] != nil && *ip.Tags[machineUIDTag] == string(machineUID) {
-			future, err := ipClient.Delete(ctx, c.ResourceGroup, *ip.Name)
-			if err != nil {
-				return err
-			}
-
-			if err = future.WaitForCompletionRef(ctx, ipClient.Client); err != nil {
-				return err
+		for _, ip := range page.Value {
+			if ip != nil && ip.Name != nil && hasMachineUIDTag(ip.Tags, machineUID) {
+				ipsToDelete = append(ipsToDelete, *ip.Name)
 			}
 		}
 	}
 
-	return nil
+	return deleteResources(ctx, ipClient.BeginDelete, c.ResourceGroup, "public IP address", ipsToDelete)
 }
 
 func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID) error {
@@ -115,35 +160,22 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 		return err
 	}
 
-	list, err := vmClient.List(ctx, c.ResourceGroup, "")
+	var vmsToDelete []string
 
-	if err != nil {
-		return err
-	}
-
-	var allServers []compute.VirtualMachine
-
-	for list.NotDone() {
-		allServers = append(allServers, list.Values()...)
-		if err = list.Next(); err != nil {
-			return fmt.Errorf("failed to iterate the result list: %w", err)
+	for pager := vmClient.NewListPager(c.ResourceGroup, nil); pager.More(); {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list virtual machines in resource group %q: %w", c.ResourceGroup, err)
 		}
-	}
 
-	for _, vm := range allServers {
-		if vm.Tags != nil && vm.Tags[machineUIDTag] != nil && *vm.Tags[machineUIDTag] == string(machineUID) {
-			future, err := vmClient.Delete(ctx, c.ResourceGroup, *vm.Name, nil)
-			if err != nil {
-				return err
-			}
-
-			if err = future.WaitForCompletionRef(ctx, vmClient.Client); err != nil {
-				return err
+		for _, vm := range page.Value {
+			if vm != nil && vm.Name != nil && hasMachineUIDTag(vm.Tags, machineUID) {
+				vmsToDelete = append(vmsToDelete, *vm.Name)
 			}
 		}
 	}
 
-	return nil
+	return deleteResources(ctx, vmClient.BeginDelete, c.ResourceGroup, "VM", vmsToDelete)
 }
 
 func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UID) error {
@@ -152,81 +184,67 @@ func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UI
 		return fmt.Errorf("failed to get disks client: %w", err)
 	}
 
-	matchingDisks, err := getDisksByMachineUID(ctx, disksClient, machineUID)
+	matchingDisks, err := getDisksByMachineUID(ctx, disksClient, c.ResourceGroup, machineUID)
 	if err != nil {
 		return err
 	}
 
+	disksToDelete := make([]string, 0, len(matchingDisks))
 	for _, disk := range matchingDisks {
-		future, err := disksClient.Delete(ctx, c.ResourceGroup, *disk.Name)
-		if err != nil {
-			return fmt.Errorf("failed to delete disk %s: %w", *disk.Name, err)
-		}
-
-		if err = future.WaitForCompletionRef(ctx, disksClient.Client); err != nil {
-			return fmt.Errorf("failed to wait for deletion of disk %s: %w", *disk.Name, err)
-		}
+		disksToDelete = append(disksToDelete, *disk.Name)
 	}
 
-	return nil
+	return deleteResources(ctx, disksClient.BeginDelete, c.ResourceGroup, "disk", disksToDelete)
 }
 
-func getDisksByMachineUID(ctx context.Context, disksClient *compute.DisksClient, UID types.UID) ([]compute.Disk, error) {
-	list, err := disksClient.List(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list disks: %w", err)
-	}
+func getDisksByMachineUID(ctx context.Context, disksClient *armcompute.DisksClient, resourceGroup string, uid types.UID) ([]*armcompute.Disk, error) {
+	var matchingDisks []*armcompute.Disk
 
-	var allDisks, matchingDisks []compute.Disk
-	for list.NotDone() {
-		allDisks = append(allDisks, list.Values()...)
-		if err = list.Next(); err != nil {
-			return nil, fmt.Errorf("failed to iterate the result list: %w", err)
+	pager := disksClient.NewListByResourceGroupPager(resourceGroup, nil)
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list disks: %w", err)
 		}
-	}
 
-	for _, disk := range allDisks {
-		if disk.Tags != nil && disk.Tags[machineUIDTag] != nil && *disk.Tags[machineUIDTag] == string(UID) {
-			matchingDisks = append(matchingDisks, disk)
+		for _, disk := range page.Value {
+			if disk != nil && disk.Name != nil && hasMachineUIDTag(disk.Tags, uid) {
+				matchingDisks = append(matchingDisks, disk)
+			}
 		}
 	}
 
 	return matchingDisks, nil
 }
 
-func createOrUpdatePublicIPAddress(ctx context.Context, log *zap.SugaredLogger, ipName string, ipVersion network.IPVersion, sku network.PublicIPAddressSkuName, ipAllocationMethod network.IPAllocationMethod, machineUID types.UID, c *config) (*network.PublicIPAddress, error) {
+func createOrUpdatePublicIPAddress(ctx context.Context, log *zap.SugaredLogger, ipName string, ipVersion armnetwork.IPVersion, sku armnetwork.PublicIPAddressSKUName, ipAllocationMethod armnetwork.IPAllocationMethod, machineUID types.UID, c *config) (*armnetwork.PublicIPAddress, error) {
 	log.Infow("Creating public IP", "name", ipName)
 	ipClient, err := getIPClient(c)
 	if err != nil {
 		return nil, err
 	}
 
-	ipParams := network.PublicIPAddress{
-		Name:     to.StringPtr(ipName),
-		Location: to.StringPtr(c.Location),
-		PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
-			PublicIPAddressVersion:   ipVersion,
-			PublicIPAllocationMethod: ipAllocationMethod,
+	ipParams := armnetwork.PublicIPAddress{
+		Name:     ptr.To(ipName),
+		Location: ptr.To(c.Location),
+		Properties: &armnetwork.PublicIPAddressPropertiesFormat{
+			PublicIPAddressVersion:   ptr.To(ipVersion),
+			PublicIPAllocationMethod: ptr.To(ipAllocationMethod),
 		},
-		Tags:  map[string]*string{machineUIDTag: to.StringPtr(string(machineUID))},
-		Zones: &c.Zones,
-		Sku: &network.PublicIPAddressSku{
-			Name: sku,
+		Tags:  map[string]*string{machineUIDTag: ptr.To(string(machineUID))},
+		Zones: toStringPtrSlice(c.Zones),
+		SKU: &armnetwork.PublicIPAddressSKU{
+			Name: ptr.To(sku),
 		},
 	}
 
-	future, err := ipClient.CreateOrUpdate(ctx, c.ResourceGroup, ipName, ipParams)
+	poller, err := ipClient.BeginCreateOrUpdate(ctx, c.ResourceGroup, ipName, ipParams, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create public IP address: %w", err)
 	}
 
-	err = future.WaitForCompletionRef(ctx, ipClient.Client)
-	if err != nil {
+	if _, err = poller.PollUntilDone(ctx, nil); err != nil {
 		return nil, fmt.Errorf("failed to retrieve public IP address creation result: %w", err)
-	}
-
-	if _, err = future.Result(*ipClient); err != nil {
-		return nil, fmt.Errorf("failed to create public IP address: %w", err)
 	}
 
 	log.Infow("Fetching info for IP address", "name", ipName)
@@ -238,25 +256,30 @@ func createOrUpdatePublicIPAddress(ctx context.Context, log *zap.SugaredLogger, 
 	return ip, nil
 }
 
-func getPublicIPAddress(ctx context.Context, ipName string, resourceGroup string, ipClient *network.PublicIPAddressesClient) (*network.PublicIPAddress, error) {
-	ip, err := ipClient.Get(ctx, resourceGroup, ipName, "")
+func getPublicIPAddress(ctx context.Context, ipName string, resourceGroup string, ipClient *armnetwork.PublicIPAddressesClient) (*armnetwork.PublicIPAddress, error) {
+	resp, err := ipClient.Get(ctx, resourceGroup, ipName, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ip, nil
+	return &resp.PublicIPAddress, nil
 }
 
-func getSubnet(ctx context.Context, c *config) (network.Subnet, error) {
+func getSubnet(ctx context.Context, c *config) (*armnetwork.Subnet, error) {
 	subnetsClient, err := getSubnetsClient(c)
 	if err != nil {
-		return network.Subnet{}, fmt.Errorf("failed to create subnets client: %w", err)
+		return nil, fmt.Errorf("failed to create subnets client: %w", err)
 	}
 
-	return subnetsClient.Get(ctx, c.VNetResourceGroup, c.VNetName, c.SubnetName, "")
+	resp, err := subnetsClient.Get(ctx, c.VNetResourceGroup, c.VNetName, c.SubnetName, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp.Subnet, nil
 }
 
-func getSKU(ctx context.Context, log *zap.SugaredLogger, c *config) (compute.ResourceSku, error) {
+func getSKU(ctx context.Context, log *zap.SugaredLogger, c *config) (armcompute.ResourceSKU, error) {
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 
@@ -264,45 +287,43 @@ func getSKU(ctx context.Context, log *zap.SugaredLogger, c *config) (compute.Res
 	cacheSku, found := cache.Get(cacheKey)
 	if found {
 		log.Debugw("Found SKU in cache", "key", cacheKey, "sku", cacheSku)
-		return cacheSku.(compute.ResourceSku), nil
+		return cacheSku.(armcompute.ResourceSKU), nil
 	}
 
 	skuClient, err := getSKUClient(c)
 	if err != nil {
-		return compute.ResourceSku{}, fmt.Errorf("failed to (create) SKU client: %w", err)
+		return armcompute.ResourceSKU{}, fmt.Errorf("failed to (create) SKU client: %w", err)
 	}
 
-	skuPages, err := skuClient.List(ctx, fmt.Sprintf("location eq '%s'", c.Location), "false")
-	if err != nil {
-		return compute.ResourceSku{}, fmt.Errorf("failed to list available SKUs: %w", err)
-	}
+	pager := skuClient.NewListPager(&armcompute.ResourceSKUsClientListOptions{
+		Filter:                   ptr.To(fmt.Sprintf("location eq '%s'", c.Location)),
+		IncludeExtendedLocations: ptr.To("false"),
+	})
 
-	var sku *compute.ResourceSku
+	var sku *armcompute.ResourceSKU
 
-	for skuPages.NotDone() && sku == nil {
-		skus := skuPages.Values()
-		for i, skuResult := range skus {
+	// only fetch the next page if we haven't found our SKU yet
+	for sku == nil && pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return armcompute.ResourceSKU{}, fmt.Errorf("failed to list available SKUs: %w", err)
+		}
+
+		for _, skuResult := range page.Value {
 			// skip invalid SKU results so we don't trigger a nil pointer exception
-			if skuResult.ResourceType == nil || skuResult.Name == nil {
+			if skuResult == nil || skuResult.ResourceType == nil || skuResult.Name == nil {
 				continue
 			}
 
 			if *skuResult.ResourceType == "virtualMachines" && *skuResult.Name == c.VMSize {
-				sku = &skus[i]
+				sku = skuResult
 				break
-			}
-		}
-
-		// only fetch the next page if we haven't found our SKU yet
-		if sku == nil {
-			if err := skuPages.NextWithContext(ctx); err != nil {
-				return compute.ResourceSku{}, fmt.Errorf("failed to list available SKUs: %w", err)
 			}
 		}
 	}
 
 	if sku == nil {
-		return compute.ResourceSku{}, fmt.Errorf("no VM SKU '%s' found for subscription '%s'", c.VMSize, c.SubscriptionID)
+		return armcompute.ResourceSKU{}, fmt.Errorf("no VM SKU '%s' found for subscription '%s'", c.VMSize, c.SubscriptionID)
 	}
 
 	cache.SetDefault(cacheKey, *sku)
@@ -310,16 +331,21 @@ func getSKU(ctx context.Context, log *zap.SugaredLogger, c *config) (compute.Res
 	return *sku, nil
 }
 
-func getVirtualNetwork(ctx context.Context, c *config) (network.VirtualNetwork, error) {
+func getVirtualNetwork(ctx context.Context, c *config) (*armnetwork.VirtualNetwork, error) {
 	virtualNetworksClient, err := getVirtualNetworksClient(c)
 	if err != nil {
-		return network.VirtualNetwork{}, err
+		return nil, err
 	}
 
-	return virtualNetworksClient.Get(ctx, c.VNetResourceGroup, c.VNetName, "")
+	resp, err := virtualNetworksClient.Get(ctx, c.VNetResourceGroup, c.VNetName, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp.VirtualNetwork, nil
 }
 
-func createOrUpdateNetworkInterface(ctx context.Context, log *zap.SugaredLogger, ifName string, machineUID types.UID, config *config, publicIP, publicIPv6 *network.PublicIPAddress, ipFamily net.IPFamily, enableAcceleratedNetworking *bool) (*network.Interface, error) {
+func createOrUpdateNetworkInterface(ctx context.Context, log *zap.SugaredLogger, ifName string, machineUID types.UID, config *config, publicIP, publicIPv6 *armnetwork.PublicIPAddress, ipFamily net.IPFamily, enableAcceleratedNetworking *bool) (*armnetwork.Interface, error) {
 	ifClient, err := getInterfacesClient(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interfaces client: %w", err)
@@ -330,74 +356,67 @@ func createOrUpdateNetworkInterface(ctx context.Context, log *zap.SugaredLogger,
 		return nil, fmt.Errorf("failed to fetch subnet: %w", err)
 	}
 
-	ifSpec := network.Interface{
-		Name:     to.StringPtr(ifName),
-		Location: &config.Location,
-		InterfacePropertiesFormat: &network.InterfacePropertiesFormat{
-			IPConfigurations: &[]network.InterfaceIPConfiguration{},
+	ifSpec := armnetwork.Interface{
+		Name:     ptr.To(ifName),
+		Location: ptr.To(config.Location),
+		Properties: &armnetwork.InterfacePropertiesFormat{
+			IPConfigurations: []*armnetwork.InterfaceIPConfiguration{
+				{
+					Name: ptr.To("ip-config-1"),
+					Properties: &armnetwork.InterfaceIPConfigurationPropertiesFormat{
+						Subnet:                    subnet,
+						PrivateIPAllocationMethod: ptr.To(armnetwork.IPAllocationMethodDynamic),
+						PublicIPAddress:           publicIP,
+						Primary:                   ptr.To(true),
+					},
+				},
+			},
+			EnableAcceleratedNetworking: enableAcceleratedNetworking,
 		},
-		Tags: map[string]*string{machineUIDTag: to.StringPtr(string(machineUID))},
+		Tags: map[string]*string{machineUIDTag: ptr.To(string(machineUID))},
 	}
 
-	*ifSpec.IPConfigurations = append(*ifSpec.IPConfigurations, network.InterfaceIPConfiguration{
-		Name: to.StringPtr("ip-config-1"),
-		InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
-			Subnet:                    &subnet,
-			PrivateIPAllocationMethod: network.Dynamic,
-			PublicIPAddress:           publicIP,
-			Primary:                   to.BoolPtr(true),
-		},
-	})
-
 	if ipFamily.IsDualstack() {
-		*ifSpec.IPConfigurations = append(*ifSpec.IPConfigurations, network.InterfaceIPConfiguration{
-			Name: to.StringPtr("ip-config-2"),
-			InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
-				PrivateIPAllocationMethod: network.Dynamic,
-				Subnet:                    &subnet,
+		ifSpec.Properties.IPConfigurations = append(ifSpec.Properties.IPConfigurations, &armnetwork.InterfaceIPConfiguration{
+			Name: ptr.To("ip-config-2"),
+			Properties: &armnetwork.InterfaceIPConfigurationPropertiesFormat{
+				PrivateIPAllocationMethod: ptr.To(armnetwork.IPAllocationMethodDynamic),
+				Subnet:                    subnet,
 				PublicIPAddress:           publicIPv6,
-				Primary:                   to.BoolPtr(false),
-				PrivateIPAddressVersion:   network.IPv6,
+				Primary:                   ptr.To(false),
+				PrivateIPAddressVersion:   ptr.To(armnetwork.IPVersionIPv6),
 			},
 		})
 	}
 
-	ifSpec.EnableAcceleratedNetworking = enableAcceleratedNetworking
-
 	if config.SecurityGroupName != "" {
-		authorizer, err := auth.NewClientCredentialsConfig(config.ClientID, config.ClientSecret, config.TenantID).Authorizer()
+		secGroupClient, err := getSecurityGroupsClient(config)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create authorizer for security groups: %w", err)
+			return nil, fmt.Errorf("failed to create security groups client: %w", err)
 		}
-		secGroupClient := network.NewSecurityGroupsClient(config.SubscriptionID)
-		secGroupClient.Authorizer = authorizer
-		secGroup, err := secGroupClient.Get(ctx, config.ResourceGroup, config.SecurityGroupName, "")
+
+		secGroup, err := secGroupClient.Get(ctx, config.ResourceGroup, config.SecurityGroupName, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get securityGroup %q: %w", config.SecurityGroupName, err)
 		}
-		ifSpec.NetworkSecurityGroup = &secGroup
+		ifSpec.Properties.NetworkSecurityGroup = &secGroup.SecurityGroup
 	}
+
 	log.Infow("Creating/Updating public network interface", "interface", ifName)
-	future, err := ifClient.CreateOrUpdate(ctx, config.ResourceGroup, ifName, ifSpec)
+	poller, err := ifClient.BeginCreateOrUpdate(ctx, config.ResourceGroup, ifName, ifSpec, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interface: %w", err)
 	}
 
-	err = future.WaitForCompletionRef(ctx, ifClient.Client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get interface creation response: %w", err)
-	}
-
-	_, err = future.Result(*ifClient)
-	if err != nil {
+	if _, err = poller.PollUntilDone(ctx, nil); err != nil {
 		return nil, fmt.Errorf("failed to get interface creation result: %w", err)
 	}
 
 	log.Infow("Fetching info about network interface", "interface", ifName)
-	iface, err := ifClient.Get(ctx, config.ResourceGroup, ifName, "")
+	iface, err := ifClient.Get(ctx, config.ResourceGroup, ifName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch info about interface %q: %w", ifName, err)
 	}
 
-	return &iface, nil
+	return &iface.Interface, nil
 }
