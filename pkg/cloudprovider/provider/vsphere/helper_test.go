@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/simulator"
 	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/soap"
@@ -32,24 +31,95 @@ import (
 )
 
 func TestResolveDatastoreRef(t *testing.T) {
+	const (
+		// The template VM used by default lives in cluster DC0_C0.
+		defaultTemplateVM = "DC0_C0_RP0_VM0"
+		c0RootPool        = "/DC0/host/DC0_C0/Resources"
+		c1RootPool        = "/DC0/host/DC0_C1/Resources"
+	)
+
 	tests := []struct {
-		name    string
-		config  *Config
-		wantErr bool
+		name   string
+		config *Config
+		// markAsTemplate marks the source VM as a template, which has no resource pool.
+		markAsTemplate bool
+		// noActions makes the storage resource manager return a recommendation
+		// without any actions.
+		noActions bool
+		// expectedPool is the inventory path of the resource pool expected on the
+		// clone spec, empty if no pool is expected.
+		expectedPool string
+		wantErr      bool
 	}{
 		{
 			name: "Only Datastore defined",
 			config: &Config{
 				Datastore: "LocalDS_0",
 			},
-			wantErr: false,
+			expectedPool: "",
+			wantErr:      false,
+		},
+		{
+			name: "Datastore with Cluster different from the template's",
+			config: &Config{
+				Datastore: "LocalDS_0",
+				Cluster:   "DC0_C1",
+			},
+			expectedPool: c1RootPool,
+			wantErr:      false,
 		},
 		{
 			name: "Only DatastoreCluster defined",
 			config: &Config{
 				DatastoreCluster: "DC0_POD0",
 			},
-			wantErr: false,
+			expectedPool: c0RootPool,
+			wantErr:      false,
+		},
+		{
+			name: "DatastoreCluster with template as source",
+			config: &Config{
+				DatastoreCluster: "DC0_POD0",
+			},
+			markAsTemplate: true,
+			expectedPool:   c0RootPool,
+			wantErr:        false,
+		},
+		{
+			name: "DatastoreCluster with ResourcePool",
+			config: &Config{
+				DatastoreCluster: "DC0_POD0",
+				ResourcePool:     c1RootPool,
+			},
+			expectedPool: c1RootPool,
+			wantErr:      false,
+		},
+		{
+			name: "DatastoreCluster with Cluster different from the template's",
+			config: &Config{
+				DatastoreCluster: "DC0_POD0",
+				Cluster:          "DC0_C1",
+			},
+			expectedPool: c1RootPool,
+			wantErr:      false,
+		},
+		{
+			name: "DatastoreCluster with Cluster different from the template's and template as source",
+			config: &Config{
+				DatastoreCluster: "DC0_POD0",
+				Cluster:          "DC0_C1",
+			},
+			markAsTemplate: true,
+			expectedPool:   c1RootPool,
+			wantErr:        false,
+		},
+		{
+			name: "DatastoreCluster recommendation without actions",
+			config: &Config{
+				DatastoreCluster: "DC0_POD0",
+			},
+			noActions: true,
+			wantErr:   true,
 		},
 		{
 			name: "Unknown DatastoreCluster",
@@ -85,7 +155,7 @@ func TestResolveDatastoreRef(t *testing.T) {
 			// Override the default StorageResourceManager for the purpose of the unit test.
 			ds := simulator.Map.Any("Datastore").(*simulator.Datastore)
 			obj := simulator.Map.Get(model.ServiceContent.StorageResourceManager.Reference()).(*simulator.StorageResourceManager)
-			csrm := &CustomStorageResourceManager{obj, ds}
+			csrm := &CustomStorageResourceManager{StorageResourceManager: obj, ds: ds, noActions: tt.noActions}
 			simulator.Map.Put(csrm)
 
 			s := model.Service.NewServer()
@@ -99,27 +169,63 @@ func TestResolveDatastoreRef(t *testing.T) {
 			tt.config.Datacenter = "DC0"
 
 			session, err := NewSession(ctx, tt.config)
-			defer session.Logout(ctx)
 			if err != nil {
 				t.Fatalf("error creating session: %v", err)
 			}
+			defer session.Logout(ctx)
 			dc, err := session.Datacenter.Folders(ctx)
 			if err != nil {
 				t.Fatalf("error getting datacenter folders: %v", err)
 			}
 			vmFolder := dc.VmFolder
-			vms, err := session.Finder.VirtualMachineList(ctx, "*")
+			vm, err := session.Finder.VirtualMachine(ctx, defaultTemplateVM)
 			if err != nil {
-				t.Fatalf("error getting virtual machines: %v", err)
+				t.Fatalf("error getting virtual machine: %v", err)
+			}
+			if tt.markAsTemplate {
+				task, err := vm.PowerOff(ctx)
+				if err != nil {
+					t.Fatalf("error powering off vm: %v", err)
+				}
+				if err := task.WaitEx(ctx); err != nil {
+					t.Fatalf("error waiting for vm power off: %v", err)
+				}
+				if err := vm.MarkAsTemplate(ctx); err != nil {
+					t.Fatalf("error marking vm as template: %v", err)
+				}
 			}
 
-			got, err := resolveDatastoreRef(ctx, zap.NewNop().Sugar(), tt.config, session, vms[2], vmFolder, &types.VirtualMachineCloneSpec{})
+			// Resolve the resource pool before the datastore, like createClonedVM does.
+			cloneSpec := &types.VirtualMachineCloneSpec{}
+			cloneSpec.Location.Pool, err = resolveResourcePoolRef(ctx, tt.config, session)
+			if err != nil {
+				t.Fatalf("error resolving resource pool: %v", err)
+			}
+
+			got, err := resolveDatastoreRef(ctx, zap.NewNop().Sugar(), tt.config, session, vm, vmFolder, cloneSpec)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("resolveDatastoreRef() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if err == nil && got == nil {
+			if err != nil {
+				return
+			}
+			if got == nil {
 				t.Errorf("resolveDatastoreRef() should be not empty")
+			}
+
+			if tt.expectedPool == "" {
+				if cloneSpec.Location.Pool != nil {
+					t.Errorf("expected no resource pool, got %v", cloneSpec.Location.Pool)
+				}
+				return
+			}
+			expectedPool, err := session.Finder.ResourcePool(ctx, tt.expectedPool)
+			if err != nil {
+				t.Fatalf("error getting expected resource pool: %v", err)
+			}
+			if cloneSpec.Location.Pool == nil || *cloneSpec.Location.Pool != expectedPool.Reference() {
+				t.Errorf("expected resource pool %v (%s), got %v", expectedPool.Reference(), tt.expectedPool, cloneSpec.Location.Pool)
 			}
 		})
 	}
@@ -127,33 +233,53 @@ func TestResolveDatastoreRef(t *testing.T) {
 
 type CustomStorageResourceManager struct {
 	*simulator.StorageResourceManager
-	ds *simulator.Datastore
+	ds        *simulator.Datastore
+	noActions bool
 }
 
-// RecommendDatastores always return a recommendation for the purposes of the test.
-func (c *CustomStorageResourceManager) RecommendDatastores(_ *types.RecommendDatastores) soap.HasFault {
+// RecommendDatastores always return a recommendation for the purposes of the test,
+// as long as the clone spec contains a resource pool or a host, like vCenter requires.
+func (c *CustomStorageResourceManager) RecommendDatastores(req *types.RecommendDatastores) soap.HasFault {
 	body := &methods.RecommendDatastoresBody{}
+
+	if spec := req.StorageSpec.CloneSpec; spec == nil || (spec.Location.Pool == nil && spec.Location.Host == nil) {
+		body.Fault_ = simulator.Fault("", &types.InvalidArgument{InvalidProperty: "spec.host"})
+		return body
+	}
+
 	res := &types.RecommendDatastoresResponse{}
+	if c.noActions {
+		res.Returnval.Recommendations = append(res.Returnval.Recommendations, types.ClusterRecommendation{
+			Key:    "0",
+			Type:   "V1",
+			Time:   time.Now(),
+			Reason: "storagePlacement",
+		})
+		body.Res = res
+		return body
+	}
+
 	ds := c.ds.Reference()
-	res.Returnval.Recommendations = append(res.Returnval.Recommendations, types.ClusterRecommendation{
-		Key:            "0",
-		Type:           "V1",
-		Time:           time.Now(),
-		Reason:         "storagePlacement",
-		ReasonText:     "Satisfy storage initial placement requests",
-		WarningDetails: (*types.LocalizableMessage)(nil),
-		Prerequisite:   nil,
-		Action: []types.BaseClusterAction{
-			&types.StoragePlacementAction{
-				ClusterAction: types.ClusterAction{
-					Type:   "StoragePlacementV1",
-					Target: (*types.ManagedObjectReference)(nil),
+	res.Returnval.Recommendations = append(
+		res.Returnval.Recommendations, types.ClusterRecommendation{
+			Key:            "0",
+			Type:           "V1",
+			Time:           time.Now(),
+			Reason:         "storagePlacement",
+			ReasonText:     "Satisfy storage initial placement requests",
+			WarningDetails: (*types.LocalizableMessage)(nil),
+			Prerequisite:   nil,
+			Action: []types.BaseClusterAction{
+				&types.StoragePlacementAction{
+					ClusterAction: types.ClusterAction{
+						Type:   "StoragePlacementV1",
+						Target: (*types.ManagedObjectReference)(nil),
+					},
+					Vm:          (*types.ManagedObjectReference)(nil),
+					Destination: ds,
 				},
-				Vm:          (*types.ManagedObjectReference)(nil),
-				Destination: ds,
 			},
 		},
-	},
 	)
 
 	body.Res = res
@@ -191,6 +317,33 @@ func TestResolveResourcePoolRef(t *testing.T) {
 			wantErr:          true,
 			wantResourcePool: false,
 		},
+		{
+			name: "Cluster specified without Resource Pool",
+			config: &Config{
+				Cluster: "DC0_C0",
+			},
+			wantErr:              false,
+			wantResourcePool:     true,
+			expectedResourcePool: "/DC0/host/DC0_C0/Resources",
+		},
+		{
+			name: "Unknown Cluster",
+			config: &Config{
+				Cluster: "DC0_C0_WRONG",
+			},
+			wantErr:          true,
+			wantResourcePool: false,
+		},
+		{
+			name: "Resource Pool takes precedence over Cluster",
+			config: &Config{
+				Cluster:      "DC0_C0",
+				ResourcePool: "DC0_C0_RP1",
+			},
+			wantErr:              false,
+			wantResourcePool:     true,
+			expectedResourcePool: "DC0_C0_RP1",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -217,10 +370,10 @@ func TestResolveResourcePoolRef(t *testing.T) {
 			tt.config.Datacenter = "DC0"
 
 			session, err := NewSession(ctx, tt.config)
-			defer session.Logout(ctx)
 			if err != nil {
 				t.Fatalf("error creating session: %v", err)
 			}
+			defer session.Logout(ctx)
 
 			got, err := resolveResourcePoolRef(ctx, tt.config, session)
 			if (err != nil) != tt.wantErr {
@@ -230,11 +383,14 @@ func TestResolveResourcePoolRef(t *testing.T) {
 			if tt.wantResourcePool != (got != nil) {
 				t.Errorf("resourcePool = %v, wantResourcePool %v", got, tt.wantResourcePool)
 			}
-			if tt.wantResourcePool {
-				rp := object.NewResourcePool(session.Client.Client, got.Reference())
-				n, _ := rp.ObjectName(ctx)
-				if e, a := tt.expectedResourcePool, n; e != a {
-					t.Errorf("expected resource pool %v but got %+v", e, a)
+			if tt.wantResourcePool && got != nil {
+				// Compare references rather than names, as every root resource pool is named "Resources".
+				expected, err := session.Finder.ResourcePool(ctx, tt.expectedResourcePool)
+				if err != nil {
+					t.Fatalf("error getting expected resource pool: %v", err)
+				}
+				if *got != expected.Reference() {
+					t.Errorf("expected resource pool %v (%s) but got %v", expected.Reference(), tt.expectedResourcePool, got)
 				}
 			}
 		})
