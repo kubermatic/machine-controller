@@ -117,13 +117,6 @@ var (
 	}
 )
 
-func IntreeCloudProviderImplementationSupported(cloudProvider CloudProvider) (inTree bool) {
-	if cloudProvider == CloudProviderAzure || cloudProvider == CloudProviderVsphere || cloudProvider == CloudProviderGoogle {
-		return true
-	}
-	return false
-}
-
 // DNSConfig contains a machine's DNS configuration.
 type DNSConfig struct {
 	Servers []string `json:"servers"`
