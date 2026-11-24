@@ -15,11 +15,6 @@ cmd/machine-controller/__debug_bin*
 .agent-sandbox
 
 # local credentials and infra state
-.kubeconfig
-examples/*.pem
-examples/*.csr
-examples/*.srl
-.terraform
-terraform
-terraform.tfstate
-terraform.tfstate.backup
+*kubeconfig*
+*terraform*
+*.env*
