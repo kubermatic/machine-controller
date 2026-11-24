@@ -51,6 +51,35 @@ presubmits:
             limits:
               memory: 7Gi
 
+  - name: pull-machine-controller-docker-image-multiarch
+    always_run: false
+    run_if_changed: "^(Dockerfile|\\.dockerignore|Makefile|go\\.(mod|sum|work|work\\.sum)|sdk/go\\.(mod|sum)|hack/ci/setup-docker-buildx\\.sh)$"
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    path_alias: k8c.io/machine-controller
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: quay.io/kubermatic/build:go-1.27-node-24-kind-0.32-5
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              start-docker.sh
+              ./hack/ci/setup-docker-buildx.sh
+              make docker-image-multiarch
+          # docker-in-docker needs privileged mode
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 4
+              memory: 8Gi
+            limits:
+              memory: 8Gi
+
   - name: pull-machine-controller-dependencies
     always_run: true
     decorate: true

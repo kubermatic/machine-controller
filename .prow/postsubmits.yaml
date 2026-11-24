@@ -36,14 +36,17 @@ postsubmits:
               start-docker.sh
               docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
               docker login -u $QUAY_IO_USERNAME -p $QUAY_IO_PASSWORD quay.io
-              make download-gocache docker-image-publish
+              ./hack/ci/setup-docker-buildx.sh
+              make docker-image-publish
           # docker-in-docker needs privileged mode
           securityContext:
             privileged: true
           resources:
             requests:
-              cpu: 2
-              memory: 1Gi
+              cpu: 4
+              memory: 8Gi
+            limits:
+              memory: 8Gi
 
   # Do not add any preset that injects QUAY_IO_USERNAME or QUAY_IO_PASSWORD
   # here. hack/mirror-images.sh resolves push credentials at runtime and only

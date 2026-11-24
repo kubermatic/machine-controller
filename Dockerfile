@@ -13,10 +13,24 @@
 # limitations under the License.
 
 ARG GO_VERSION=1.27.4
-FROM docker.io/golang:${GO_VERSION} AS builder
+# The builder always runs on the build host's platform and cross-compiles
+# for the target platform, so multi-arch builds don't need to emulate the Go
+# toolchain.
+FROM --platform=$BUILDPLATFORM docker.io/golang:${GO_VERSION} AS builder
+ARG GOPROXY
+ENV GOPROXY=${GOPROXY:-https://proxy.golang.org,direct}
 WORKDIR /go/src/k8c.io/machine-controller
+
+# Module download does not depend on the target platform, so this layer is
+# shared between all platforms of a multi-arch build.
+COPY go.mod go.sum ./
+COPY sdk/go.mod sdk/go.sum ./sdk/
+RUN go mod download
+
 COPY . .
-RUN make all
+# Declared after the shared layers; anything below runs once per platform.
+ARG TARGETOS TARGETARCH
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH make all
 
 FROM alpine:3.23
 
