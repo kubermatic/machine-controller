@@ -26,6 +26,7 @@ cd "$(dirname "$0")/../.."
 source hack/lib.sh
 
 BINFMT_IMAGE="${BINFMT_IMAGE:-docker.io/tonistiigi/binfmt:qemu-v10.2.3-68@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0}"
+BUILDKIT_IMAGE="${BUILDKIT_IMAGE:-docker.io/moby/buildkit:v0.35.1@sha256:baf6138eb8c37644800c7c913fba051e840ebb9ba13eaf92d92ef9a1712d0b4c}"
 BINFMT_ARCHS="${BINFMT_ARCHS:-arm64}"
 BUILDER_NAME="${BUILDER_NAME:-multiarch}"
 
@@ -37,7 +38,11 @@ if docker buildx inspect "${BUILDER_NAME}" > /dev/null 2>&1; then
   docker buildx use "${BUILDER_NAME}"
 else
   echodate "Creating buildx builder ${BUILDER_NAME}"
-  docker buildx create --name "${BUILDER_NAME}" --driver docker-container --use
+  docker buildx create \
+    --name "${BUILDER_NAME}" \
+    --driver docker-container \
+    --driver-opt "image=${BUILDKIT_IMAGE}" \
+    --use
 fi
 
 retry 5 docker buildx inspect --bootstrap
