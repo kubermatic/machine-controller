@@ -40,10 +40,14 @@ presubmits:
       containers:
         - image: quay.io/kubermatic/build:go-1.27-node-24-5
           command:
-            - make
-          args:
-            - download-gocache
-            - all
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              make download-gocache
+              make all
+              # cheap smoketest to make sure multi-arch build works
+              GOARCH=arm64 make all
           resources:
             requests:
               memory: 7Gi
@@ -53,7 +57,7 @@ presubmits:
 
   - name: pull-machine-controller-docker-image-multiarch
     always_run: false
-    run_if_changed: "^(Dockerfile|\\.dockerignore|Makefile|go\\.(mod|sum|work|work\\.sum)|sdk/go\\.(mod|sum)|hack/ci/setup-docker-buildx\\.sh)$"
+    run_if_changed: "^(Dockerfile|\\.dockerignore|Makefile|go\\.(mod|sum)|sdk/go\\.(mod|sum)|hack/ci/setup-docker-buildx\\.sh)$"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     path_alias: k8c.io/machine-controller
