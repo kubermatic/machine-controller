@@ -1,0 +1,20 @@
+# Keep .git in the context: the binaries embed vcs.revision/vcs.modified
+# via debug.ReadBuildInfo (see pkg/version).
+
+# local build output and caches
+/machine-controller
+/webhook
+.buildcache
+_dist
+cmd/machine-controller/__debug_bin*
+
+# editor/agent state
+.idea
+.vscode
+.gitpod.yml
+.agent-sandbox
+
+# local credentials and infra state
+*kubeconfig*
+*terraform*
+*.env*

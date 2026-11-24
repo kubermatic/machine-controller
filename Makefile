@@ -31,7 +31,14 @@ LDFLAGS ?= -ldflags '-s -w'
 
 IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
-IMAGE_NAME ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
+IMAGE_REPO ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller
+IMAGE_NAME ?= $(IMAGE_REPO):$(IMAGE_TAG)
+
+# Platforms for the published multi-arch image.
+PLATFORMS ?= linux/amd64,linux/arm64
+
+# GOPROXY without a value is taken from the environment, if set.
+DOCKER_BUILD_ARGS = --build-arg GO_VERSION=$(GO_VERSION) --build-arg GOPROXY
 
 OS = amzn2 ubuntu rhel flatcar rockylinux
 
@@ -62,24 +69,28 @@ lint:
 yamllint:
 	yamllint -c .yamllint.conf .
 
+# Single-arch image for the host platform, loaded into the local image store.
 .PHONY: docker-image
 docker-image:
-	docker build --build-arg GO_VERSION=$(GO_VERSION) -t $(IMAGE_NAME) .
+	docker build $(DOCKER_BUILD_ARGS) -t $(IMAGE_NAME) .
 
+# Builds the image for all $(PLATFORMS) without pushing or loading it.
+# Requires a buildx builder with multi-platform support (see hack/ci/setup-docker-buildx.sh).
+.PHONY: docker-image-multiarch
+docker-image-multiarch:
+	docker buildx build $(DOCKER_BUILD_ARGS) --platform $(PLATFORMS) .
+
+# Builds and pushes the multi-arch image in one go, tagged with the commit SHA and,
+# for tagged commits, additionally with the git tag(s) and "latest". All tags point to
+# the same index, so the per-platform SBOMs only need to be attached once.
+# Requires a buildx builder with multi-platform support (see hack/ci/setup-docker-buildx.sh).
 .PHONY: docker-image-publish
-docker-image-publish: docker-image
-	docker push $(IMAGE_NAME)
+docker-image-publish:
+	docker buildx build $(DOCKER_BUILD_ARGS) --platform $(PLATFORMS) \
+		--tag $(IMAGE_NAME) \
+		$(foreach tag,$(GIT_TAG) $(if $(GIT_TAG),latest),--tag $(IMAGE_REPO):$(tag)) \
+		--push .
 	./hack/attach-image-sbom.sh $(IMAGE_NAME)
-	if [[ -n "$(GIT_TAG)" ]]; then \
-		$(eval IMAGE_TAG = $(GIT_TAG)) \
-		docker build -t $(IMAGE_NAME) . && \
-		docker push $(IMAGE_NAME) && \
-		./hack/attach-image-sbom.sh $(IMAGE_NAME) && \
-		$(eval IMAGE_TAG = latest) \
-		docker build -t $(IMAGE_NAME) . ;\
-		docker push $(IMAGE_NAME) ;\
-		./hack/attach-image-sbom.sh $(IMAGE_NAME) ;\
-	fi
 
 .PHONY: test-unit-docker
 test-unit-docker:
