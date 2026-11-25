@@ -1062,10 +1062,20 @@ func buildSecurityProfile(raw *azuretypes.SecurityProfile) *armcompute.SecurityP
 		sp.SecurityType = ptr.To(armcompute.SecurityTypes(raw.SecurityType))
 	}
 
-	if raw.SecureBootEnabled != nil || raw.VTpmEnabled != nil {
+	secureBoot, vTpm := raw.SecureBootEnabled, raw.VTpmEnabled
+	if ptr.Deref(sp.SecurityType, "") == armcompute.SecurityTypesTrustedLaunch {
+		if secureBoot == nil {
+			secureBoot = ptr.To(true)
+		}
+		if vTpm == nil {
+			vTpm = ptr.To(true)
+		}
+	}
+
+	if secureBoot != nil || vTpm != nil {
 		sp.UefiSettings = &armcompute.UefiSettings{
-			SecureBootEnabled: raw.SecureBootEnabled,
-			VTpmEnabled:       raw.VTpmEnabled,
+			SecureBootEnabled: secureBoot,
+			VTpmEnabled:       vTpm,
 		}
 	}
 
